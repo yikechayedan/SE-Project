@@ -1,0 +1,107 @@
+PolyMetric Release 1 API 文档
+用户注册
+接口: POST /api/users/register/
+请求示例:
+{
+  "username": "testuser",
+  "password": "123456",
+  "email": "test@example.com",
+  "phone": "13800000000"
+}
+
+返回示例:
+{
+  "code": 200,
+  "msg": "注册成功",
+  "data": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com"
+  }
+}
+用户登录
+接口: POST /api/users/login/
+请求示例:
+{
+  "username": "testuser",
+  "password": "123456"
+}
+
+返回示例:
+{
+  "code": 200,
+  "msg": "登录成功",
+  "data": {
+    "access": "eyJhbGciOiJIUzI1NiIsInR5..."
+  }
+}
+获取当前用户信息
+接口: GET /api/users/me/   (需要 Bearer Token)
+返回示例:
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com",
+    "phone": "13800000000",
+    "avatar": "http://127.0.0.1:8000/media/avatars/xxx.png"
+  }
+}
+修改用户信息
+接口: PUT /api/users/me/   (需要 Bearer Token)
+请求示例:
+{
+  "email": "new@example.com",
+  "phone": "13900000000"
+}
+
+返回示例:
+{
+  "code": 200,
+  "msg": "信息更新成功"
+}
+修改密码
+接口: POST /api/users/change_password/   (需要 Bearer Token)
+请求示例:
+{
+  "old_password": "123456",
+  "new_password": "new789"
+}
+
+返回示例:
+{
+  "code": 200,
+  "msg": "密码修改成功"
+}
+退出登录
+接口: POST /api/users/logout/   (需要 Bearer Token)
+请求示例:
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5..."
+}
+
+返回示例:
+{
+  "code": 200,
+  "msg": "退出成功"
+}
+管理员查看所有用户
+接口: GET /api/users/admin/users/   (需要管理员)
+返回示例:
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": [
+    {"id": 1, "username": "admin"},
+    {"id": 2, "username": "user01"}
+  ]
+}
+管理员删除用户
+接口: DELETE /api/users/admin/users/{id}/   (需要管理员)
+返回示例:
+{
+  "code": 200,
+  "msg": "用户已删除"
+}

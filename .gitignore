@@ -1,0 +1,40 @@
+### Python ###
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+### Django ###
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+/media/
+staticfiles/
+
+### Virtual Environment ###
+venv/
+ENV/
+env/
+.venv/
+
+### VSCode / IDE ###
+.vscode/
+.idea/
+
+### OS files ###
+.DS_Store
+Thumbs.db
+
+### Django Migrations ###
+PolyMetric/backend/apps/*/migrations/
+!PolyMetric/backend/apps/*/migrations/__init__.py
+
+### Local config ###
+*.local
+*.env
+
+### Others ###
+*.tmp
