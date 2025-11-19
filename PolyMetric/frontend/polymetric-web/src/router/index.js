@@ -12,6 +12,7 @@ const routes = [
   { path: '/datasets', name: 'DatasetSquare', component: () => import('../views/datasets/DatasetSquare.vue') },
   { path: '/datasets/my-manage', name: 'MyDatasetManage', component: () => import('../views/datasets/MyDatasetManage.vue') },
   { path: '/datasets/my-display', name: 'MyDatasetDisplay', component: () => import('../views/datasets/MyDatasetDisplay.vue') },
+  { path: '/models', name: 'Models', component: () => import('../views/models/ModelsView.vue') },
   { path: '/evaluation', name: 'EvaluationHall', component: () => import('../views/evaluation/EvaluationHall.vue') },
   { path: '/evaluation/objective', name: 'ObjectiveEval', component: () => import('../views/evaluation/ObjectiveEval.vue') },
   { path: '/evaluation/subjective', name: 'SubjectiveEval', component: () => import('../views/evaluation/SubjectiveEval.vue') },
