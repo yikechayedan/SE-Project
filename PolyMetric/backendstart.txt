@@ -1,0 +1,8 @@
+cd SE-Project/PolyMetric/backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+在SE-Project\PolyMetric\backend\apps\users 中创建migrations文件夹以及__init__.py文件
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver
