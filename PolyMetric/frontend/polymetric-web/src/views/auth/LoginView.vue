@@ -58,13 +58,32 @@ const rules = {
 }
 
 const login = () => {
-  formRef.value.validate((valid) => {
+  formRef.value.validate(async (valid) => {
     if (valid) {
-      // 模拟登录成功（后续接入后端API替换）
-      localStorage.setItem('token', 'fake-jwt-token')
-      localStorage.setItem('username', form.username)
-      ElMessage.success('登录成功！')
-      router.push('/home')  // 跳转到已登录首页
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/users/login/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: form.username,
+            password: form.password
+          })
+        })
+        const data = await response.json()
+        if (data.access) {
+          localStorage.setItem('token', data.access)
+          localStorage.setItem('refresh', data.refresh) // 如果需要刷新token
+          localStorage.setItem('username', form.username)
+          ElMessage.success('登录成功！')
+          router.push('/home')
+        } else {
+          ElMessage.error('登录失败，请检查用户名或密码')
+        }
+      } catch (error) {
+        ElMessage.error('登录失败：网络错误')
+      }
     } else {
       ElMessage.error('请输入正确信息')
     }

@@ -39,6 +39,7 @@ class UserInfoView(generics.RetrieveUpdateAPIView):
         """
         更新用户信息
         """
+        kwargs['partial'] = True
         return super().update(request, *args, **kwargs)
 
 class ChangePasswordView(generics.UpdateAPIView):
