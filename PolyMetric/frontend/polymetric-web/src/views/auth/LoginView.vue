@@ -42,6 +42,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { login as loginApi } from '@/api/users'  
 
 const router = useRouter()
 const formRef = ref(null)
@@ -61,20 +62,15 @@ const login = () => {
   formRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/users/login/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: form.username,
-            password: form.password
-          })
+        // ✅ 改用 axios 封装的 API
+        const res = await loginApi({
+          username: form.username,
+          password: form.password
         })
-        const data = await response.json()
+        const data = res.data
         if (data.access) {
           localStorage.setItem('token', data.access)
-          localStorage.setItem('refresh', data.refresh) // 如果需要刷新token
+          localStorage.setItem('refresh', data.refresh)
           localStorage.setItem('username', form.username)
           ElMessage.success('登录成功！')
           router.push('/home')
@@ -82,7 +78,8 @@ const login = () => {
           ElMessage.error('登录失败，请检查用户名或密码')
         }
       } catch (error) {
-        ElMessage.error('登录失败：网络错误')
+        // ✅ 更好的错误处理
+        ElMessage.error('登录失败：' + (error.response?.data?.detail || '网络错误'))
       }
     } else {
       ElMessage.error('请输入正确信息')

@@ -38,5 +38,6 @@ PolyMetric/backend/apps/*/migrations/
 
 ### Others ###
 *.tmp
-frontend/polymetric-web/node_modules
-frontend/polymetric-admin/node_modules
+### Node modules ###
+node_modules/
+**/node_modules/

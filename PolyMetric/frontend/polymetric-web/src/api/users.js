@@ -1,4 +1,4 @@
-// src/api/user.js
+// src/api/users.js
 import request from "./request";
 
 // 注册
@@ -29,4 +29,45 @@ export function changePassword(data) {
 // 退出登录
 export function logout(refresh) {
   return request.post("/api/users/logout/", { refresh });
+}
+
+// ========== 忘记密码相关 API ==========
+
+/**
+ * 发送密码重置验证码到邮箱
+ * @param {string} email - 用户邮箱
+ * 
+ * 后端需实现：POST /api/users/forgot-password/
+ * 请求: { "email": "user@example.com" }
+ * 响应: { "code": 200, "msg": "验证码已发送" }
+ */
+export function sendResetCode(email) {
+  return request.post("/api/users/forgot-password/", { email });
+}
+
+/**
+ * 验证密码重置验证码
+ * @param {string} email - 用户邮箱
+ * @param {string} code - 验证码
+ * 
+ * 后端需实现：POST /api/users/verify-code/
+ * 请求: { "email": "user@example.com", "code": "123456" }
+ * 响应: { "code": 200, "msg": "验证成功" }
+ */
+export function verifyResetCode(email, code) {
+  return request.post("/api/users/verify-code/", { email, code });
+}
+
+/**
+ * 重置密码（设置新密码）
+ * @param {string} email - 用户邮箱
+ * @param {string} code - 验证码
+ * @param {string} password - 新密码
+ * 
+ * 后端需实现：POST /api/users/reset-password/
+ * 请求: { "email": "user@example.com", "code": "123456", "password": "newpassword" }
+ * 响应: { "code": 200, "msg": "密码重置成功" }
+ */
+export function resetPassword(email, code, password) {
+  return request.post("/api/users/reset-password/", { email, code, password });
 }

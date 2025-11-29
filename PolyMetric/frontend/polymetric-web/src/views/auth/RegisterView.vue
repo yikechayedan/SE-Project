@@ -87,6 +87,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { register } from '@/api/users'  
 
 const router = useRouter()
 const registerFormRef = ref(null)
@@ -135,19 +136,14 @@ const handleRegister = () => {
   registerFormRef.value.validate(async (valid) => {
     if (valid && registerForm.agree) {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/users/register/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: registerForm.username,
-            password: registerForm.password,
-            email: registerForm.email,
-            phone: registerForm.phone
-          })
+        // ✅ 改用 axios 封装的 API
+        const res = await register({
+          username: registerForm.username,
+          password: registerForm.password,
+          email: registerForm.email,
+          phone: registerForm.phone
         })
-        const data = await response.json()
+        const data = res.data
         if (data.code === 200) {
           ElMessage.success('注册成功！请登录')
           router.push('/login')
@@ -155,7 +151,8 @@ const handleRegister = () => {
           ElMessage.error('注册失败：' + (data.msg || '未知错误'))
         }
       } catch (error) {
-        ElMessage.error('注册失败：网络错误')
+        // ✅ 更好的错误处理
+        ElMessage.error('注册失败：' + (error.response?.data?.msg || '网络错误'))
       }
     } else {
       ElMessage.error('请检查表单信息或同意协议')

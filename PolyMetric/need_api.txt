@@ -1,0 +1,142 @@
+===========================================
+PolyMetric 待实现 API 文档
+===========================================
+
+------------------------------------------
+1. 发送密码重置验证码
+------------------------------------------
+POST /api/users/forgot-password/
+
+请求体:
+{
+  "email": "user@example.com"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "验证码已发送到您的邮箱"
+}
+
+失败响应 (400):
+{
+  "code": 400,
+  "msg": "该邮箱未注册"
+}
+
+
+------------------------------------------
+2. 验证密码重置验证码
+------------------------------------------
+POST /api/users/verify-code/
+
+请求体:
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "验证成功"
+}
+
+失败响应 (400):
+{
+  "code": 400,
+  "msg": "验证码错误或已过期"
+}
+
+
+------------------------------------------
+3. 重置密码（设置新密码）
+------------------------------------------
+POST /api/users/reset-password/
+
+请求体:
+{
+  "email": "user@example.com",
+  "code": "123456",
+  "password": "newpassword123"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "密码重置成功"
+}
+
+失败响应 (400):
+{
+  "code": 400,
+  "msg": "验证码无效"
+}
+
+
+------------------------------------------
+4. 上传用户头像
+------------------------------------------
+POST /api/users/avatar/
+
+# 说明: 上传用户头像（需要登录状态，携带 JWT Token）
+# Content-Type: multipart/form-data（不是 JSON！）
+# 
+# 与前三个 API 不同，这个接口传输的是二进制文件，不是 JSON
+# 前端使用 FormData 对象构造请求体
+#
+# 前端示例代码:
+# const formData = new FormData()
+# formData.append('avatar', file)  // file 是用户选择的文件对象
+# axios.post('/api/users/avatar/', formData, {
+#   headers: { 'Content-Type': 'multipart/form-data' }
+# })
+
+请求头:
+{
+  "Content-Type": "multipart/form-data",
+  "Authorization": "Bearer <access_token>"
+}
+
+请求体 (FormData 格式，非 JSON):
+{
+  "avatar": <File>  // 二进制图片文件，支持 jpg/jpeg/png/gif，最大 2MB
+}
+
+# 文件限制:
+# - 最大文件大小: 2MB
+# - 支持格式: jpg, jpeg, png, gif
+# - 字段名必须是 "avatar"
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "头像上传成功",
+  "data": {
+    "avatar": "http://127.0.0.1:8000/media/avatars/user_1_20241129.png"
+  }
+}
+
+失败响应 (400) - 格式错误:
+{
+  "code": 400,
+  "msg": "文件格式不支持，仅支持 jpg/png/gif"
+}
+
+失败响应 (400) - 未选择文件:
+{
+  "code": 400,
+  "msg": "请选择要上传的文件"
+}
+
+失败响应 (413) - 文件过大:
+{
+  "code": 413,
+  "msg": "文件过大，最大支持 2MB"
+}
+
+失败响应 (401) - 未登录:
+{
+  "code": 401,
+  "msg": "未登录或登录已过期"
+}
