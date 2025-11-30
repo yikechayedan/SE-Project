@@ -1,0 +1,62 @@
+import request from './request'
+
+// 数据集列表（支持筛选、搜索、分页）
+export const getDatasetList = (params) => {
+  return request({
+    url: '/datasets/',
+    method: 'get',
+    params
+  })
+}
+
+// 我的数据集
+export const getMyDatasets = () => {
+  return request({
+    url: '/datasets/my_datasets/',
+    method: 'get'
+  })
+}
+
+// 数据集详情
+export const getDatasetDetail = (id) => {
+  return request({
+    url: `/datasets/${id}/`,
+    method: 'get'
+  })
+}
+
+// 创建数据集（上传文件）
+export const createDataset = (data) => {
+  return request({
+    url: '/datasets/',
+    method: 'post',
+    data,
+    headers: { 'Content-Type': 'multipart/form-data' }  // 文件上传需指定格式
+  })
+}
+
+// 更新数据集
+export const updateDataset = (id, data) => {
+  return request({
+    url: `/datasets/${id}/`,
+    method: 'put',
+    data
+  })
+}
+
+// 删除数据集
+export const deleteDataset = (id) => {
+  return request({
+    url: `/datasets/${id}/`,
+    method: 'delete'
+  })
+}
+
+// 下载数据集
+export const downloadDataset = (id) => {
+  return request({
+    url: `/datasets/${id}/download/`,
+    method: 'get',
+    responseType: 'blob'  // 二进制文件流
+  })
+}

@@ -8,6 +8,9 @@ urlpatterns = [
 
     # 用户模块
     path("api/users/", include("apps.users.urls")),
+
+    # 数据集模块
+    path("api/", include("apps.datasets.urls")),
 ]
 
 if settings.DEBUG:
