@@ -40,15 +40,11 @@ INSTALLED_APPS = [
 
     # 数据集模块
     "apps.datasets", 
-<<<<<<< HEAD
     "django_filters",  # 筛选插件
 
     #评测任务模块
     "apps.tasks",
 
-=======
-    "django_filters",
->>>>>>> f85d89d8896a32eff99aa2d1a6dbc86d6c5311cb
 
     # 项目应用
     'apps.users',
