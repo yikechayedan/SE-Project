@@ -202,7 +202,7 @@ const fetchAllDatasets = async () => {
   loading.value = true
   try {
     const res = await getAllDatasets()
-    allDatasets.value = res.data || []
+    allDatasets.value = res || []
   } catch (error) {
     console.error('获取数据集列表失败:', error)
     ElMessage.error('获取数据集列表失败')
@@ -233,7 +233,7 @@ const showDetail = async (row) => {
   
   try {
     const res = await getDatasetDetail(row.id)
-    datasetDetail.value = res.data
+    datasetDetail.value = res
   } catch (error) {
     console.error('获取数据集详情失败:', error)
     ElMessage.error('获取详情失败')
