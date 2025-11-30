@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     #数据集模块
-    "datasets", 
+    "apps.datasets", 
     "django_filters",  # 筛选插件
 
 
@@ -186,3 +186,27 @@ CORS_ALLOW_ALL_ORIGINS = True
 # 默认主键类型
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# =======================
+#  qq 邮箱 SMTP 配置
+# =======================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.qq.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = "1605014812@qq.com"
+EMAIL_HOST_PASSWORD = "bzidtqejzaxygifh"   # 授权码
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# =======================
+#  163 邮箱 SMTP 配置
+# =======================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = 'smtp.163.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+
+EMAIL_HOST_USER = '15777303630@163.com'
+EMAIL_HOST_PASSWORD = 'TMjmTBPDLNqVjfb2'  # 而是授权码！
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

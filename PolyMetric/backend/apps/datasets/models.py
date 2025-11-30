@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from users.models import User  # 关联用户模型
+from apps.users.models import User  # 关联用户模型
 
 class Dataset(models.Model):
     """数据集模型"""
