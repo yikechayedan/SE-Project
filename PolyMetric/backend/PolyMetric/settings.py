@@ -38,13 +38,17 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
 
-    #数据集模块
+    # 数据集模块
     "apps.datasets", 
+<<<<<<< HEAD
     "django_filters",  # 筛选插件
 
     #评测任务模块
     "apps.tasks",
 
+=======
+    "django_filters",
+>>>>>>> f85d89d8896a32eff99aa2d1a6dbc86d6c5311cb
 
     # 项目应用
     'apps.users',
@@ -55,7 +59,7 @@ INSTALLED_APPS = [
 # 中间件配置
 # -----------------------------
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # 允许跨域
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -73,7 +77,7 @@ ROOT_URLCONF = 'PolyMetric.urls'
 
 
 # -----------------------------
-# 模板配置（后台管理等使用）
+# 模板配置
 # -----------------------------
 TEMPLATES = [
     {
@@ -91,51 +95,34 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'PolyMetric.wsgi.application'
-ASGI_APPLICATION = 'PolyMetric.asgi.application'
 
 
 # -----------------------------
-# 数据库配置（可以切换 MySQL）
+# 数据库配置
 # -----------------------------
-# 默认 SQLite，便于快速启动
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',      # 本地开发使用
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
-"""
-# 改成 MySQL，取消注释
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'polymetric',
-        'USER': 'root',
-        'PASSWORD': 'yourpassword',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
-    }
-}
-"""
-
 
 # -----------------------------
-# 密码验证
+# 密码校验
 # -----------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
 # -----------------------------
-# 国际化设置
+# 国际化
 # -----------------------------
 LANGUAGE_CODE = 'zh-hans'
 TIME_ZONE = 'Asia/Shanghai'
@@ -147,25 +134,32 @@ USE_TZ = True
 # 静态文件 & 媒体文件
 # -----------------------------
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
-# -----------------------------
-# 自定义用户模型（非常关键）
-# -----------------------------
-AUTH_USER_MODEL = "users.User"
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # -----------------------------
-# REST_FRAMEWORK 配置（启用 JWT）
+# 自定义用户模型
+# -----------------------------
+AUTH_USER_MODEL = 'users.User'
+
+
+# -----------------------------
+# 跨域配置
+# -----------------------------
+CORS_ALLOW_ALL_ORIGINS = True
+
+
+# -----------------------------
+# DRF 配置
 # -----------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
 }
 
 
@@ -173,19 +167,8 @@ REST_FRAMEWORK = {
 # JWT 配置
 # -----------------------------
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "AUTH_HEADER_TYPES": ("Bearer",),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
-
-
-# -----------------------------
-# CORS 配置（允许跨域）
-# -----------------------------
-CORS_ALLOW_ALL_ORIGINS = True
-
-
-# -----------------------------
-# 默认主键类型
-# -----------------------------
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

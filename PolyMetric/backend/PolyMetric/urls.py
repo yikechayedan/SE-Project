@@ -9,9 +9,14 @@ urlpatterns = [
     # 用户模块
     path("api/users/", include("apps.users.urls")),
 
+<<<<<<< HEAD
     path("api/", include("apps.datasets.urls")),     # 数据集模块
 
     path("api/tasks/", include("apps.tasks.urls")),  # 评测任务
+=======
+    # 数据集模块
+    path("api/", include("apps.datasets.urls")),
+>>>>>>> f85d89d8896a32eff99aa2d1a6dbc86d6c5311cb
 ]
 
 if settings.DEBUG:
