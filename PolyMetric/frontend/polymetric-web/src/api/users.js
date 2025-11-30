@@ -36,10 +36,6 @@ export function logout(refresh) {
 /**
  * 发送密码重置验证码到邮箱
  * @param {string} email - 用户邮箱
- * 
- * 后端需实现：POST /api/users/forgot-password/
- * 请求: { "email": "user@example.com" }
- * 响应: { "code": 200, "msg": "验证码已发送" }
  */
 export function sendResetCode(email) {
   return request.post("/api/users/forgot-password/", { email });
@@ -49,10 +45,6 @@ export function sendResetCode(email) {
  * 验证密码重置验证码
  * @param {string} email - 用户邮箱
  * @param {string} code - 验证码
- * 
- * 后端需实现：POST /api/users/verify-code/
- * 请求: { "email": "user@example.com", "code": "123456" }
- * 响应: { "code": 200, "msg": "验证成功" }
  */
 export function verifyResetCode(email, code) {
   return request.post("/api/users/verify-code/", { email, code });
@@ -63,10 +55,6 @@ export function verifyResetCode(email, code) {
  * @param {string} email - 用户邮箱
  * @param {string} code - 验证码
  * @param {string} password - 新密码
- * 
- * 后端需实现：POST /api/users/reset-password/
- * 请求: { "email": "user@example.com", "code": "123456", "password": "newpassword" }
- * 响应: { "code": 200, "msg": "密码重置成功" }
  */
 export function resetPassword(email, code, password) {
   return request.post("/api/users/reset-password/", { email, code, password });
@@ -76,14 +64,6 @@ export function resetPassword(email, code, password) {
 
 /**
  * 获取用户关注的模型列表
- * 
- * 后端需实现：GET /api/users/followed-models/
- * 响应: { 
- *   "code": 200, 
- *   "data": [
- *     { "id": 1, "name": "GPT-4", "company": "OpenAI", "parameterSize": "1.76T", "followedAt": "2025-01-15T10:30:00" }
- *   ] 
- * }
  */
 export function getFollowedModels() {
   return request.get("/api/users/followed-models/");
@@ -91,14 +71,6 @@ export function getFollowedModels() {
 
 /**
  * 获取用户关注的数据集列表
- * 
- * 后端需实现：GET /api/users/followed-datasets/
- * 响应: { 
- *   "code": 200, 
- *   "data": [
- *     { "id": 1, "name": "MMLU", "uploader": "UC Berkeley", "category": "综合评测", "itemCount": 14042, "followedAt": "2025-01-10T08:00:00" }
- *   ] 
- * }
  */
 export function getFollowedDatasets() {
   return request.get("/api/users/followed-datasets/");
@@ -107,9 +79,6 @@ export function getFollowedDatasets() {
 /**
  * 取消关注模型
  * @param {number} modelId - 模型ID
- * 
- * 后端需实现：DELETE /api/users/followed-models/{modelId}/
- * 响应: { "code": 200, "msg": "取消关注成功" }
  */
 export function unfollowModel(modelId) {
   return request.delete(`/api/users/followed-models/${modelId}/`);
@@ -118,10 +87,34 @@ export function unfollowModel(modelId) {
 /**
  * 取消关注数据集
  * @param {number} datasetId - 数据集ID
- * 
- * 后端需实现：DELETE /api/users/followed-datasets/{datasetId}/
- * 响应: { "code": 200, "msg": "取消关注成功" }
  */
 export function unfollowDataset(datasetId) {
   return request.delete(`/api/users/followed-datasets/${datasetId}/`);
+}
+
+// ========== 头像上传 API ==========
+
+/**
+ * 上传用户头像
+ * @param {File} file - 图片文件对象
+ * 
+ * 后端接口：POST /api/users/avatar/
+ * Content-Type: multipart/form-data
+ * 
+ * 文件限制:
+ * - 最大文件大小: 2MB
+ * - 支持格式: jpg, jpeg, png, gif
+ * 
+ * 响应: { 
+ *   "code": 200, 
+ *   "msg": "头像上传成功",
+ *   "data": { "avatar": "http://127.0.0.1:8000/media/avatars/user_1_xxx.png" }
+ * }
+ */
+export function uploadAvatar(file) {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  return request.post('/api/users/avatar/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }

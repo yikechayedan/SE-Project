@@ -37,13 +37,15 @@
               :auto-upload="false"
               :show-file-list="false"
               :on-change="handleAvatarChange"
-              accept="image/*"
-              :disabled="true"
+              accept="image/jpeg,image/png,image/gif"
+              :disabled="avatarUploading"
             >
-              <el-button type="primary" plain size="small" disabled>上传头像</el-button>
+              <el-button type="primary" plain size="small" :loading="avatarUploading">
+                {{ avatarUploading ? '上传中...' : '上传头像' }}
+              </el-button>
             </el-upload>
           </div>
-          <p class="tip">（暂不支持头像上传，需要后端实现文件上传接口）</p>
+          <p class="tip">支持 jpg/png/gif 格式，最大 2MB</p>
         </el-form-item>
         <el-form-item label="用户名">
           <el-input v-model="editForm.username" disabled />
@@ -78,7 +80,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getUserInfo, updateUserInfo } from '@/api/users'  // ✅ 使用封装的 API
+import { getUserInfo, updateUserInfo, uploadAvatar } from '@/api/users'
 import FollowContent from '../../components/profile/FollowContent.vue'
 import MyDatasets from '../../components/profile/MyDatasets.vue'
 import MyTasks from '../../components/profile/MyTasks.vue'
@@ -87,6 +89,7 @@ const router = useRouter()
 const activeTab = ref('follow')
 const showEdit = ref(false)
 const loading = ref(false)
+const avatarUploading = ref(false)
 const editFormRef = ref(null)
 
 // 默认头像
@@ -159,13 +162,52 @@ const openEditDialog = () => {
   showEdit.value = true
 }
 
-// 头像选择（预留功能）
-const handleAvatarChange = (file) => {
-  // 暂不支持，需要后端实现文件上传接口
-  ElMessage.warning('暂不支持头像上传')
+// 头像上传处理
+const handleAvatarChange = async (uploadFile) => {
+  const file = uploadFile.raw
+  
+  // 1. 验证文件格式
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.error('文件格式不支持，仅支持 jpg/png/gif')
+    return
+  }
+  
+  // 2. 验证文件大小（最大 2MB）
+  const maxSize = 2 * 1024 * 1024
+  if (file.size > maxSize) {
+    ElMessage.error('文件过大，最大支持 2MB')
+    return
+  }
+  
+  // 3. 上传到后端
+  avatarUploading.value = true
+  try {
+    const res = await uploadAvatar(file)
+    
+    // 根据后端返回格式处理
+    if (res.data && res.data.code === 200) {
+      form.avatar = res.data.data.avatar
+      ElMessage.success('头像上传成功')
+    } else {
+      ElMessage.error(res.data?.msg || '上传失败')
+    }
+  } catch (error) {
+    if (error.response?.status === 401) {
+      ElMessage.error('登录已过期，请重新登录')
+      localStorage.clear()
+      router.push('/login')
+    } else if (error.response?.status === 413) {
+      ElMessage.error('文件过大，最大支持 2MB')
+    } else {
+      ElMessage.error(error.response?.data?.msg || '头像上传失败')
+    }
+  } finally {
+    avatarUploading.value = false
+  }
 }
 
-// ✅ 保存编辑（使用封装的 API）
+// 保存编辑
 const saveEdit = () => {
   editFormRef.value.validate(async (valid) => {
     if (!valid) {

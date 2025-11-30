@@ -40,7 +40,14 @@ INSTALLED_APPS = [
 
     # 数据集模块
     "apps.datasets", 
+<<<<<<< Updated upstream
     "django_filters",
+=======
+    "django_filters",  # 筛选插件
+    
+    #评测任务模块
+    "apps.tasks",
+>>>>>>> Stashed changes
 
     # 项目应用
     'apps.users',

@@ -75,9 +75,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="item_count" label="数据量" width="100" align="center">
+        <el-table-column prop="file_size" label="文件大小" width="100" align="center">
           <template #default="{ row }">
-            {{ row.item_count || 0 }} 条
+            {{ row.file_size }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" align="center" fixed="right">
@@ -110,8 +110,8 @@
               {{ getCategoryLabel(datasetDetail.category) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="数据量">{{ datasetDetail.item_count || 0 }} 条</el-descriptions-item>
-          <el-descriptions-item label="下载量">{{ datasetDetail.download_count || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="文件格式">{{ datasetDetail.file_format || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="是否公开">{{ datasetDetail.is_public ? '是' : '否' }}</el-descriptions-item>
           <el-descriptions-item label="文件大小">{{ datasetDetail.file_size || '未知' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(datasetDetail.created_at) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatDate(datasetDetail.updated_at) }}</el-descriptions-item>
@@ -201,8 +201,8 @@ const getCategoryType = (category) => {
 const fetchAllDatasets = async () => {
   loading.value = true
   try {
-    const res = await getAllDatasets()
-    allDatasets.value = res.data || []
+    const data = await getAllDatasets()
+    allDatasets.value = data
   } catch (error) {
     console.error('获取数据集列表失败:', error)
     ElMessage.error('获取数据集列表失败')
@@ -232,8 +232,8 @@ const showDetail = async (row) => {
   datasetDetail.value = null
   
   try {
-    const res = await getDatasetDetail(row.id)
-    datasetDetail.value = res.data
+    const data = await getDatasetDetail(row.id)
+    datasetDetail.value = data
   } catch (error) {
     console.error('获取数据集详情失败:', error)
     ElMessage.error('获取详情失败')

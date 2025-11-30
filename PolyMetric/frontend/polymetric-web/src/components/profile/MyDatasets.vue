@@ -34,7 +34,7 @@
                 <el-tag size="small" :type="item.is_public ? 'success' : 'info'">
                   {{ item.is_public ? '公开' : '私有' }}
                 </el-tag>
-                <span class="item-count">{{ item.item_count || 0 }} 条</span>
+                <span class="item-count">{{ item.file_size }}</span>
               </div>
             </div>
           </el-card>
@@ -53,8 +53,8 @@
     <el-dialog v-model="showDetailDialog" :title="currentDataset?.name" width="500px">
       <el-descriptions :column="1" border v-if="currentDataset">
         <el-descriptions-item label="分类">{{ currentDataset.category || '未分类' }}</el-descriptions-item>
-        <el-descriptions-item label="数据量">{{ currentDataset.item_count || 0 }} 条</el-descriptions-item>
-        <el-descriptions-item label="下载量">{{ currentDataset.download_count || 0 }}</el-descriptions-item>
+        <el-descriptions-item label="文件大小">{{ currentDataset.file_size }}</el-descriptions-item>
+        <el-descriptions-item label="文件格式">{{ currentDataset.file_format || '未知' }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="currentDataset.is_public ? 'success' : 'info'">
             {{ currentDataset.is_public ? '公开' : '私有' }}
@@ -86,20 +86,14 @@ const currentDataset = ref(null)
 const fetchMyDatasets = async () => {
   loading.value = true
   try {
-    const res = await getMyDatasets()
-    if (res.data?.results) {
-      datasets.value = res.data.results
-    } else if (Array.isArray(res.data)) {
-      datasets.value = res.data
-    } else {
-      datasets.value = []
-    }
+    const data = await getMyDatasets()
+    datasets.value = data
   } catch (error) {
     console.error('获取数据集失败:', error)
     // 模拟数据
     datasets.value = [
-      { id: 1, name: '我的测试集', category: '综合评测', item_count: 1000, is_public: true },
-      { id: 2, name: '私有数据', category: '代码生成', item_count: 500, is_public: false },
+      { id: 1, name: '我的测试集', category: 'text', file_size: '25.5MB', file_format: 'json', is_public: true },
+      { id: 2, name: '私有数据', category: 'image', file_size: '128MB', file_format: 'zip', is_public: false },
     ]
   } finally {
     loading.value = false
