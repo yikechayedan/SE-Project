@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     "apps.datasets", 
     "django_filters",  # 筛选插件
 
+    #评测任务模块
+    "apps.tasks",
+
 
     # 项目应用
     'apps.users',
