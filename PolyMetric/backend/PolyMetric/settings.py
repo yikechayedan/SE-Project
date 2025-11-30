@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     #数据集模块
-    "datasets", 
+    "apps.datasets", 
     "django_filters",  # 筛选插件
 
 
