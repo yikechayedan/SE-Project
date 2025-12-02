@@ -5,7 +5,7 @@
       <span>PolyMetric</span>
     </div>
     <div class="user-info" @click="showMenu = true">
-      <el-avatar :size="32" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
+      <el-avatar :size="32" :src="avatarUrl" />
       <span class="username">{{ username }}</span>
       <el-icon size="18"><ArrowDown /></el-icon>
     </div>
@@ -43,18 +43,25 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, ArrowDown } from '@element-plus/icons-vue'
-import { changePassword, logout } from '@/api/users'  // ✅ 使用封装的 API
+import { changePassword, logout, getUserInfo } from '@/api/users'
 
 const router = useRouter()
 const showMenu = ref(false)
-const changePasswordDialog = ref(false)  // ✅ 重命名避免与函数冲突
-const loading = ref(false)  // 加载状态
-const username = localStorage.getItem('username') || 'User_name'
+const changePasswordDialog = ref(false)
+const loading = ref(false)
+const username = ref(localStorage.getItem('username') || 'User_name')
 const passwordFormRef = ref(null)
+const userAvatar = ref('')
+
+// 默认头像
+const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+// 计算头像 URL
+const avatarUrl = computed(() => userAvatar.value || defaultAvatar)
 
 const passwordForm = reactive({
   old_password: '',
@@ -82,15 +89,47 @@ const passwordRules = {
   ]
 }
 
+// 组件挂载时获取用户信息
+onMounted(async () => {
+  await fetchUserInfo()
+})
+
+// 获取用户信息（包括头像）
+const fetchUserInfo = async () => {
+  try {
+    const res = await getUserInfo()
+    const data = res.data
+    
+    // 更新用户名和头像
+    if (data.username) {
+      username.value = data.username
+    }
+    if (data.avatar) {
+      userAvatar.value = data.avatar
+    }
+  } catch (error) {
+    // 获取失败时使用默认值，不影响页面显示
+    console.warn('获取用户信息失败:', error)
+  }
+}
+
+// 暴露刷新头像方法，供其他组件调用
+const refreshAvatar = async () => {
+  await fetchUserInfo()
+}
+
+// 通过 defineExpose 暴露给父组件
+defineExpose({
+  refreshAvatar
+})
 
 const handleLogout = async () => {
   try {
     const refresh = localStorage.getItem('refresh')
     if (refresh) {
-      await logout(refresh)  // 调用后端使 refresh token 失效
+      await logout(refresh)
     }
   } catch (error) {
-    // 即使后端调用失败，也继续清除本地数据
     console.warn('logout API failed:', error)
   } finally {
     localStorage.clear()
@@ -99,7 +138,6 @@ const handleLogout = async () => {
     showMenu.value = false
   }
 }
-
 
 const savePassword = () => {
   passwordFormRef.value.validate(async (valid) => {
@@ -115,22 +153,17 @@ const savePassword = () => {
         new_password: passwordForm.new_password
       })
       
-      // 成功处理
       ElMessage.success('密码修改成功，请重新登录')
-      // 清空表单
       passwordForm.old_password = ''
       passwordForm.new_password = ''
       passwordForm.confirm_password = ''
-      // 关闭弹窗
       changePasswordDialog.value = false
       showMenu.value = false
       
-      // 强制重新登录：清除本地凭证，跳转登录页
       localStorage.clear()
       router.push('/login')
       
     } catch (error) {
-      // 更详细的错误处理
       if (error.response?.status === 401) {
         ElMessage.error('登录已过期，请重新登录')
         localStorage.clear()
