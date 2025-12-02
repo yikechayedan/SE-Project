@@ -2,7 +2,8 @@ import requests
 import mimetypes
 
 # 你的 access token
-ACCESS_TOKEN = ".eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0NTA3MTMxLCJpYXQiOjE3NjQ0OTk5MzEsImp0aSI6IjlkYWJhZDg3MzNiODRjNDc5NzRkMWY1MDVkNzY2ODViIiwidXNlcl9pZCI6IjEwIn0.CAn80xYlb-2GCFMcTBOS0yoLi_OCM5VfaLkwMGzMHc4"
+ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0NjY5NjA3LCJpYXQiOjE3NjQ2NjI0MDgsImp0aSI6Ijk2ZmM0YjQ5MjVlMzQ0YzE5ZGVmYjFkY2VlMGE0OGE0IiwidXNlcl9pZCI6IjEwIn0.j4hZxEvj1uLzLCY1utTj43uR0Gv7gkcapu6Z_yjOSoo"
+
 
 # 本地后端接口地址
 url = "http://127.0.0.1:8000/api/users/avatar/"
