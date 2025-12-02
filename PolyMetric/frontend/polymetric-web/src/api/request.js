@@ -9,7 +9,7 @@ const service = axios.create({
 // 请求拦截器：自动带 Token
 service.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access");
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = "Bearer " + token;
     }
@@ -37,7 +37,7 @@ service.interceptors.response.use(
             refresh: refresh
           });
 
-          localStorage.setItem("access", res.data.access);
+          localStorage.setItem("token", res.data.access);
           originalRequest.headers["Authorization"] = "Bearer " + res.data.access;
 
           return service(originalRequest);

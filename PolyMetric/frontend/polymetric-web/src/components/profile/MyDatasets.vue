@@ -34,7 +34,7 @@
                 <el-tag size="small" :type="item.is_public ? 'success' : 'info'">
                   {{ item.is_public ? '公开' : '私有' }}
                 </el-tag>
-                <span class="item-count">{{ item.file_size }}</span>
+                <span class="item-count">{{ formatFileSize(item.file_size) }}</span>
               </div>
             </div>
           </el-card>
@@ -53,11 +53,14 @@
     <el-dialog v-model="showDetailDialog" :title="currentDataset?.name" width="500px">
       <el-descriptions :column="1" border v-if="currentDataset">
         <el-descriptions-item label="分类">{{ currentDataset.category || '未分类' }}</el-descriptions-item>
-        <el-descriptions-item label="文件大小">{{ currentDataset.file_size }}</el-descriptions-item>
         <el-descriptions-item label="文件格式">{{ currentDataset.file_format || '未知' }}</el-descriptions-item>
+        <el-descriptions-item label="文件大小">{{ formatFileSize(currentDataset.file_size) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="currentDataset.is_public ? 'success' : 'info'">
             {{ currentDataset.is_public ? '公开' : '私有' }}
+          </el-tag>
+          <el-tag :type="currentDataset.is_verified ? 'success' : 'warning'" style="margin-left: 5px;">
+            {{ currentDataset.is_verified ? '已审核' : '待审核' }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="描述">{{ currentDataset.description || '暂无描述' }}</el-descriptions-item>
@@ -82,19 +85,28 @@ const datasets = ref([])
 const showDetailDialog = ref(false)
 const currentDataset = ref(null)
 
+// 格式化文件大小
+const formatFileSize = (size) => {
+  if (!size) return '未知'
+  return typeof size === 'number' ? `${size.toFixed(2)} MB` : size
+}
+
 // 获取我的数据集
 const fetchMyDatasets = async () => {
   loading.value = true
   try {
-    const data = await getMyDatasets()
-    datasets.value = data
+    const res = await getMyDatasets()
+    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      datasets.value = res.data.data
+    } else if (Array.isArray(res.data)) {
+      datasets.value = res.data
+    } else {
+      datasets.value = []
+    }
   } catch (error) {
     console.error('获取数据集失败:', error)
-    // 模拟数据
-    datasets.value = [
-      { id: 1, name: '我的测试集', category: 'text', file_size: '25.5MB', file_format: 'json', is_public: true },
-      { id: 2, name: '私有数据', category: 'image', file_size: '128MB', file_format: 'zip', is_public: false },
-    ]
+    datasets.value = []
   } finally {
     loading.value = false
   }

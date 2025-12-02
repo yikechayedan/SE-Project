@@ -1,78 +1,79 @@
 // src/api/datasets.js
-import request from './request'
+import request from "./request"
 
 /**
- * 字段映射：后端字段 → 前端字段
+ * ========================================
+ * 数据集 API - 对接后端实际实现的接口
+ * ========================================
  * 
- * 后端返回格式: { code: 200, msg: "xxx", data: [...] }
- * - creator_username → uploader
- * - file_size: 数字(MB) → 加单位显示
+ * 后端返回格式: { code: 200/201, msg: "xxx", data: {...} 或 [...] }
  */
-const mapDatasetFields = (item) => ({
-  id: item.id,
-  name: item.name,
-  uploader: item.creator_username,
-  category: item.category,
-  file_size: item.file_size ? `${item.file_size}MB` : '未知',
-  file_format: item.file_format,
-  file_url: item.file_url,
-  description: item.description,
-  is_public: item.is_public,
-  is_verified: item.is_verified,
-  creator_id: item.creator,
-  created_at: item.created_at,
-  updated_at: item.updated_at
-})
 
-// 获取所有数据集列表
-export async function getAllDatasets() {
-  const res = await request.get('/api/datasets/')
-  // res.data 是 axios 返回的 response.data，即 { code, msg, data }
-  // res.data.data 才是真正的数据集数组
-  if (res.data && res.data.data) {
-    return res.data.data.map(mapDatasetFields)
-  }
-  return []
-}
-
-// 获取数据集详情
-export async function getDatasetDetail(id) {
-  const res = await request.get(`/api/datasets/${id}/`)
-  if (res.data && res.data.data) {
-    return mapDatasetFields(res.data.data)
-  }
-  return null
-}
-
-// 获取我的数据集
-export async function getMyDatasets() {
-  const res = await request.get('/api/datasets/my/')
-  if (res.data && res.data.data) {
-    return res.data.data.map(mapDatasetFields)
-  }
-  return []
-}
-
-// 创建/上传数据集
+/**
+ * 1. 创建数据集 (上传)
+ * 接口: POST /api/datasets/
+ * 请求体: { name, description, category, file_format, is_public }
+ */
 export function createDataset(data) {
-  return request.post('/api/datasets/', data, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  return request.post("/api/datasets/", data)
 }
 
-// 更新数据集（后端用 PATCH）
+/**
+ * 2. 获取数据集列表
+ * 接口: GET /api/datasets/
+ */
+export function getAllDatasets(params = {}) {
+  return request.get("/api/datasets/", { params })
+}
+
+/**
+ * 3. 获取数据集详情
+ * 接口: GET /api/datasets/{id}/
+ */
+export function getDatasetDetail(id) {
+  return request.get("/api/datasets/" + id + "/")
+}
+
+/**
+ * 4. 更新数据集信息
+ * 接口: PATCH /api/datasets/{id}/
+ */
 export function updateDataset(id, data) {
-  return request.patch(`/api/datasets/${id}/`, data)
+  return request.patch("/api/datasets/" + id + "/", data)
 }
 
-// 删除数据集
+/**
+ * 5. 删除数据集
+ * 接口: DELETE /api/datasets/{id}/
+ */
 export function deleteDataset(id) {
-  return request.delete(`/api/datasets/${id}/`)
+  return request.delete("/api/datasets/" + id + "/")
 }
 
-// 下载数据集
+/**
+ * 6. 获取我的数据集
+ * 接口: GET /api/datasets/my_datasets/
+ * 注意: 后端 DRF router 自动生成的 URL 是 my_datasets 不是 my
+ */
+export function getMyDatasets() {
+  return request.get("/api/datasets/my_datasets/")
+}
+
+/**
+ * 7. 下载数据集
+ * 接口: GET /api/datasets/{id}/download/
+ * 返回: Blob 二进制文件流
+ */
 export function downloadDataset(id) {
-  return request.get(`/api/datasets/${id}/download/`, {
-    responseType: 'blob'
+  return request.get("/api/datasets/" + id + "/download/", {
+    responseType: "blob"
   })
+}
+
+/**
+ * 8. 审核数据集 (管理员)
+ * 接口: POST /api/datasets/{id}/verify/
+ */
+export function verifyDataset(id, is_verified = true) {
+  return request.post("/api/datasets/" + id + "/verify/", { is_verified })
 }

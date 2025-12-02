@@ -31,9 +31,6 @@
         <el-option label="图像" value="image" />
         <el-option label="文本" value="text" />
         <el-option label="多模态" value="multimodal" />
-        
-        
-        
       </el-select>
       <el-button :icon="Refresh" @click="resetFilter" style="margin-left: 15px;">重置</el-button>
     </div>
@@ -63,9 +60,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="uploader" label="上传者" width="140">
+        <el-table-column prop="creator_username" label="上传者" width="140">
           <template #default="{ row }">
-            {{ row.uploader || '未知' }}
+            {{ row.creator_username || '未知' }}
           </template>
         </el-table-column>
         <el-table-column prop="category" label="分类" width="120">
@@ -75,9 +72,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="file_size" label="文件大小" width="100" align="center">
+        <el-table-column prop="file_size" label="大小" width="100" align="center">
           <template #default="{ row }">
-            {{ row.file_size }}
+            {{ formatFileSize(row.file_size) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" align="center" fixed="right">
@@ -86,7 +83,7 @@
               <el-button type="primary" size="small" @click="showDetail(row)">
                 详情
               </el-button>
-              <el-button type="success" size="small" @click="handleDownload(row)">
+              <el-button type="success" size="small" :icon="Download" @click="handleDownload(row)">
                 下载
               </el-button>
             </div>
@@ -104,15 +101,19 @@
       <div class="detail-content" v-else-if="datasetDetail">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="数据集名称">{{ datasetDetail.name }}</el-descriptions-item>
-          <el-descriptions-item label="上传者">{{ datasetDetail.uploader || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="上传者">{{ datasetDetail.creator_username || '未知' }}</el-descriptions-item>
           <el-descriptions-item label="分类">
             <el-tag :type="getCategoryType(datasetDetail.category)">
               {{ getCategoryLabel(datasetDetail.category) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="文件格式">{{ datasetDetail.file_format || '未知' }}</el-descriptions-item>
-          <el-descriptions-item label="是否公开">{{ datasetDetail.is_public ? '是' : '否' }}</el-descriptions-item>
-          <el-descriptions-item label="文件大小">{{ datasetDetail.file_size || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="文件大小">{{ formatFileSize(datasetDetail.file_size) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="datasetDetail.is_verified ? 'success' : 'warning'" size="small">
+              {{ datasetDetail.is_verified ? '已审核' : '待审核' }}
+            </el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(datasetDetail.created_at) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatDate(datasetDetail.updated_at) }}</el-descriptions-item>
           <el-descriptions-item label="描述" :span="2">
@@ -134,11 +135,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Folder, Download, Loading } from '@element-plus/icons-vue'
-import { getAllDatasets, getDatasetDetail } from '@/api/datasets'
+import { getAllDatasets, getDatasetDetail, downloadDataset } from '@/api/datasets'
 
 // 状态
 const loading = ref(false)
-const allDatasets = ref([])  // 存储从后端获取的所有数据集（本地缓存）
+const allDatasets = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
 
@@ -148,11 +149,10 @@ const detailLoading = ref(false)
 const currentDataset = ref(null)
 const datasetDetail = ref(null)
 
-// 本地筛选后的数据集（计算属性）
+// 本地筛选后的数据集
 const filteredDatasets = computed(() => {
   let result = allDatasets.value
   
-  // 按名称搜索（本地筛选）
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
     result = result.filter(item => 
@@ -160,13 +160,18 @@ const filteredDatasets = computed(() => {
     )
   }
   
-  // 按分类筛选（本地筛选）
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
   
   return result
 })
+
+// 格式化文件大小
+const formatFileSize = (size) => {
+  if (!size) return '未知'
+  return typeof size === 'number' ? `${size.toFixed(2)} MB` : size
+}
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -175,7 +180,6 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('zh-CN')
 }
 
-// 获取分类标签类型
 // 分类英文转中文
 const getCategoryLabel = (category) => {
   const labels = {
@@ -183,26 +187,31 @@ const getCategoryLabel = (category) => {
     'text': '文本',
     'multimodal': '多模态'
   }
-  return labels[category] || '未分类'
+  return labels[category] || category || '未分类'
 }
 
 const getCategoryType = (category) => {
   const types = {
     'image': 'primary',
     'text': 'success',
-    'multimodal': 'warning',
-    
-    
+    'multimodal': 'warning'
   }
   return types[category] || ''
 }
 
-// 从后端获取所有数据集（进入页面时调用）
+// 从后端获取所有数据集
 const fetchAllDatasets = async () => {
   loading.value = true
   try {
-    const data = await getAllDatasets()
-    allDatasets.value = data
+    const res = await getAllDatasets()
+    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      allDatasets.value = res.data.data
+    } else if (Array.isArray(res.data)) {
+      allDatasets.value = res.data
+    } else {
+      allDatasets.value = []
+    }
   } catch (error) {
     console.error('获取数据集列表失败:', error)
     ElMessage.error('获取数据集列表失败')
@@ -212,19 +221,19 @@ const fetchAllDatasets = async () => {
   }
 }
 
-// 本地筛选（输入时触发，不访问后端）
+// 本地筛选
 const handleLocalFilter = () => {
-  // 筛选由 computed 自动完成，这里可以添加额外逻辑
+  // 筛选由 computed 自动完成
 }
 
-// 重置筛选（访问后端刷新数据）
+// 重置筛选
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
-  fetchAllDatasets()  // 重新从后端获取数据
+  fetchAllDatasets()
 }
 
-// 显示详情（访问后端获取完整信息）
+// 显示详情
 const showDetail = async (row) => {
   currentDataset.value = row
   showDetailDialog.value = true
@@ -232,24 +241,63 @@ const showDetail = async (row) => {
   datasetDetail.value = null
   
   try {
-    const data = await getDatasetDetail(row.id)
-    datasetDetail.value = data
+    const res = await getDatasetDetail(row.id)
+    // 后端返回格式: { code: 200, msg: "查询成功", data: {...} }
+    if (res.data?.code === 200 && res.data.data) {
+      datasetDetail.value = res.data.data
+    } else {
+      datasetDetail.value = row
+    }
   } catch (error) {
     console.error('获取数据集详情失败:', error)
     ElMessage.error('获取详情失败')
-    // 降级显示列表中的基本信息
     datasetDetail.value = row
   } finally {
     detailLoading.value = false
   }
 }
 
-// 下载数据集（暂无逻辑）
-const handleDownload = (dataset) => {
-  ElMessage.info(`下载功能开发中：${dataset.name}`)
+// 下载数据集 - 调用 GET /api/datasets/{id}/download/
+const handleDownload = async (dataset) => {
+  if (!dataset) return
+  
+  try {
+    ElMessage.info('开始下载...')
+    const res = await downloadDataset(dataset.id)
+    
+    // 检查是否返回了错误信息
+    if (res.data?.type === 'application/json') {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const errorData = JSON.parse(reader.result)
+        ElMessage.error(errorData.msg || '下载失败')
+      }
+      reader.readAsText(res.data)
+      return
+    }
+    
+    // 创建 Blob 并触发下载
+    const blob = new Blob([res.data])
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${dataset.name}.${dataset.file_format || 'zip'}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    if (error.response?.status === 403) {
+      ElMessage.error('无权限下载该数据集')
+    } else {
+      ElMessage.error('下载失败，请稍后重试')
+    }
+  }
 }
 
-// 初始化：进入页面时获取所有数据集
 onMounted(() => {
   fetchAllDatasets()
 })
@@ -286,9 +334,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  padding: 15px;
-  background: #f5f7fa;
-  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .loading-container {
@@ -300,10 +347,6 @@ onMounted(() => {
   color: #909399;
 }
 
-.loading-container .el-icon {
-  margin-bottom: 10px;
-}
-
 .dataset-name {
   display: flex;
   align-items: center;
@@ -312,32 +355,22 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* 操作按钮对齐 */
 .action-buttons {
   display: flex;
-  justify-content: center;
   gap: 8px;
-}
-
-.action-buttons .el-button {
-  margin: 0;
-}
-
-.detail-content {
-  padding: 10px 0;
+  justify-content: center;
 }
 
 .dialog-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: 40px 0;
   color: #909399;
 }
 
-.dialog-loading .el-icon {
-  margin-bottom: 10px;
+.detail-content {
+  padding: 10px 0;
 }
 
 :deep(.el-table th) {

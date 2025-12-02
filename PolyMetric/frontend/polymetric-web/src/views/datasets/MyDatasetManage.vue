@@ -40,23 +40,26 @@
         </el-table-column>
         <el-table-column prop="category" label="分类" width="120">
           <template #default="{ row }">
-            <el-tag size="small">{{ row.category || '未分类' }}</el-tag>
+            <el-tag size="small">{{ getCategoryLabel(row.category) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="item_count" label="数据量" width="100">
+        <el-table-column prop="file_format" label="格式" width="80">
           <template #default="{ row }">
-            {{ row.item_count || 0 }} 条
+            {{ row.file_format || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="download_count" label="下载量" width="100">
+        <el-table-column prop="file_size" label="大小" width="100">
           <template #default="{ row }">
-            {{ row.download_count || 0 }}
+            {{ formatFileSize(row.file_size) }}
           </template>
         </el-table-column>
-        <el-table-column prop="is_public" label="状态" width="100">
+        <el-table-column prop="is_public" label="状态" width="140">
           <template #default="{ row }">
             <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
               {{ row.is_public ? '公开' : '私有' }}
+            </el-tag>
+            <el-tag :type="row.is_verified ? 'success' : 'warning'" size="small" style="margin-left: 4px;">
+              {{ row.is_verified ? '已审核' : '待审核' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -81,22 +84,15 @@
       </el-table>
     </div>
 
-    <!-- 上传数据集弹窗 -->
-    <el-dialog v-model="showUploadDialog" title="上传数据集" width="550px" @close="resetUploadForm">
+    <!-- 上传数据集弹窗 - 只有5个字段 -->
+    <el-dialog v-model="showUploadDialog" title="上传数据集" width="500px" @close="resetUploadForm">
       <el-form :model="uploadForm" :rules="uploadRules" ref="uploadFormRef" label-width="100px">
+        <!-- 1. 数据集名称 -->
         <el-form-item label="数据集名称" prop="name">
           <el-input v-model="uploadForm.name" placeholder="请输入数据集名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="分类" prop="category">
-          <el-select v-model="uploadForm.category" placeholder="请选择分类" style="width: 100%;">
-            <el-option label="综合评测" value="综合评测" />
-            <el-option label="代码生成" value="代码生成" />
-            <el-option label="中文评测" value="中文评测" />
-            <el-option label="数学推理" value="数学推理" />
-            <el-option label="视觉理解" value="视觉理解" />
-            <el-option label="其他" value="其他" />
-          </el-select>
-        </el-form-item>
+        
+        <!-- 2. 描述 -->
         <el-form-item label="描述" prop="description">
           <el-input 
             type="textarea" 
@@ -107,36 +103,35 @@
             show-word-limit
           />
         </el-form-item>
+        
+        <!-- 3. 分类 -->
+        <el-form-item label="分类" prop="category">
+          <el-select v-model="uploadForm.category" placeholder="请选择分类" style="width: 100%;">
+            <el-option label="图像数据 (image)" value="image" />
+            <el-option label="文本数据 (text)" value="text" />
+            <el-option label="多模态数据 (multimodal)" value="multimodal" />
+          </el-select>
+        </el-form-item>
+        
+        <!-- 4. 文件格式 -->
+        <el-form-item label="文件格式" prop="file_format">
+          <el-select v-model="uploadForm.file_format" placeholder="请选择文件格式" style="width: 100%;">
+            <el-option label="CSV 文件" value="csv" />
+            <el-option label="JSON 文件" value="json" />
+            <el-option label="ZIP 压缩包" value="zip" />
+          </el-select>
+        </el-form-item>
+        
+        <!-- 5. 是否公开 -->
         <el-form-item label="是否公开" prop="is_public">
           <el-switch v-model="uploadForm.is_public" />
           <span class="tip">{{ uploadForm.is_public ? '其他用户可以浏览和下载' : '仅自己可见' }}</span>
-        </el-form-item>
-        <el-form-item label="数据集文件" prop="file">
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFileChange"
-            :on-remove="handleFileRemove"
-            accept=".zip,.csv,.json,.jsonl"
-            drag
-          >
-            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-            <div class="el-upload__text">
-              将文件拖到此处，或<em>点击上传</em>
-            </div>
-            <template #tip>
-              <div class="el-upload__tip">
-                支持 .zip、.csv、.json、.jsonl 格式，单文件最大 100MB
-              </div>
-            </template>
-          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showUploadDialog = false">取消</el-button>
         <el-button type="primary" :loading="uploading" @click="submitUpload">
-          {{ uploading ? '上传中...' : '确认上传' }}
+          {{ uploading ? '提交中...' : '确认提交' }}
         </el-button>
       </template>
     </el-dialog>
@@ -146,16 +141,6 @@
       <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="100px">
         <el-form-item label="数据集名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入数据集名称" maxlength="50" show-word-limit />
-        </el-form-item>
-        <el-form-item label="分类" prop="category">
-          <el-select v-model="editForm.category" placeholder="请选择分类" style="width: 100%;">
-            <el-option label="综合评测" value="综合评测" />
-            <el-option label="代码生成" value="代码生成" />
-            <el-option label="中文评测" value="中文评测" />
-            <el-option label="数学推理" value="数学推理" />
-            <el-option label="视觉理解" value="视觉理解" />
-            <el-option label="其他" value="其他" />
-          </el-select>
         </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input 
@@ -169,6 +154,7 @@
         </el-form-item>
         <el-form-item label="是否公开">
           <el-switch v-model="editForm.is_public" />
+          <span class="tip">{{ editForm.is_public ? '其他用户可以浏览和下载' : '仅自己可见' }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -183,7 +169,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading, UploadFilled 
+  FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading 
 } from '@element-plus/icons-vue'
 import { getMyDatasets, createDataset, updateDataset, deleteDataset, downloadDataset } from '@/api/datasets'
 
@@ -200,22 +186,20 @@ const showEditDialog = ref(false)
 // 表单引用
 const uploadFormRef = ref(null)
 const editFormRef = ref(null)
-const uploadRef = ref(null)
 
-// 上传表单
+// 上传表单 - 只有5个字段
 const uploadForm = reactive({
   name: '',
-  category: '',
   description: '',
-  is_public: true,
-  file: null
+  category: '',
+  file_format: '',
+  is_public: true
 })
 
 // 编辑表单
 const editForm = reactive({
   id: null,
   name: '',
-  category: '',
   description: '',
   is_public: true
 })
@@ -228,6 +212,9 @@ const uploadRules = {
   ],
   category: [
     { required: true, message: '请选择分类', trigger: 'change' }
+  ],
+  file_format: [
+    { required: true, message: '请选择文件格式', trigger: 'change' }
   ]
 }
 
@@ -235,10 +222,19 @@ const editRules = {
   name: [
     { required: true, message: '请输入数据集名称', trigger: 'blur' },
     { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
-  ],
-  category: [
-    { required: true, message: '请选择分类', trigger: 'change' }
   ]
+}
+
+// 获取分类标签
+const getCategoryLabel = (category) => {
+  const map = { image: '图像', text: '文本', multimodal: '多模态' }
+  return map[category] || category || '未分类'
+}
+
+// 格式化文件大小
+const formatFileSize = (size) => {
+  if (!size) return '未知'
+  return typeof size === 'number' ? size.toFixed(2) + ' MB' : size
 }
 
 // 格式化日期
@@ -248,13 +244,24 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('zh-CN')
 }
 
-// 获取我的数据集
+// ==========================================
+// API 调用时机说明：
+// 1. 页面加载时 (onMounted) -> fetchMyDatasets()
+// 2. 点击刷新按钮 -> fetchMyDatasets()
+// 3. 点击确认提交（上传） -> submitUpload() -> createDataset()
+// 4. 点击保存（编辑） -> submitEdit() -> updateDataset()
+// 5. 点击删除 -> handleDelete() -> deleteDataset()
+// 6. 点击下载 -> handleDownload() -> downloadDataset()
+// ==========================================
+
+// 获取我的数据集 - GET /api/datasets/my_datasets/
 const fetchMyDatasets = async () => {
   loading.value = true
   try {
     const res = await getMyDatasets()
-    if (res.data?.results) {
-      datasets.value = res.data.results
+    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      datasets.value = res.data.data
     } else if (Array.isArray(res.data)) {
       datasets.value = res.data
     } else {
@@ -262,62 +269,53 @@ const fetchMyDatasets = async () => {
     }
   } catch (error) {
     console.error('获取数据集失败:', error)
-    // 模拟数据
-    datasets.value = [
-      { id: 1, name: '我的测试集1', category: '综合评测', item_count: 1000, download_count: 50, is_public: true, created_at: '2025-01-20' },
-      { id: 2, name: '私有数据集', category: '代码生成', item_count: 500, download_count: 0, is_public: false, created_at: '2025-02-01' },
-    ]
+    ElMessage.error('获取数据集失败，请稍后重试')
+    datasets.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 文件选择
-const handleFileChange = (file) => {
-  uploadForm.file = file.raw
-}
-
-const handleFileRemove = () => {
-  uploadForm.file = null
-}
-
 // 重置上传表单
 const resetUploadForm = () => {
   uploadForm.name = ''
-  uploadForm.category = ''
   uploadForm.description = ''
+  uploadForm.category = ''
+  uploadForm.file_format = ''
   uploadForm.is_public = true
-  uploadForm.file = null
   uploadFormRef.value?.resetFields()
 }
 
-// 提交上传
+// 提交上传 - POST /api/datasets/
 const submitUpload = async () => {
   const valid = await uploadFormRef.value.validate().catch(() => false)
   if (!valid) return
   
-  if (!uploadForm.file) {
-    ElMessage.warning('请选择要上传的文件')
-    return
-  }
-  
   uploading.value = true
   try {
-    const formData = new FormData()
-    formData.append('name', uploadForm.name)
-    formData.append('category', uploadForm.category)
-    formData.append('description', uploadForm.description)
-    formData.append('is_public', uploadForm.is_public)
-    formData.append('file', uploadForm.file)
+    // 构建请求数据 - 只有5个字段
+    const requestData = {
+      name: uploadForm.name,
+      description: uploadForm.description,
+      category: uploadForm.category,
+      file_format: uploadForm.file_format,
+      is_public: uploadForm.is_public
+    }
     
-    await createDataset(formData)
-    ElMessage.success('上传成功')
-    showUploadDialog.value = false
-    resetUploadForm()
-    fetchMyDatasets()
+    const res = await createDataset(requestData)
+    
+    // 后端返回格式: { code: 201, msg: "数据集创建成功", data: {...} }
+    if (res.data?.code === 201 || res.data?.code === 200) {
+      ElMessage.success(res.data.msg || '创建成功')
+      showUploadDialog.value = false
+      resetUploadForm()
+      fetchMyDatasets()  // 重新获取列表
+    } else {
+      ElMessage.error(res.data?.msg || '创建失败')
+    }
   } catch (error) {
-    console.error('上传失败:', error)
-    ElMessage.error(error.response?.data?.msg || '上传失败，请稍后重试')
+    console.error('创建失败:', error)
+    ElMessage.error(error.response?.data?.msg || '创建失败，请稍后重试')
   } finally {
     uploading.value = false
   }
@@ -327,28 +325,33 @@ const submitUpload = async () => {
 const handleEdit = (row) => {
   editForm.id = row.id
   editForm.name = row.name
-  editForm.category = row.category
   editForm.description = row.description || ''
   editForm.is_public = row.is_public
   showEditDialog.value = true
 }
 
-// 提交编辑
+// 提交编辑 - PATCH /api/datasets/{id}/
 const submitEdit = async () => {
   const valid = await editFormRef.value.validate().catch(() => false)
   if (!valid) return
   
   saving.value = true
   try {
-    await updateDataset(editForm.id, {
+    const updateData = {
       name: editForm.name,
-      category: editForm.category,
       description: editForm.description,
       is_public: editForm.is_public
-    })
-    ElMessage.success('保存成功')
-    showEditDialog.value = false
-    fetchMyDatasets()
+    }
+    
+    const res = await updateDataset(editForm.id, updateData)
+    
+    if (res.data?.code === 200) {
+      ElMessage.success(res.data.msg || '保存成功')
+      showEditDialog.value = false
+      fetchMyDatasets()  // 重新获取列表
+    } else {
+      ElMessage.error(res.data?.msg || '保存失败')
+    }
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error(error.response?.data?.msg || '保存失败，请稍后重试')
@@ -357,11 +360,11 @@ const submitEdit = async () => {
   }
 }
 
-// 删除
+// 删除 - DELETE /api/datasets/{id}/
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除数据集「${row.name}」吗？此操作不可恢复。`,
+      '确定要删除数据集「' + row.name + '」吗？此操作不可恢复。',
       '删除确认',
       {
         confirmButtonText: '确定删除',
@@ -370,28 +373,45 @@ const handleDelete = async (row) => {
       }
     )
     
-    await deleteDataset(row.id)
-    ElMessage.success('删除成功')
-    fetchMyDatasets()
+    const res = await deleteDataset(row.id)
+    
+    if (res.data?.code === 200) {
+      ElMessage.success(res.data.msg || '删除成功')
+      fetchMyDatasets()  // 重新获取列表
+    } else {
+      ElMessage.error(res.data?.msg || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败，请稍后重试')
+      ElMessage.error(error.response?.data?.msg || '删除失败，请稍后重试')
     }
   }
 }
 
-// 下载
+// 下载 - GET /api/datasets/{id}/download/
 const handleDownload = async (dataset) => {
   try {
     ElMessage.info('开始下载...')
     const res = await downloadDataset(dataset.id)
     
+    // 检查是否返回了错误信息
+    if (res.data?.type === 'application/json') {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const errorData = JSON.parse(reader.result)
+        ElMessage.error(errorData.msg || '下载失败')
+      }
+      reader.readAsText(res.data)
+      return
+    }
+    
+    // 创建 Blob 并触发下载
     const blob = new Blob([res.data])
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${dataset.name}.zip`
+    link.download = dataset.name + '.' + (dataset.file_format || 'zip')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -400,11 +420,15 @@ const handleDownload = async (dataset) => {
     ElMessage.success('下载成功')
   } catch (error) {
     console.error('下载失败:', error)
-    ElMessage.error('下载失败，请稍后重试')
+    if (error.response?.status === 403) {
+      ElMessage.error('无权限下载该数据集')
+    } else {
+      ElMessage.error('下载失败，请稍后重试')
+    }
   }
 }
 
-// 初始化
+// 页面加载时获取数据集列表
 onMounted(() => {
   fetchMyDatasets()
 })
@@ -470,9 +494,5 @@ onMounted(() => {
   background: #f5f7fa;
   color: #303133;
   font-weight: 600;
-}
-
-:deep(.el-upload-dragger) {
-  width: 100%;
 }
 </style>
