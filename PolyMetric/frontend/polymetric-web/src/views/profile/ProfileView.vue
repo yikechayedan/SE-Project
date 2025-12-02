@@ -125,7 +125,6 @@ const editRules = {
   ]
 }
 
-
 onMounted(async () => {
   await fetchUserInfo()
 })
