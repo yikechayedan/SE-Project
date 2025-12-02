@@ -2,12 +2,10 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
-    RegisterView,
-    UserInfoView,
-    ChangePasswordView,
-    LogoutView,
-    AdminUserListView,
-    AdminUserDeleteView
+    RegisterView, UserInfoView, ChangePasswordView,
+    LogoutView, AdminUserListView, AdminUserDeleteView,
+    ForgotPasswordView, VerifyCodeView, ResetPasswordView,
+    AvatarUploadView
 )
 
 urlpatterns = [
@@ -25,4 +23,12 @@ urlpatterns = [
     # 管理员
     path("admin/users/", AdminUserListView.as_view(), name="admin_user_list"),
     path("admin/users/<int:pk>/", AdminUserDeleteView.as_view(), name="admin_user_delete"),
+
+     # 密码找回接口
+    path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
+    path("verify-code/", VerifyCodeView.as_view(), name="verify_code"),
+    path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
+
+    # 头像上传
+    path("avatar/", AvatarUploadView.as_view(), name="upload_avatar"),
 ]
