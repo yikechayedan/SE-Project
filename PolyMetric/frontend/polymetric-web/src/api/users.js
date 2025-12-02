@@ -31,7 +31,6 @@ export function logout(refresh) {
   return request.post("/api/users/logout/", { refresh });
 }
 
-// ========== 忘记密码相关 API ==========
 
 /**
  * 发送密码重置验证码到邮箱
@@ -92,25 +91,7 @@ export function unfollowDataset(datasetId) {
   return request.delete(`/api/users/followed-datasets/${datasetId}/`);
 }
 
-// ========== 头像上传 API ==========
 
-/**
- * 上传用户头像
- * @param {File} file - 图片文件对象
- * 
- * 后端接口：POST /api/users/avatar/
- * Content-Type: multipart/form-data
- * 
- * 文件限制:
- * - 最大文件大小: 2MB
- * - 支持格式: jpg, jpeg, png, gif
- * 
- * 响应: { 
- *   "code": 200, 
- *   "msg": "头像上传成功",
- *   "data": { "avatar": "http://127.0.0.1:8000/media/avatars/user_1_xxx.png" }
- * }
- */
 export function uploadAvatar(file) {
   const formData = new FormData()
   formData.append('avatar', file)

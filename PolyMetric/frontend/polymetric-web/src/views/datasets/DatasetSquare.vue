@@ -77,7 +77,7 @@
             {{ formatFileSize(row.file_size) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" align="center" fixed="right">
+        <el-table-column label="操作" width="260" align="center" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="primary" size="small" @click="showDetail(row)">
@@ -85,6 +85,15 @@
               </el-button>
               <el-button type="success" size="small" :icon="Download" @click="handleDownload(row)">
                 下载
+              </el-button>
+              <el-button 
+                :type="row.is_followed ? 'warning' : 'info'" 
+                size="small" 
+                :icon="row.is_followed ? StarFilled : Star"
+                @click="handleToggleFollow(row)"
+                :loading="row.followLoading"
+              >
+                {{ row.is_followed ? '已关注' : '关注' }}
               </el-button>
             </div>
           </template>
@@ -123,6 +132,14 @@
       </div>
       <template #footer>
         <el-button @click="showDetailDialog = false">关闭</el-button>
+        <el-button 
+          :type="datasetDetail?.is_followed ? 'warning' : 'info'" 
+          :icon="datasetDetail?.is_followed ? StarFilled : Star"
+          @click="handleToggleFollowInDialog"
+          :loading="dialogFollowLoading"
+        >
+          {{ datasetDetail?.is_followed ? '取消关注' : '关注' }}
+        </el-button>
         <el-button type="success" :icon="Download" @click="handleDownload(currentDataset)">
           下载数据集
         </el-button>
@@ -134,8 +151,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Folder, Download, Loading } from '@element-plus/icons-vue'
-import { getAllDatasets, getDatasetDetail, downloadDataset } from '@/api/datasets'
+import { Search, Refresh, Folder, Download, Loading, Star, StarFilled } from '@element-plus/icons-vue'
+import { getAllDatasets, getDatasetDetail, downloadDataset, followDataset, unfollowDataset } from '@/api/datasets'
 
 // 状态
 const loading = ref(false)
@@ -146,6 +163,7 @@ const categoryFilter = ref('')
 // 详情弹窗
 const showDetailDialog = ref(false)
 const detailLoading = ref(false)
+const dialogFollowLoading = ref(false)
 const currentDataset = ref(null)
 const datasetDetail = ref(null)
 
@@ -199,19 +217,24 @@ const getCategoryType = (category) => {
   return types[category] || ''
 }
 
-// 从后端获取所有数据集
+// 从后端获取所有数据集（带关注状态）
 const fetchAllDatasets = async () => {
   loading.value = true
   try {
     const res = await getAllDatasets()
     // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
+    let datasets = []
     if (res.data?.code === 200 && Array.isArray(res.data.data)) {
-      allDatasets.value = res.data.data
+      datasets = res.data.data
     } else if (Array.isArray(res.data)) {
-      allDatasets.value = res.data
-    } else {
-      allDatasets.value = []
+      datasets = res.data
     }
+    // 为每个数据集添加 followLoading 状态
+    allDatasets.value = datasets.map(item => ({
+      ...item,
+      is_followed: item.is_followed || false,
+      followLoading: false
+    }))
   } catch (error) {
     console.error('获取数据集列表失败:', error)
     ElMessage.error('获取数据集列表失败')
@@ -233,6 +256,82 @@ const resetFilter = () => {
   fetchAllDatasets()
 }
 
+// 切换关注状态（列表中）
+const handleToggleFollow = async (row) => {
+  row.followLoading = true
+  try {
+    if (row.is_followed) {
+      // 取消关注
+      const res = await unfollowDataset(row.id)
+      if (res.data?.code === 200 || res.data?.code === 204) {
+        row.is_followed = false
+        ElMessage.success('已取消关注')
+      } else {
+        ElMessage.error(res.data?.msg || '取消关注失败')
+      }
+    } else {
+      // 添加关注
+      const res = await followDataset(row.id)
+      if (res.data?.code === 200 || res.data?.code === 201) {
+        row.is_followed = true
+        ElMessage.success('关注成功')
+      } else {
+        ElMessage.error(res.data?.msg || '关注失败')
+      }
+    }
+  } catch (error) {
+    console.error('操作失败:', error)
+    if (error.response?.status === 401) {
+      ElMessage.warning('请先登录')
+    } else {
+      ElMessage.error('操作失败，请稍后重试')
+    }
+  } finally {
+    row.followLoading = false
+  }
+}
+
+// 切换关注状态（弹窗中）
+const handleToggleFollowInDialog = async () => {
+  if (!datasetDetail.value) return
+  
+  dialogFollowLoading.value = true
+  try {
+    if (datasetDetail.value.is_followed) {
+      const res = await unfollowDataset(datasetDetail.value.id)
+      if (res.data?.code === 200 || res.data?.code === 204) {
+        datasetDetail.value.is_followed = false
+        // 同步更新列表中的状态
+        const item = allDatasets.value.find(d => d.id === datasetDetail.value.id)
+        if (item) item.is_followed = false
+        ElMessage.success('已取消关注')
+      } else {
+        ElMessage.error(res.data?.msg || '取消关注失败')
+      }
+    } else {
+      const res = await followDataset(datasetDetail.value.id)
+      if (res.data?.code === 200 || res.data?.code === 201) {
+        datasetDetail.value.is_followed = true
+        // 同步更新列表中的状态
+        const item = allDatasets.value.find(d => d.id === datasetDetail.value.id)
+        if (item) item.is_followed = true
+        ElMessage.success('关注成功')
+      } else {
+        ElMessage.error(res.data?.msg || '关注失败')
+      }
+    }
+  } catch (error) {
+    console.error('操作失败:', error)
+    if (error.response?.status === 401) {
+      ElMessage.warning('请先登录')
+    } else {
+      ElMessage.error('操作失败，请稍后重试')
+    }
+  } finally {
+    dialogFollowLoading.value = false
+  }
+}
+
 // 显示详情
 const showDetail = async (row) => {
   currentDataset.value = row
@@ -244,7 +343,10 @@ const showDetail = async (row) => {
     const res = await getDatasetDetail(row.id)
     // 后端返回格式: { code: 200, msg: "查询成功", data: {...} }
     if (res.data?.code === 200 && res.data.data) {
-      datasetDetail.value = res.data.data
+      datasetDetail.value = {
+        ...res.data.data,
+        is_followed: row.is_followed // 从列表中继承关注状态
+      }
     } else {
       datasetDetail.value = row
     }

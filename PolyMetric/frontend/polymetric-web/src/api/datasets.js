@@ -12,22 +12,24 @@ import request from "./request"
 /**
  * 1. 创建数据集 (上传)
  * 接口: POST /api/datasets/
- * 请求体: { name, description, category, file_format, is_public }
  */
 export function createDataset(data) {
   return request.post("/api/datasets/", data)
 }
 
 /**
- * 2. 获取数据集列表
+ * 2. 获取数据集列表（带关注状态）
  * 接口: GET /api/datasets/
+ * 查询参数: with_follow=true 时返回 is_followed 字段
  */
 export function getAllDatasets(params = {}) {
-  return request.get("/api/datasets/", { params })
+  return request.get("/api/datasets/", { 
+    params: { ...params, with_follow: true } 
+  })
 }
 
 /**
- * 3. 获取数据集详情
+ * 3. 获取数据集详情（带关注状态）
  * 接口: GET /api/datasets/{id}/
  */
 export function getDatasetDetail(id) {
@@ -53,7 +55,6 @@ export function deleteDataset(id) {
 /**
  * 6. 获取我的数据集
  * 接口: GET /api/datasets/my_datasets/
- * 注意: 后端 DRF router 自动生成的 URL 是 my_datasets 不是 my
  */
 export function getMyDatasets() {
   return request.get("/api/datasets/my_datasets/")
@@ -62,7 +63,6 @@ export function getMyDatasets() {
 /**
  * 7. 下载数据集
  * 接口: GET /api/datasets/{id}/download/
- * 返回: Blob 二进制文件流
  */
 export function downloadDataset(id) {
   return request.get("/api/datasets/" + id + "/download/", {
@@ -76,4 +76,30 @@ export function downloadDataset(id) {
  */
 export function verifyDataset(id, is_verified = true) {
   return request.post("/api/datasets/" + id + "/verify/", { is_verified })
+}
+
+// ========== 关注功能 API ==========
+
+/**
+ * 9. 关注数据集
+ * 接口: POST /api/datasets/{id}/follow/
+ */
+export function followDataset(id) {
+  return request.post("/api/datasets/" + id + "/follow/")
+}
+
+/**
+ * 10. 取消关注数据集
+ * 接口: DELETE /api/datasets/{id}/follow/
+ */
+export function unfollowDataset(id) {
+  return request.delete("/api/datasets/" + id + "/follow/")
+}
+
+/**
+ * 11. 获取我关注的数据集列表
+ * 接口: GET /api/datasets/followed/
+ */
+export function getFollowedDatasets() {
+  return request.get("/api/datasets/followed/")
 }
