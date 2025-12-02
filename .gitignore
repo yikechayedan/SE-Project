@@ -41,3 +41,5 @@ PolyMetric/backend/apps/*/migrations/
 ### Node modules ###
 node_modules/
 **/node_modules/
+# Django uploaded files
+PolyMetric/backend/media/
