@@ -38,61 +38,62 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="category" label="分类" width="120">
+        <el-table-column prop="category" label="分类" width="100" align="center">
           <template #default="{ row }">
             <el-tag size="small">{{ getCategoryLabel(row.category) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="file_format" label="格式" width="80">
+        <el-table-column prop="file_format" label="格式" width="70" align="center">
           <template #default="{ row }">
-            {{ row.file_format || '-' }}
+            {{ row.file_format?.toUpperCase() || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="file_size" label="大小" width="100">
+        <el-table-column prop="file_size" label="大小" width="90" align="center">
           <template #default="{ row }">
             {{ formatFileSize(row.file_size) }}
           </template>
         </el-table-column>
-        <el-table-column prop="is_public" label="状态" width="140">
+        <el-table-column prop="is_public" label="状态" width="130" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
-              {{ row.is_public ? '公开' : '私有' }}
-            </el-tag>
-            <el-tag :type="row.is_verified ? 'success' : 'warning'" size="small" style="margin-left: 4px;">
-              {{ row.is_verified ? '已审核' : '待审核' }}
-            </el-tag>
+            <div class="status-tags">
+              <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
+                {{ row.is_public ? '公开' : '私有' }}
+              </el-tag>
+              <el-tag :type="row.is_verified ? 'success' : 'warning'" size="small">
+                {{ row.is_verified ? '已审核' : '待审核' }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="上传时间" width="120">
+        <el-table-column prop="created_at" label="上传时间" width="110" align="center">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" size="small" :icon="Edit" @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button type="success" size="small" :icon="Download" @click="handleDownload(row)">
-              下载
-            </el-button>
-            <el-button type="danger" size="small" :icon="Delete" @click="handleDelete(row)">
-              删除
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" text @click="handleEdit(row)">
+                <el-icon><Edit /></el-icon>编辑
+              </el-button>
+              <el-button type="success" size="small" text @click="handleDownload(row)">
+                <el-icon><Download /></el-icon>下载
+              </el-button>
+              <el-button type="danger" size="small" text @click="handleDelete(row)">
+                <el-icon><Delete /></el-icon>删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </div>
 
-    <!-- 上传数据集弹窗 - 只有5个字段 -->
+    <!-- 上传数据集弹窗 -->
     <el-dialog v-model="showUploadDialog" title="上传数据集" width="500px" @close="resetUploadForm">
       <el-form :model="uploadForm" :rules="uploadRules" ref="uploadFormRef" label-width="100px">
-        <!-- 1. 数据集名称 -->
         <el-form-item label="数据集名称" prop="name">
           <el-input v-model="uploadForm.name" placeholder="请输入数据集名称" maxlength="50" show-word-limit />
         </el-form-item>
-        
-        <!-- 2. 描述 -->
         <el-form-item label="描述" prop="description">
           <el-input 
             type="textarea" 
@@ -103,8 +104,6 @@
             show-word-limit
           />
         </el-form-item>
-        
-        <!-- 3. 分类 -->
         <el-form-item label="分类" prop="category">
           <el-select v-model="uploadForm.category" placeholder="请选择分类" style="width: 100%;">
             <el-option label="图像数据 (image)" value="image" />
@@ -112,8 +111,6 @@
             <el-option label="多模态数据 (multimodal)" value="multimodal" />
           </el-select>
         </el-form-item>
-        
-        <!-- 4. 文件格式 -->
         <el-form-item label="文件格式" prop="file_format">
           <el-select v-model="uploadForm.file_format" placeholder="请选择文件格式" style="width: 100%;">
             <el-option label="CSV 文件" value="csv" />
@@ -121,8 +118,6 @@
             <el-option label="ZIP 压缩包" value="zip" />
           </el-select>
         </el-form-item>
-        
-        <!-- 5. 是否公开 -->
         <el-form-item label="是否公开" prop="is_public">
           <el-switch v-model="uploadForm.is_public" />
           <span class="tip">{{ uploadForm.is_public ? '其他用户可以浏览和下载' : '仅自己可见' }}</span>
@@ -187,7 +182,7 @@ const showEditDialog = ref(false)
 const uploadFormRef = ref(null)
 const editFormRef = ref(null)
 
-// 上传表单 - 只有5个字段
+// 上传表单
 const uploadForm = reactive({
   name: '',
   description: '',
@@ -210,12 +205,8 @@ const uploadRules = {
     { required: true, message: '请输入数据集名称', trigger: 'blur' },
     { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
   ],
-  category: [
-    { required: true, message: '请选择分类', trigger: 'change' }
-  ],
-  file_format: [
-    { required: true, message: '请选择文件格式', trigger: 'change' }
-  ]
+  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
+  file_format: [{ required: true, message: '请选择文件格式', trigger: 'change' }]
 }
 
 const editRules = {
@@ -225,41 +216,28 @@ const editRules = {
   ]
 }
 
-// 获取分类标签
+// 工具函数
 const getCategoryLabel = (category) => {
   const map = { image: '图像', text: '文本', multimodal: '多模态' }
   return map[category] || category || '未分类'
 }
 
-// 格式化文件大小
 const formatFileSize = (size) => {
-  if (!size) return '未知'
+  if (!size) return '-'
   return typeof size === 'number' ? size.toFixed(2) + ' MB' : size
 }
 
-// 格式化日期
 const formatDate = (dateStr) => {
-  if (!dateStr) return '未知'
+  if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleDateString('zh-CN')
 }
 
-// ==========================================
-// API 调用时机说明：
-// 1. 页面加载时 (onMounted) -> fetchMyDatasets()
-// 2. 点击刷新按钮 -> fetchMyDatasets()
-// 3. 点击确认提交（上传） -> submitUpload() -> createDataset()
-// 4. 点击保存（编辑） -> submitEdit() -> updateDataset()
-// 5. 点击删除 -> handleDelete() -> deleteDataset()
-// 6. 点击下载 -> handleDownload() -> downloadDataset()
-// ==========================================
-
-// 获取我的数据集 - GET /api/datasets/my_datasets/
+// 获取我的数据集
 const fetchMyDatasets = async () => {
   loading.value = true
   try {
     const res = await getMyDatasets()
-    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
     if (res.data?.code === 200 && Array.isArray(res.data.data)) {
       datasets.value = res.data.data
     } else if (Array.isArray(res.data)) {
@@ -286,14 +264,13 @@ const resetUploadForm = () => {
   uploadFormRef.value?.resetFields()
 }
 
-// 提交上传 - POST /api/datasets/
+// 提交上传
 const submitUpload = async () => {
   const valid = await uploadFormRef.value.validate().catch(() => false)
   if (!valid) return
   
   uploading.value = true
   try {
-    // 构建请求数据 - 只有5个字段
     const requestData = {
       name: uploadForm.name,
       description: uploadForm.description,
@@ -304,12 +281,11 @@ const submitUpload = async () => {
     
     const res = await createDataset(requestData)
     
-    // 后端返回格式: { code: 201, msg: "数据集创建成功", data: {...} }
     if (res.data?.code === 201 || res.data?.code === 200) {
       ElMessage.success(res.data.msg || '创建成功')
       showUploadDialog.value = false
       resetUploadForm()
-      fetchMyDatasets()  // 重新获取列表
+      fetchMyDatasets()
     } else {
       ElMessage.error(res.data?.msg || '创建失败')
     }
@@ -330,7 +306,7 @@ const handleEdit = (row) => {
   showEditDialog.value = true
 }
 
-// 提交编辑 - PATCH /api/datasets/{id}/
+// 提交编辑
 const submitEdit = async () => {
   const valid = await editFormRef.value.validate().catch(() => false)
   if (!valid) return
@@ -348,7 +324,7 @@ const submitEdit = async () => {
     if (res.data?.code === 200) {
       ElMessage.success(res.data.msg || '保存成功')
       showEditDialog.value = false
-      fetchMyDatasets()  // 重新获取列表
+      fetchMyDatasets()
     } else {
       ElMessage.error(res.data?.msg || '保存失败')
     }
@@ -360,24 +336,20 @@ const submitEdit = async () => {
   }
 }
 
-// 删除 - DELETE /api/datasets/{id}/
+// 删除
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
       '确定要删除数据集「' + row.name + '」吗？此操作不可恢复。',
       '删除确认',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
     
     const res = await deleteDataset(row.id)
     
     if (res.data?.code === 200) {
       ElMessage.success(res.data.msg || '删除成功')
-      fetchMyDatasets()  // 重新获取列表
+      fetchMyDatasets()
     } else {
       ElMessage.error(res.data?.msg || '删除失败')
     }
@@ -389,18 +361,22 @@ const handleDelete = async (row) => {
   }
 }
 
-// 下载 - GET /api/datasets/{id}/download/
+// 下载
 const handleDownload = async (dataset) => {
   try {
     ElMessage.info('开始下载...')
     const res = await downloadDataset(dataset.id)
     
-    // 检查是否返回了错误信息
+    // 检查是否返回了 JSON 错误信息
     if (res.data?.type === 'application/json') {
       const reader = new FileReader()
       reader.onload = () => {
-        const errorData = JSON.parse(reader.result)
-        ElMessage.error(errorData.msg || '下载失败')
+        try {
+          const errorData = JSON.parse(reader.result)
+          ElMessage.error(errorData.msg || '下载失败')
+        } catch {
+          ElMessage.error('下载失败')
+        }
       }
       reader.readAsText(res.data)
       return
@@ -422,13 +398,15 @@ const handleDownload = async (dataset) => {
     console.error('下载失败:', error)
     if (error.response?.status === 403) {
       ElMessage.error('无权限下载该数据集')
+    } else if (error.response?.status === 404) {
+      ElMessage.error('数据集文件不存在')
     } else {
       ElMessage.error('下载失败，请稍后重试')
     }
   }
 }
 
-// 页面加载时获取数据集列表
+// 页面加载
 onMounted(() => {
   fetchMyDatasets()
 })
@@ -484,6 +462,29 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.status-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 操作按钮样式优化 */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.action-buttons .el-button {
+  padding: 4px 8px;
+  margin: 0;
+}
+
+.action-buttons .el-button .el-icon {
+  margin-right: 2px;
+}
+
 .tip {
   margin-left: 10px;
   color: #909399;
@@ -494,5 +495,9 @@ onMounted(() => {
   background: #f5f7fa;
   color: #303133;
   font-weight: 600;
+}
+
+:deep(.el-table .cell) {
+  padding: 8px;
 }
 </style>
