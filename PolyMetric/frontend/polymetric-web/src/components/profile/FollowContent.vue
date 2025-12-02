@@ -41,14 +41,6 @@
               <el-icon class="type-icon model-icon"><Box /></el-icon>
               <span class="item-name">{{ item.name }}</span>
             </div>
-            <el-button 
-              type="danger" 
-              :icon="StarFilled" 
-              circle 
-              size="small"
-              @click="handleUnfollow('model', item.id)"
-              title="取消关注"
-            />
           </div>
           <div class="card-info">
             <el-tag type="info" size="small">
@@ -63,7 +55,7 @@
           <div class="card-meta">
             <span class="meta-item">
               <el-icon><Calendar /></el-icon>
-              关注时间：{{ formatDate(item.followedAt) }}
+              关注时间：{{ formatDate(item.followed_at) }}
             </span>
           </div>
         </div>
@@ -85,33 +77,25 @@
               <el-icon class="type-icon dataset-icon"><Folder /></el-icon>
               <span class="item-name">{{ item.name }}</span>
             </div>
-            <el-button 
-              type="danger" 
-              :icon="StarFilled" 
-              circle 
-              size="small"
-              @click="handleUnfollow('dataset', item.id)"
-              title="取消关注"
-            />
           </div>
           <div class="card-info">
             <el-tag type="warning" size="small">
               <el-icon><User /></el-icon>
-              {{ item.uploader || '未知上传者' }}
+              {{ item.creator_username || '未知上传者' }}
             </el-tag>
             <el-tag type="primary" size="small">
               <el-icon><Collection /></el-icon>
-              {{ item.category || '未分类' }}
+              {{ getCategoryLabel(item.category) }}
             </el-tag>
             <el-tag type="success" size="small">
               <el-icon><Document /></el-icon>
-              {{ item.itemCount || 0 }} 条数据
+              {{ formatFileSize(item.file_size) }}
             </el-tag>
           </div>
           <div class="card-meta">
             <span class="meta-item">
               <el-icon><Calendar /></el-icon>
-              关注时间：{{ formatDate(item.followedAt) }}
+              关注时间：{{ formatDate(item.followed_at) }}
             </span>
           </div>
         </div>
@@ -122,9 +106,8 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { 
-  StarFilled, 
   Box, 
   Folder, 
   OfficeBuilding, 
@@ -135,10 +118,10 @@ import {
   Document,
   Loading
 } from '@element-plus/icons-vue'
-import { getFollowedModels, getFollowedDatasets, unfollowModel, unfollowDataset } from '@/api/users'
+import { getFollowedDatasets } from '@/api/datasets'
 
 // 当前展示类型：model 或 dataset
-const activeType = ref('model')
+const activeType = ref('dataset')  // 默认显示数据集
 const loading = ref(false)
 
 // 关注列表数据
@@ -156,38 +139,27 @@ const formatDate = (dateStr) => {
   })
 }
 
-// 获取关注的模型列表
+// 格式化文件大小
+const formatFileSize = (size) => {
+  if (!size) return '未知'
+  return typeof size === 'number' ? size.toFixed(2) + ' MB' : size
+}
+
+// 分类标签
+const getCategoryLabel = (category) => {
+  const map = { image: '图像', text: '文本', multimodal: '多模态' }
+  return map[category] || category || '未分类'
+}
+
+// 获取关注的模型列表（暂未实现后端）
 const fetchFollowedModels = async () => {
   loading.value = true
   try {
-    const res = await getFollowedModels()
-    modelList.value = res.data || []
+    // TODO: 后端实现后替换为真实 API
+    modelList.value = []
   } catch (error) {
     console.error('获取关注模型失败:', error)
-    // 后端未实现时显示模拟数据
-    modelList.value = [
-      { 
-        id: 1, 
-        name: 'GPT-4', 
-        company: 'OpenAI', 
-        parameterSize: '1.76T',
-        followedAt: '2025-01-15T10:30:00'
-      },
-      { 
-        id: 2, 
-        name: 'Claude 3', 
-        company: 'Anthropic', 
-        parameterSize: '未公开',
-        followedAt: '2025-01-20T14:20:00'
-      },
-      { 
-        id: 3, 
-        name: 'Gemini Pro', 
-        company: 'Google', 
-        parameterSize: '未公开',
-        followedAt: '2025-02-01T09:00:00'
-      }
-    ]
+    modelList.value = []
   } finally {
     loading.value = false
   }
@@ -198,82 +170,35 @@ const fetchFollowedDatasets = async () => {
   loading.value = true
   try {
     const res = await getFollowedDatasets()
-    datasetList.value = res.data || []
+    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      datasetList.value = res.data.data
+    } else if (Array.isArray(res.data)) {
+      datasetList.value = res.data
+    } else {
+      datasetList.value = []
+    }
   } catch (error) {
     console.error('获取关注数据集失败:', error)
-    // 后端未实现时显示模拟数据
-    datasetList.value = [
-      { 
-        id: 1, 
-        name: 'MMLU', 
-        uploader: 'UC Berkeley', 
-        category: '综合评测',
-        itemCount: 14042,
-        followedAt: '2025-01-10T08:00:00'
-      },
-      { 
-        id: 2, 
-        name: 'HumanEval', 
-        uploader: 'OpenAI', 
-        category: '代码生成',
-        itemCount: 164,
-        followedAt: '2025-01-18T16:30:00'
-      },
-      { 
-        id: 3, 
-        name: 'CMMLU', 
-        uploader: '清华大学', 
-        category: '中文评测',
-        itemCount: 11528,
-        followedAt: '2025-02-05T11:45:00'
-      }
-    ]
+    ElMessage.error('获取关注列表失败')
+    datasetList.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 取消关注
-const handleUnfollow = async (type, id) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要取消关注这个${type === 'model' ? '模型' : '数据集'}吗？`,
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    if (type === 'model') {
-      await unfollowModel(id)
-      modelList.value = modelList.value.filter(item => item.id !== id)
-    } else {
-      await unfollowDataset(id)
-      datasetList.value = datasetList.value.filter(item => item.id !== id)
-    }
-    
-    ElMessage.success('取消关注成功')
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败，请稍后重试')
-    }
-  }
-}
-
 // 监听类型切换，加载对应数据
 watch(activeType, (newType) => {
-  if (newType === 'model' && modelList.value.length === 0) {
+  if (newType === 'model') {
     fetchFollowedModels()
-  } else if (newType === 'dataset' && datasetList.value.length === 0) {
+  } else if (newType === 'dataset') {
     fetchFollowedDatasets()
   }
 })
 
-// 初始加载模型列表（默认显示模型）
+// 初始加载数据集列表
 onMounted(() => {
-  fetchFollowedModels()
+  fetchFollowedDatasets()
 })
 </script>
 
@@ -391,7 +316,6 @@ onMounted(() => {
   gap: 5px;
 }
 
-/* 空状态样式 */
 :deep(.el-empty) {
   padding: 40px 0;
 }
