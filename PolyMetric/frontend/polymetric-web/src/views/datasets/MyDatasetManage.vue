@@ -53,6 +53,18 @@
             {{ formatFileSize(row.file_size) }}
           </template>
         </el-table-column>
+        <el-table-column prop="sample_count" label="样本数" width="90" align="center">
+          <template #default="{ row }">
+            {{ row.sample_count || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="has_file" label="文件" width="70" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.has_file ? 'success' : 'info'" size="small">
+              {{ row.has_file ? '有' : '无' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="is_public" label="状态" width="130" align="center">
           <template #default="{ row }">
             <div class="status-tags">
@@ -70,13 +82,16 @@
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-buttons">
+              <el-button type="info" size="small" text @click="handlePreview(row)" :disabled="!row.has_file">
+                <el-icon><View /></el-icon>预览
+              </el-button>
               <el-button type="primary" size="small" text @click="handleEdit(row)">
                 <el-icon><Edit /></el-icon>编辑
               </el-button>
-              <el-button type="success" size="small" text @click="handleDownload(row)">
+              <el-button type="success" size="small" text @click="handleDownload(row)" :disabled="!row.has_file">
                 <el-icon><Download /></el-icon>下载
               </el-button>
               <el-button type="danger" size="small" text @click="handleDelete(row)">
@@ -89,7 +104,7 @@
     </div>
 
     <!-- 上传数据集弹窗 -->
-    <el-dialog v-model="showUploadDialog" title="上传数据集" width="500px" @close="resetUploadForm">
+    <el-dialog v-model="showUploadDialog" title="上传数据集" width="550px" @close="resetUploadForm">
       <el-form :model="uploadForm" :rules="uploadRules" ref="uploadFormRef" label-width="100px">
         <el-form-item label="数据集名称" prop="name">
           <el-input v-model="uploadForm.name" placeholder="请输入数据集名称" maxlength="50" show-word-limit />
@@ -118,6 +133,28 @@
             <el-option label="ZIP 压缩包" value="zip" />
           </el-select>
         </el-form-item>
+        <el-form-item label="数据集文件" prop="file">
+          <el-upload
+            ref="uploadRef"
+            class="dataset-uploader"
+            :auto-upload="false"
+            :limit="1"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            :accept="acceptFileTypes"
+            drag
+          >
+            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            <div class="el-upload__text">
+              拖拽文件到此处，或 <em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 CSV、JSON、ZIP 格式，文件大小不超过 100MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="是否公开" prop="is_public">
           <el-switch v-model="uploadForm.is_public" />
           <span class="tip">{{ uploadForm.is_public ? '其他用户可以浏览和下载' : '仅自己可见' }}</span>
@@ -126,7 +163,7 @@
       <template #footer>
         <el-button @click="showUploadDialog = false">取消</el-button>
         <el-button type="primary" :loading="uploading" @click="submitUpload">
-          {{ uploading ? '提交中...' : '确认提交' }}
+          {{ uploading ? '上传中...' : '确认上传' }}
         </el-button>
       </template>
     </el-dialog>
@@ -157,16 +194,46 @@
         <el-button type="primary" :loading="saving" @click="submitEdit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 预览数据集弹窗 -->
+    <el-dialog v-model="showPreviewDialog" :title="`数据预览 - ${currentDataset?.name || ''}`" width="900px">
+      <div v-if="loadingPreview" class="loading-container">
+        <el-icon class="is-loading" :size="24"><Loading /></el-icon>
+        <span>加载中...</span>
+      </div>
+      <div v-else-if="previewData">
+        <div class="preview-info">
+          <span>格式: {{ previewData.format?.toUpperCase() }}</span>
+          <span>总条目: {{ previewData.total }}</span>
+          <span>当前显示: {{ previewData.rows?.length || 0 }} 条</span>
+        </div>
+        <el-table :data="previewData.rows" border stripe max-height="400" v-if="previewData.rows?.length">
+          <el-table-column 
+            v-for="header in previewData.headers" 
+            :key="header" 
+            :prop="header" 
+            :label="header"
+            min-width="120"
+            show-overflow-tooltip
+          />
+        </el-table>
+        <el-empty v-else description="暂无数据" />
+      </div>
+      <div v-else>
+        <el-empty description="无法加载预览数据" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading 
+  FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading, View, UploadFilled
 } from '@element-plus/icons-vue'
-import { getMyDatasets, createDataset, updateDataset, deleteDataset, downloadDataset } from '@/api/datasets'
+import { getMyDatasets, updateDataset, deleteDataset } from '@/api/datasets'
+import request from '@/api/request'
 
 // 状态
 const loading = ref(false)
@@ -177,10 +244,17 @@ const datasets = ref([])
 // 弹窗
 const showUploadDialog = ref(false)
 const showEditDialog = ref(false)
+const showPreviewDialog = ref(false)
+
+// 预览相关
+const currentDataset = ref(null)
+const previewData = ref(null)
+const loadingPreview = ref(false)
 
 // 表单引用
 const uploadFormRef = ref(null)
 const editFormRef = ref(null)
+const uploadRef = ref(null)
 
 // 上传表单
 const uploadForm = reactive({
@@ -188,6 +262,7 @@ const uploadForm = reactive({
   description: '',
   category: '',
   file_format: '',
+  file: null,
   is_public: true
 })
 
@@ -197,6 +272,16 @@ const editForm = reactive({
   name: '',
   description: '',
   is_public: true
+})
+
+// 接受的文件类型
+const acceptFileTypes = computed(() => {
+  const formatMap = {
+    csv: '.csv',
+    json: '.json',
+    zip: '.zip'
+  }
+  return formatMap[uploadForm.file_format] || '.csv,.json,.zip'
 })
 
 // 表单验证规则
@@ -254,14 +339,31 @@ const fetchMyDatasets = async () => {
   }
 }
 
+// 文件选择处理
+const handleFileChange = (file) => {
+  // 验证文件大小
+  if (file.raw.size > 100 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 100MB')
+    uploadRef.value?.clearFiles()
+    return
+  }
+  uploadForm.file = file.raw
+}
+
+const handleFileRemove = () => {
+  uploadForm.file = null
+}
+
 // 重置上传表单
 const resetUploadForm = () => {
   uploadForm.name = ''
   uploadForm.description = ''
   uploadForm.category = ''
   uploadForm.file_format = ''
+  uploadForm.file = null
   uploadForm.is_public = true
   uploadFormRef.value?.resetFields()
+  uploadRef.value?.clearFiles()
 }
 
 // 提交上传
@@ -271,27 +373,37 @@ const submitUpload = async () => {
   
   uploading.value = true
   try {
-    const requestData = {
-      name: uploadForm.name,
-      description: uploadForm.description,
-      category: uploadForm.category,
-      file_format: uploadForm.file_format,
-      is_public: uploadForm.is_public
+    // 使用 FormData 上传文件
+    const formData = new FormData()
+    formData.append('name', uploadForm.name)
+    formData.append('description', uploadForm.description || '')
+    formData.append('category', uploadForm.category)
+    formData.append('file_format', uploadForm.file_format)
+    formData.append('is_public', uploadForm.is_public)
+    
+    // 如果有文件则添加
+    if (uploadForm.file) {
+      formData.append('file_path', uploadForm.file)
     }
     
-    const res = await createDataset(requestData)
+    const res = await request.post('/api/datasets/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      timeout: 60000  // 上传文件超时时间设长一点
+    })
     
     if (res.data?.code === 201 || res.data?.code === 200) {
-      ElMessage.success(res.data.msg || '创建成功')
+      ElMessage.success(res.data.msg || '上传成功')
       showUploadDialog.value = false
       resetUploadForm()
       fetchMyDatasets()
     } else {
-      ElMessage.error(res.data?.msg || '创建失败')
+      ElMessage.error(res.data?.msg || '上传失败')
     }
   } catch (error) {
-    console.error('创建失败:', error)
-    ElMessage.error(error.response?.data?.msg || '创建失败，请稍后重试')
+    console.error('上传失败:', error)
+    ElMessage.error(error.response?.data?.msg || '上传失败，请稍后重试')
   } finally {
     uploading.value = false
   }
@@ -363,12 +475,21 @@ const handleDelete = async (row) => {
 
 // 下载
 const handleDownload = async (dataset) => {
+  if (!dataset.has_file) {
+    ElMessage.warning('该数据集没有上传文件')
+    return
+  }
+  
   try {
     ElMessage.info('开始下载...')
-    const res = await downloadDataset(dataset.id)
     
-    // 检查是否返回了 JSON 错误信息
-    if (res.data?.type === 'application/json') {
+    const res = await request.get(`/api/datasets/${dataset.id}/download/`, {
+      responseType: 'blob',
+      timeout: 120000  // 下载超时2分钟
+    })
+    
+    // 检查是否是错误响应
+    if (res.data.type === 'application/json') {
       const reader = new FileReader()
       reader.onload = () => {
         try {
@@ -387,7 +508,7 @@ const handleDownload = async (dataset) => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = dataset.name + '.' + (dataset.file_format || 'zip')
+    link.download = `${dataset.name}.${dataset.file_format || 'zip'}`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -396,13 +517,41 @@ const handleDownload = async (dataset) => {
     ElMessage.success('下载成功')
   } catch (error) {
     console.error('下载失败:', error)
-    if (error.response?.status === 403) {
-      ElMessage.error('无权限下载该数据集')
-    } else if (error.response?.status === 404) {
+    if (error.response?.status === 404) {
       ElMessage.error('数据集文件不存在')
     } else {
       ElMessage.error('下载失败，请稍后重试')
     }
+  }
+}
+
+// 预览
+const handlePreview = async (dataset) => {
+  if (!dataset.has_file) {
+    ElMessage.warning('该数据集没有上传文件')
+    return
+  }
+  
+  currentDataset.value = dataset
+  showPreviewDialog.value = true
+  loadingPreview.value = true
+  previewData.value = null
+  
+  try {
+    const res = await request.get(`/api/datasets/${dataset.id}/preview/`, {
+      params: { limit: 20 }
+    })
+    
+    if (res.data?.code === 200) {
+      previewData.value = res.data.data
+    } else {
+      ElMessage.error(res.data?.msg || '预览失败')
+    }
+  } catch (error) {
+    console.error('预览失败:', error)
+    ElMessage.error('预览失败')
+  } finally {
+    loadingPreview.value = false
   }
 }
 
@@ -469,7 +618,6 @@ onMounted(() => {
   align-items: center;
 }
 
-/* 操作按钮样式优化 */
 .action-buttons {
   display: flex;
   justify-content: center;
@@ -489,6 +637,25 @@ onMounted(() => {
   margin-left: 10px;
   color: #909399;
   font-size: 12px;
+}
+
+.dataset-uploader {
+  width: 100%;
+}
+
+.dataset-uploader :deep(.el-upload) {
+  width: 100%;
+}
+
+.dataset-uploader :deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+.preview-info {
+  margin-bottom: 15px;
+  color: #606266;
+  display: flex;
+  gap: 20px;
 }
 
 :deep(.el-table th) {

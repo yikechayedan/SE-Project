@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "question": "今天天气怎么样？",
+    "answer": "今天天气晴朗，温度适宜。",
+    "category": "日常对话",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 2,
+    "question": "这个产品质量太差了！",
+    "answer": "非常抱歉给您带来不好的体验，我们会改进的。",
+    "category": "客服对话",
+    "sentiment": "negative"
+  },
+  {
+    "id": 3,
+    "question": "我刚刚收到货，非常满意！",
+    "answer": "感谢您的好评，期待您再次光临！",
+    "category": "客服对话",
+    "sentiment": "positive"
+  },
+  {
+    "id": 4,
+    "question": "请问如何使用这个功能？",
+    "answer": "您可以点击右上角的设置按钮，然后选择相应选项。",
+    "category": "技术支持",
+    "sentiment": "neutral"
+  },
+  {
+    "id": 5,
+    "question": "太棒了，这个功能很实用！",
+    "answer": "很高兴能帮到您！",
+    "category": "用户反馈",
+    "sentiment": "positive"
+  }
+]
