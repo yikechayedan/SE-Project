@@ -41,15 +41,28 @@
               <el-icon class="type-icon model-icon"><Box /></el-icon>
               <span class="item-name">{{ item.name }}</span>
             </div>
+            <el-button 
+              type="warning" 
+              size="small" 
+              :icon="StarFilled"
+              @click="handleUnfollowModel(item)"
+              :loading="item.unfollowing"
+            >
+              取消关注
+            </el-button>
           </div>
           <div class="card-info">
             <el-tag type="info" size="small">
               <el-icon><OfficeBuilding /></el-icon>
               {{ item.company || '未知公司' }}
             </el-tag>
+            <el-tag :type="getCategoryType(item.category)" size="small">
+              <el-icon><Cpu /></el-icon>
+              {{ getCategoryLabel(item.category) }}
+            </el-tag>
             <el-tag type="success" size="small">
               <el-icon><DataLine /></el-icon>
-              {{ item.parameterSize || '未知' }} 参数
+              {{ item.parameter_size || '未知参数量' }}
             </el-tag>
           </div>
           <div class="card-meta">
@@ -77,6 +90,15 @@
               <el-icon class="type-icon dataset-icon"><Folder /></el-icon>
               <span class="item-name">{{ item.name }}</span>
             </div>
+            <el-button 
+              type="warning" 
+              size="small" 
+              :icon="StarFilled"
+              @click="handleUnfollowDataset(item)"
+              :loading="item.unfollowing"
+            >
+              取消关注
+            </el-button>
           </div>
           <div class="card-info">
             <el-tag type="warning" size="small">
@@ -85,7 +107,7 @@
             </el-tag>
             <el-tag type="primary" size="small">
               <el-icon><Collection /></el-icon>
-              {{ getCategoryLabel(item.category) }}
+              {{ getDatasetCategoryLabel(item.category) }}
             </el-tag>
             <el-tag type="success" size="small">
               <el-icon><Document /></el-icon>
@@ -106,7 +128,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Box, 
   Folder, 
@@ -116,9 +138,12 @@ import {
   User,
   Collection,
   Document,
-  Loading
+  Loading,
+  StarFilled,
+  Cpu
 } from '@element-plus/icons-vue'
-import { getFollowedDatasets } from '@/api/datasets'
+import { getFollowedDatasets, unfollowDataset } from '@/api/datasets'
+import { getFollowedModels, unfollowModel } from '@/api/models'
 
 // 当前展示类型：model 或 dataset
 const activeType = ref('dataset')  // 默认显示数据集
@@ -145,20 +170,49 @@ const formatFileSize = (size) => {
   return typeof size === 'number' ? size.toFixed(2) + ' MB' : size
 }
 
-// 分类标签
-const getCategoryLabel = (category) => {
+// 数据集分类标签
+const getDatasetCategoryLabel = (category) => {
   const map = { image: '图像', text: '文本', multimodal: '多模态' }
   return map[category] || category || '未分类'
 }
 
-// 获取关注的模型列表（暂未实现后端）
+// 模型分类标签
+const getCategoryLabel = (category) => {
+  const labels = {
+    'text': '文本生成',
+    'image': '图像生成',
+    'multimodal': '多模态',
+    'code': '代码生成'
+  }
+  return labels[category] || category || '未分类'
+}
+
+const getCategoryType = (category) => {
+  const types = {
+    'text': 'primary',
+    'image': 'success',
+    'multimodal': 'warning',
+    'code': 'info'
+  }
+  return types[category] || ''
+}
+
+// 获取关注的模型列表
 const fetchFollowedModels = async () => {
   loading.value = true
   try {
-    // TODO: 后端实现后替换为真实 API
-    modelList.value = []
+    const res = await getFollowedModels()
+    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      modelList.value = res.data.data.map(item => ({ ...item, unfollowing: false }))
+    } else if (Array.isArray(res.data)) {
+      modelList.value = res.data.map(item => ({ ...item, unfollowing: false }))
+    } else {
+      modelList.value = []
+    }
   } catch (error) {
     console.error('获取关注模型失败:', error)
+    ElMessage.error('获取关注列表失败')
     modelList.value = []
   } finally {
     loading.value = false
@@ -172,9 +226,9 @@ const fetchFollowedDatasets = async () => {
     const res = await getFollowedDatasets()
     // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
     if (res.data?.code === 200 && Array.isArray(res.data.data)) {
-      datasetList.value = res.data.data
+      datasetList.value = res.data.data.map(item => ({ ...item, unfollowing: false }))
     } else if (Array.isArray(res.data)) {
-      datasetList.value = res.data
+      datasetList.value = res.data.map(item => ({ ...item, unfollowing: false }))
     } else {
       datasetList.value = []
     }
@@ -184,6 +238,64 @@ const fetchFollowedDatasets = async () => {
     datasetList.value = []
   } finally {
     loading.value = false
+  }
+}
+
+// 取消关注模型
+const handleUnfollowModel = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要取消关注模型「${item.name}」吗？`,
+      '取消关注',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    
+    item.unfollowing = true
+    const res = await unfollowModel(item.id)
+    
+    if (res.data?.code === 200 || res.data?.code === 204) {
+      ElMessage.success('已取消关注')
+      // 从列表中移除
+      modelList.value = modelList.value.filter(m => m.id !== item.id)
+    } else {
+      ElMessage.error(res.data?.msg || '取消关注失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消关注失败:', error)
+      ElMessage.error('取消关注失败，请稍后重试')
+    }
+  } finally {
+    item.unfollowing = false
+  }
+}
+
+// 取消关注数据集
+const handleUnfollowDataset = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要取消关注数据集「${item.name}」吗？`,
+      '取消关注',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    
+    item.unfollowing = true
+    const res = await unfollowDataset(item.id)
+    
+    if (res.data?.code === 200 || res.data?.code === 204) {
+      ElMessage.success('已取消关注')
+      // 从列表中移除
+      datasetList.value = datasetList.value.filter(d => d.id !== item.id)
+    } else {
+      ElMessage.error(res.data?.msg || '取消关注失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消关注失败:', error)
+      ElMessage.error('取消关注失败，请稍后重试')
+    }
+  } finally {
+    item.unfollowing = false
   }
 }
 
