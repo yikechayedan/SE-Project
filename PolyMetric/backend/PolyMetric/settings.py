@@ -45,9 +45,6 @@ INSTALLED_APPS = [
     #评测任务模块
     "apps.tasks",
 
-    #大模型模块
-    "apps.models",
-
 
     # 项目应用
     'apps.users',

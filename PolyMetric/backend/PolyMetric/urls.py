@@ -9,9 +9,7 @@ urlpatterns = [
     # 用户模块
     path("api/users/", include("apps.users.urls")),
 
-    path("api/datasets/", include("apps.datasets.urls")),     # 数据集模块
-
-    path('api/models/', include('apps.models.urls')),      # 新增：模型路由（前缀 api/）
+    path("api/", include("apps.datasets.urls")),     # 数据集模块
 
     path("api/tasks/", include("apps.tasks.urls")),  # 评测任务
 ]
