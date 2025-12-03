@@ -6,5 +6,6 @@ router = DefaultRouter()
 router.register(r"datasets", DatasetViewSet)  # 数据集接口前缀：/api/datasets/
 
 urlpatterns = [
+    path("my_datasets/", DatasetViewSet.as_view({"get": "my_datasets"})),
     path("", include(router.urls)),
 ]
