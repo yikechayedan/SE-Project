@@ -3,7 +3,7 @@
     <el-card class="eval-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <h2 class="title">对抗评测</h2>
+          <h2 class="title">对抗评测结果查看</h2>
           <el-tag type="warning">任务 ID: TASK-ADV-002</el-tag>
         </div>
       </template>
@@ -62,7 +62,10 @@
         <el-form :model="form" label-width="150px" label-position="left">
           
           <el-form-item label="综合倾向性判断">
-            <el-radio-group v-model="form.preference" size="large">
+            <el-radio-group
+             v-model="form.preference"
+             size="large"
+             disabled>
               <el-radio-button label="左边更好" value="left" />
               <el-radio-button label="平局" value="both" />
               <el-radio-button label="右边更好" value="right" />
@@ -74,10 +77,7 @@
       </el-card>
       
       <div class="navigation-footer">
-        <div class="page-navigation">
-            <el-button @click="handlePrevious">上一题</el-button>
-        </div>
-        
+    
         <el-pagination
           small
           layout="prev, pager, next"
@@ -88,8 +88,8 @@
           disabled
         />
         
-        <div class="page-navigation">
-            <el-button type="primary" @click="handleNext">下一题</el-button>
+        <div class="action-buttons">
+            <el-button type="info" @click="handleReturn">返回报告列表</el-button>
         </div>
       </div>
 
@@ -99,7 +99,9 @@
 
 <script setup>
 import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 // --- 表单数据 ---
 const form = ref({
@@ -107,12 +109,8 @@ const form = ref({
 });
 
 // --- 操作函数 (静态演示) ---
-const handlePrevious = () => {
-  ElMessage.info('上一题操作（静态演示）');
-};
-
-const handleNext = () => {
-  ElMessage.success('评测已提交，跳转到下一题（静态演示）');
+const handleReturn = () => {
+  router.push({path: `/evaluation`});
 };
 </script>
 
@@ -135,7 +133,7 @@ const handleNext = () => {
 }
 .title {
   font-size: 24px;
-  color: #303133;
+  color: var(--el-color-success);
 }
 
 /* --- Prompt 区域 --- */
@@ -198,8 +196,21 @@ const handleNext = () => {
 .judgement-title {
     color: var(--el-color-danger); /* 强调需要用户操作 */
 }
-.el-form-item {
-    margin-bottom: 15px;
+.el-form-item :deep(.el-radio-button__inner) {
+    /* 确保在禁用状态下也能正确应用颜色 */
+    transition: all 0.2s ease;
+    /* 统一默认边框，防止禁用时边框颜色差异过大 */
+    border-color: var(--el-border-color-light) !important;
+}
+
+/* 选中状态的样式覆盖（使用 Success 绿色） */
+.el-form-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+    background-color: var(--el-color-success) !important;
+    color: var(--el-color-white) !important;
+    border-color: var(--el-color-success) !important;
+    
+    /* 确保禁用状态下的透明度不会让颜色显得太淡 */
+    opacity: 1 !important; 
 }
 
 /* --- 底部导航 --- */

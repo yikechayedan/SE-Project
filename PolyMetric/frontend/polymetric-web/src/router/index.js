@@ -21,9 +21,11 @@ const routes = [
   
   // ✅ 修正：使用实际存在的文件名
   { path: '/evaluation', name: 'Evaluation', component: () => import('../views/evaluation/EvaluationHall.vue') },
-  { path: '/evaluation/objective', name: 'ObjectiveEval', component: () => import('../views/evaluation/ObjectiveEval.vue') },
+  { path: '/evaluation/report', name: 'EvalReport', component: () => import('../views/evaluation/EvalReport.vue') },
   { path: '/evaluation/subjective', name: 'SubjectiveEval', component: () => import('../views/evaluation/SubjectiveEval.vue') },
+  { path: '/evaluation/subjective-result', name: 'SubjectResult', component: () => import('../views/evaluation/SubjectResult.vue') },
   { path: '/evaluation/adversarial', name: 'AdversarialEval', component: () => import('../views/evaluation/AdversarialEval.vue') },
+  { path: '/evaluation/adversarial-result', name: 'AdversarialResult', component: () => import('../views/evaluation/AdversarialResult.vue') },
   { path: '/tasks/my-manage', name: 'MyTaskManage', component: () => import('../views/evaluation/MyTaskManage.vue') },
   
   { path: '/user/:id', name: 'UserProfile', component: () => import('../views/profile/UserProfile.vue') },
