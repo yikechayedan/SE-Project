@@ -16,44 +16,160 @@
     <h3>我的评测任务合集</h3>
     <el-table :data="myTasks" border style="width: 100%;">
       <el-table-column prop="taskName" label="任务名称" />
+      <el-table-column prop="dataset" label="数据集" />
+      <el-table-column prop="method" label="测评方法" />
       <el-table-column prop="status" label="状态" />
+      <el-table-column prop="time" label="时间" />
       <el-table-column label="操作">
-        <template #default>
-          <el-button size="small" type="info" @click="viewTask">查看</el-button>
+        <template #default="scope">
+        <el-button 
+          v-if="scope.row.status === '完成'" 
+          type="primary" 
+          link 
+          @click="handleViewReport()"
+        >
+          查看报告
+        </el-button>
+        <el-button 
+          v-else-if="scope.row.status === '待测评'" 
+          type="success" 
+          link 
+          @click="handleStartEvaluation(scope.row)"
+        >
+          开始测评
+        </el-button>
+        <el-button 
+          v-else-if="scope.row.status === '已测评'" 
+          type="info"
+          link 
+          @click="handleViewEvaluation(scope.row)"
+        >
+          查看测评
+        </el-button>
+        <span v-else>
+          {{ scope.row.status }}... 
+        </span>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 评测弹窗 -->
-    <EvalDialog v-model:showDialog="showEvalDialog" @close="showEvalDialog = false" />
+    <EvalDialog v-model:showDialog="showEvalDialog"
+    @close="showEvalDialog = false"
+    @task-submitted="handleSubmit()" />
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
 import EvalDialog from '../../components/common/EvalDialog.vue'
+import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router' 
 
 const searchQuery = ref('')
 const currentPage = ref(1)
 const pageSize = 5
 
-const evaluations = ref([
-  { initiator: 'wang', taskName: '任务1', dataset: '数学数据集', status: '进行中', time: '2025-01-01', completed: '否' },
-  { initiator: 'ruan', taskName: '任务2', dataset: '视觉数据集', status: '完成', time: '2025-01-02', completed: '是' },
-  // 更多数据
-])
+const evaluations = ref([])
+
+const myTasks = ref([])
 
 const filteredEvaluations = computed(() => evaluations.value.filter(item => item.taskName.includes(searchQuery.value)).slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
 
-const myTasks = ref([
-  { taskName: '我的任务1', status: '进行中' },
-  { taskName: '我的任务2', status: '完成' },
-])
+const formatTaskDisplay = (task) => {
+    // 将 'objective', 'subjective', 'adversarial' 转换为中文
+    const methodMap = {
+        'objective': '客观评测',
+        'subjective': '主观评测',
+        'adversarial': '对抗评测',
+    };
+    
+    // 将 'pending', 'in_progress', 'completed' 等转换为中文
+    // 注意：根据 API 示例，客观评测有 'pending'，主观/对抗评测有 '待测评'
+    const statusMap = {
+        'pending': '进行中', // 客观评测的 'pending' 映射为 '进行中'
+        'completed': '完成',
+        'wait_review': '待测评', // 假设主观/对抗的 '待测评' 状态是 'wait_review'
+        'reviewed': '已测评'    // 假设主观/对抗的 '已测评' 状态是 'reviewed'
+    };
 
-const viewTask = () => ElMessage.info('查看任务详情')
+    return {
+        initiator: task.creator_username,
+        taskName: task.name,
+        dataset: task.dataset_name,
+        method: methodMap[task.method] || task.method,
+        status: statusMap[task.status] || task.status,
+        time: task.created_at ? new Date(task.created_at).toLocaleDateString() : 'N/A',
+        // 保持 API 原有的 ID，方便后续操作（如 handleStartEvaluation）
+        ...task 
+    };
+};
+
+/**
+ * 获取所有评测任务列表
+ */
+const fetchAllTasks = async () => {
+    try {
+        const response = await fetch('/api/tasks/evaluation-tasks/', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                // 实际应用中可能需要添加认证 token
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP 错误! 状态码: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // 1. 格式化所有任务并赋值给 evaluations
+        const formattedTasks = data.map(formatTaskDisplay);
+        evaluations.value = formattedTasks;
+        
+        // 2. 筛选出 "我的任务" (假设通过 creator ID 筛选)
+        myTasks.value = formattedTasks.filter(task => task.creator === currentUserId);
+
+        ElMessage.success(`成功加载 ${data.length} 个评测任务。`);
+
+    } catch (error) {
+        console.error('加载评测任务失败:', error);
+        ElMessage.error(`加载评测任务失败: ${error.message}`);
+    }
+}
+
+const handleViewReport = () => {
+  router.push({ 
+    path: `/evaluation/report`, 
+  })
+}
+
+const handleStartEvaluation = (task) => {
+  if(task.method === '主观评测') {
+    router.push({ path: `/evaluation/subjective` })
+  } else if(task.method === '对抗评测'){
+    router.push({ path: `/evaluation/adversarial` })
+  }
+}
+
+const handleViewEvaluation = (task) => {
+  if(task.method === '主观评测') {
+    router.push({ path: `/evaluation/subjective-result` })
+  } else if(task.method === '对抗评测'){
+    router.push({ path: `/evaluation/adversarial-result` })
+  }
+}
+
+const handleSubmit =() => {
+  fetchAllTasks();
+}
 
 const showEvalDialog = ref(false)
+
+onMounted(() => {
+  fetchAllTasks()
+})
 </script>
 
 <style scoped>

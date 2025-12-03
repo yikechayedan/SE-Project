@@ -24,7 +24,6 @@ const routes = [
   { path: '/evaluation/objective', name: 'ObjectiveEval', component: () => import('../views/evaluation/ObjectiveEval.vue') },
   { path: '/evaluation/subjective', name: 'SubjectiveEval', component: () => import('../views/evaluation/SubjectiveEval.vue') },
   { path: '/evaluation/adversarial', name: 'AdversarialEval', component: () => import('../views/evaluation/AdversarialEval.vue') },
-  { path: '/tasks/my-manage', name: 'MyTaskManage', component: () => import('../views/evaluation/MyTaskManage.vue') },
   
   { path: '/user/:id', name: 'UserProfile', component: () => import('../views/profile/UserProfile.vue') },
   { path: '/user/:id/datasets', name: 'UserDatasets', component: () => import('../views/profile/UserDatasets.vue') },
