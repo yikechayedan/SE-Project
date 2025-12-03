@@ -9,7 +9,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     creator_username = serializers.CharField(source="creator.username", read_only=True)
     file_url = serializers.SerializerMethodField(read_only=True)
 
-    # ⭐ 新增字段
+    
     is_followed = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -18,7 +18,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             "id", "name", "description", "category", "file_format",
             "file_size", "sample_count", "creator", "creator_username",
             "is_public", "is_verified",
-            "is_followed",   # ⭐ 新增
+            "is_followed",  
             "created_at", "updated_at", "file_url"
         ]
         read_only_fields = ["id", "creator", "file_size", "created_at", "updated_at", "is_verified"]
@@ -30,7 +30,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.file_path.url)
         return None
 
-    # ⭐ 关键：判断当前用户是否已关注
+    # 关键：判断当前用户是否已关注
     def get_is_followed(self, obj):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
@@ -65,7 +65,7 @@ class DatasetDetailSerializer(DatasetSerializer):
 
 
 # ==============================
-# ⭐ 新增关注序列化器
+# 新增关注序列化器
 # ==============================
 class DatasetFollowSerializer(serializers.ModelSerializer):
     class Meta:
