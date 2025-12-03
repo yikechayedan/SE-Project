@@ -19,6 +19,7 @@ class Dataset(models.Model):
         choices=[("csv", "CSV"), ("json", "JSON"), ("zip", "ZIP")]
     )
     file_size = models.FloatField(verbose_name="文件大小(MB)")
+    #file_size = models.FloatField(null=True, blank=True)
     file_path = models.FileField(upload_to="datasets/%Y/%m/%d/", verbose_name="数据集文件路径")
     sample_count = models.IntegerField(verbose_name="样本数量", null=True, blank=True)
 
