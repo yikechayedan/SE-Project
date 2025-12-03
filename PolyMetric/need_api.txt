@@ -1,0 +1,317 @@
+
+------------------------------------------
+4. 上传用户头像
+------------------------------------------
+POST /api/users/avatar/
+
+# 说明: 上传用户头像（需要登录状态，携带 JWT Token）
+# Content-Type: multipart/form-data（不是 JSON！）
+# 
+# 与前三个 API 不同，这个接口传输的是二进制文件，不是 JSON
+# 前端使用 FormData 对象构造请求体
+#
+# 前端示例代码:
+# const formData = new FormData()
+# formData.append('avatar', file)  // file 是用户选择的文件对象
+# axios.post('/api/users/avatar/', formData, {
+#   headers: { 'Content-Type': 'multipart/form-data' }
+# })
+
+请求头:
+{
+  "Content-Type": "multipart/form-data",
+  "Authorization": "Bearer <access_token>"
+}
+
+请求体 (FormData 格式，非 JSON):
+{
+  "avatar": <File>  // 二进制图片文件，支持 jpg/jpeg/png/gif，最大 2MB
+}
+
+# 文件限制:
+# - 最大文件大小: 2MB
+# - 支持格式: jpg, jpeg, png, gif
+# - 字段名必须是 "avatar"
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "头像上传成功",
+  "data": {
+    "avatar": "http://127.0.0.1:8000/media/avatars/user_1_20241129.png"
+  }
+}
+
+失败响应 (400) - 格式错误:
+{
+  "code": 400,
+  "msg": "文件格式不支持，仅支持 jpg/png/gif"
+}
+
+失败响应 (400) - 未选择文件:
+{
+  "code": 400,
+  "msg": "请选择要上传的文件"
+}
+
+失败响应 (413) - 文件过大:
+{
+  "code": 413,
+  "msg": "文件过大，最大支持 2MB"
+}
+
+失败响应 (401) - 未登录:
+{
+  "code": 401,
+  "msg": "未登录或登录已过期"
+}
+
+
+------------------------------------------
+5. 获取用户关注的模型列表
+------------------------------------------
+GET /api/users/followed-models/
+
+# 说明: 获取当前登录用户关注的所有模型（需要登录状态，携带 JWT Token）
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "name": "GPT-4",
+      "company": "OpenAI",
+      "parameterSize": "1.76T",
+      "followedAt": "2025-01-15T10:30:00"
+    },
+    {
+      "id": 2,
+      "name": "Claude 3",
+      "company": "Anthropic",
+      "parameterSize": "未公开",
+      "followedAt": "2025-01-20T14:20:00"
+    }
+  ]
+}
+
+# 字段说明:
+# - id: 模型唯一标识
+# - name: 模型名称
+# - company: 所属公司/机构
+# - parameterSize: 参数量级（如 "7B", "13B", "70B", "1.76T", "未公开"）
+# - followedAt: 关注时间（ISO 8601 格式）
+
+失败响应 (401) - 未登录:
+{
+  "code": 401,
+  "msg": "未登录或登录已过期"
+}
+
+
+------------------------------------------
+6. 获取用户关注的数据集列表
+------------------------------------------
+GET /api/users/followed-datasets/
+
+# 说明: 获取当前登录用户关注的所有数据集（需要登录状态，携带 JWT Token）
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "name": "MMLU",
+      "uploader": "UC Berkeley",
+      "category": "综合评测",
+      "itemCount": 14042,
+      "followedAt": "2025-01-10T08:00:00"
+    },
+    {
+      "id": 2,
+      "name": "HumanEval",
+      "uploader": "OpenAI",
+      "category": "代码生成",
+      "itemCount": 164,
+      "followedAt": "2025-01-18T16:30:00"
+    }
+  ]
+}
+
+# 字段说明:
+# - id: 数据集唯一标识
+# - name: 数据集名称
+# - uploader: 上传者/来源机构
+# - category: 数据集类别（如 "综合评测", "代码生成", "中文评测", "数学推理" 等）
+# - itemCount: 数据条目数量
+# - followedAt: 关注时间（ISO 8601 格式）
+
+失败响应 (401) - 未登录:
+{
+  "code": 401,
+  "msg": "未登录或登录已过期"
+}
+
+
+------------------------------------------
+7. 取消关注模型
+------------------------------------------
+DELETE /api/users/followed-models/{modelId}/
+
+# 说明: 取消关注指定模型（需要登录状态，携带 JWT Token）
+# URL 参数: modelId - 要取消关注的模型 ID
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "取消关注成功"
+}
+
+失败响应 (404) - 未找到:
+{
+  "code": 404,
+  "msg": "未关注该模型"
+}
+
+失败响应 (401) - 未登录:
+{
+  "code": 401,
+  "msg": "未登录或登录已过期"
+}
+
+
+------------------------------------------
+8. 取消关注数据集
+------------------------------------------
+DELETE /api/users/followed-datasets/{datasetId}/
+
+# 说明: 取消关注指定数据集（需要登录状态，携带 JWT Token）
+# URL 参数: datasetId - 要取消关注的数据集 ID
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "取消关注成功"
+}
+
+失败响应 (404) - 未找到:
+{
+  "code": 404,
+  "msg": "未关注该数据集"
+}
+
+失败响应 (401) - 未登录:
+{
+  "code": 401,
+  "msg": "未登录或登录已过期"
+}
+
+
+===========================================
+数据集相关 API
+===========================================
+
+------------------------------------------
+9. 获取所有数据集列表
+------------------------------------------
+GET /api/datasets/
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "data": [
+    {
+      "id": 1,
+      "name": "MMLU",
+      "uploader": "UC Berkeley",
+      "category": "综合评测",
+      "item_count": 14042
+    },
+    {
+      "id": 2,
+      "name": "HumanEval",
+      "uploader": "OpenAI",
+      "category": "代码生成",
+      "item_count": 164
+    }
+  ]
+}
+
+字段说明:
+- id: 数据集ID
+- name: 数据集名称
+- uploader: 上传者
+- category: 分类
+- item_count: 数据条数
+
+
+------------------------------------------
+10. 获取数据集详情
+------------------------------------------
+GET /api/datasets/{id}/
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "data": {
+    "id": 1,
+    "name": "MMLU",
+    "uploader": "UC Berkeley",
+    "category": "综合评测",
+    "item_count": 14042,
+    "download_count": 1520,
+    "file_size": "256MB",
+    "description": "多任务语言理解基准测试数据集",
+    "created_at": "2025-01-10T08:00:00",
+    "updated_at": "2025-01-15T10:30:00"
+  }
+}
+
+字段说明（基本字段 + 详情字段）:
+- id: 数据集ID
+- name: 数据集名称
+- uploader: 上传者
+- category: 分类
+- item_count: 数据条数
+- download_count: 下载次数
+- file_size: 文件大小
+- description: 数据集描述
+- created_at: 创建时间
+- updated_at: 更新时间
+
+失败响应 (404):
+{
+  "code": 404,
+  "msg": "数据集不存在"
+}

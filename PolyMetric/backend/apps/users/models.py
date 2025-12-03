@@ -2,8 +2,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
-    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="手机号")
-    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True, verbose_name="头像")
+    phone = models.CharField(max_length=20, blank=True, unique=True, null=True, verbose_name="手机号")
+    avatar = models.ImageField(upload_to="avatars/", unique=True, blank=True, null=True, verbose_name="头像")
     bio = models.TextField(blank=True, null=True, verbose_name="个人简介")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="注册时间")
