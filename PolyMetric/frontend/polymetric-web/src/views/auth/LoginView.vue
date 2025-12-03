@@ -6,7 +6,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="form.username"
-            placeholder="用户名 / 邮箱"
+            placeholder="用户名"
             size="large"
             prefix-icon="User"
             clearable
