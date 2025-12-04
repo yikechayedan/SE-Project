@@ -6,32 +6,23 @@
     <el-table :data="filteredEvaluations" border style="width: 100%; margin-bottom: 40px;">
       <el-table-column prop="initiator" label="发起人" />
       <el-table-column prop="taskName" label="任务名称" />
+      <el-table-column prop="model" label="模型"/>
       <el-table-column prop="dataset" label="使用数据集" />
-      <el-table-column prop="status" label="状态" />
-      <el-table-column prop="time" label="时间" />
-      <el-table-column prop="completed" label="是否完成" />
-    </el-table>
-    <el-pagination background layout="prev, pager, next, total" :total="evaluations.length" :page-size="pageSize" v-model:current-page="currentPage" style="margin-bottom: 40px; text-align: center;" />
-
-    <h3>我的评测任务合集</h3>
-    <el-table :data="myTasks" border style="width: 100%;">
-      <el-table-column prop="taskName" label="任务名称" />
-      <el-table-column prop="dataset" label="数据集" />
       <el-table-column prop="method" label="测评方法" />
       <el-table-column prop="status" label="状态" />
       <el-table-column prop="time" label="时间" />
       <el-table-column label="操作">
         <template #default="scope">
         <el-button 
-          v-if="scope.row.status === '完成'" 
+          v-if="scope.row.method === '客观评测' && scope.row.status === '完成'" 
           type="primary" 
           link 
-          @click="handleViewReport()"
+          @click="handleViewReport(scope.row)"
         >
           查看报告
         </el-button>
         <el-button 
-          v-else-if="scope.row.status === '待测评'" 
+          v-else-if="(scope.row.method === '主观评测' || scope.row.method === '对抗评测') && scope.row.status === '待测评'" 
           type="success" 
           link 
           @click="handleStartEvaluation(scope.row)"
@@ -39,7 +30,49 @@
           开始测评
         </el-button>
         <el-button 
-          v-else-if="scope.row.status === '已测评'" 
+          v-else-if="scope.row.status === '完成'" 
+          type="info"
+          link 
+          @click="handleViewEvaluation(scope.row)"
+        >
+          查看测评
+        </el-button>
+        <span v-else>
+          进行中... 
+        </span>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-pagination background layout="prev, pager, next, total" :total="evaluations.length" :page-size="pageSize" v-model:current-page="currentPage" style="margin-bottom: 40px; text-align: center;" />
+
+    <h3>我的评测任务合集</h3>
+    <el-table :data="myTasks" border style="width: 100%;">
+      <el-table-column prop="taskName" label="任务名称" />
+      <el-table-column prop="model" label="模型"/>
+      <el-table-column prop="dataset" label="数据集" />
+      <el-table-column prop="method" label="测评方法" />
+      <el-table-column prop="status" label="状态" />
+      <el-table-column prop="time" label="时间" />
+      <el-table-column label="操作">
+        <template #default="scope">
+        <el-button 
+          v-if="scope.row.method === '客观评测' && scope.row.status === '完成'" 
+          type="primary" 
+          link 
+          @click="handleViewReport(scope.row)"
+        >
+          查看报告
+        </el-button>
+        <el-button 
+          v-else-if="(scope.row.method === '主观评测' || scope.row.method === '对抗评测') && scope.row.status === '待测评'" 
+          type="success" 
+          link 
+          @click="handleStartEvaluation(scope.row)"
+        >
+          开始测评
+        </el-button>
+        <el-button 
+          v-else-if="scope.row.status === '完成'" 
           type="info"
           link 
           @click="handleViewEvaluation(scope.row)"
@@ -65,14 +98,66 @@ import { computed, onMounted, ref } from 'vue'
 import EvalDialog from '../../components/common/EvalDialog.vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router' 
+import { getEvaluationTasks } from '@/api/tasks.js'
+
+//模拟api返回
+// MOCK_API_RESPONSE: 模拟后端返回的 JSON 数据
+const MOCK_API_RESPONSE = [
+  { 
+    "id": 101,
+    "name": "GPT-4V 图像分类评测",
+    "creator": 1, // 当前用户的任务
+    "creator_username": "1",
+    "dataset": 1,
+    "dataset_name": "COCO 2017",
+    "method": "objective", // 客观评测
+    "status": "pending", // 待测评
+    "created_at": "2025-11-30T10:00:00Z"
+  },
+  { 
+    "id": 202,
+    "name": "Gemini 文本生成评测",
+    "creator": 1, // 当前用户的任务
+    "creator_username": "123",
+    "dataset": 2,
+    "dataset_name": "CNN/Daily Mail",
+    "method": "subjective", // 主观评测
+    "status": "completed", // 完成
+    "created_at": "2025-11-29T15:30:00Z"
+  },
+  { 
+    "id": 303,
+    "name": "Claude 3.5 逻辑推理对比",
+    "creator": 2, // 其他用户的任务
+    "creator_username": "123",
+    "dataset": 3,
+    "dataset_name": "Logic Bench",
+    "method": "adversarial", // 对抗评测
+    "status": "pending", // 待测评
+    "created_at": "2025-12-01T08:00:00Z"
+  },
+  { 
+    "id": 400,
+    "name": "Mistral Code Review",
+    "creator": 2, // 其他用户的任务
+    "creator_username": "123",
+    "dataset": 4,
+    "dataset_name": "GitHub Code Snippets",
+    "method": "objective",
+    "status": "completed",
+    "created_at": "2025-12-03T09:00:00Z"
+  }
+]
 
 const searchQuery = ref('')
 const currentPage = ref(1)
 const pageSize = 5
 
+const showEvalDialog = ref(false)
 const evaluations = ref([])
-
 const myTasks = ref([])
+const router = useRouter()
+const currentUsername = ref('')
 
 const filteredEvaluations = computed(() => evaluations.value.filter(item => item.taskName.includes(searchQuery.value)).slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
 
@@ -84,24 +169,23 @@ const formatTaskDisplay = (task) => {
         'adversarial': '对抗评测',
     };
     
-    // 将 'pending', 'in_progress', 'completed' 等转换为中文
-    // 注意：根据 API 示例，客观评测有 'pending'，主观/对抗评测有 '待测评'
+    // 将 'pending', 'running', 'completed' 等转换为中文
     const statusMap = {
-        'pending': '进行中', // 客观评测的 'pending' 映射为 '进行中'
+        'pending': '待测评',
         'completed': '完成',
-        'wait_review': '待测评', // 假设主观/对抗的 '待测评' 状态是 'wait_review'
-        'reviewed': '已测评'    // 假设主观/对抗的 '已测评' 状态是 'reviewed'
+        'running': '进行中',
     };
 
     return {
+        //保持api原有的id
+        ...task,
         initiator: task.creator_username,
         taskName: task.name,
+        model: task.myModel_name,
         dataset: task.dataset_name,
         method: methodMap[task.method] || task.method,
         status: statusMap[task.status] || task.status,
         time: task.created_at ? new Date(task.created_at).toLocaleDateString() : 'N/A',
-        // 保持 API 原有的 ID，方便后续操作（如 handleStartEvaluation）
-        ...task 
     };
 };
 
@@ -110,26 +194,18 @@ const formatTaskDisplay = (task) => {
  */
 const fetchAllTasks = async () => {
     try {
-        const response = await fetch('/api/tasks/evaluation-tasks/', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                // 实际应用中可能需要添加认证 token
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP 错误! 状态码: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
+        const response = await getEvaluationTasks();
+        const data = response.data;
         // 1. 格式化所有任务并赋值给 evaluations
         const formattedTasks = data.map(formatTaskDisplay);
         evaluations.value = formattedTasks;
         
-        // 2. 筛选出 "我的任务" (假设通过 creator ID 筛选)
-        myTasks.value = formattedTasks.filter(task => task.creator === currentUserId);
+        // 2. 筛选出 "我的任务"
+        const storedUsername = localStorage.getItem('username');
+        if (storedUsername) {
+            currentUsername.value = storedUsername;
+        }
+        myTasks.value = formattedTasks.filter(task => task.creator_username === currentUsername.value);
 
         ElMessage.success(`成功加载 ${data.length} 个评测任务。`);
 
@@ -139,33 +215,44 @@ const fetchAllTasks = async () => {
     }
 }
 
-const handleViewReport = () => {
+const handleViewReport = (task) => {
   router.push({ 
-    path: `/evaluation/report`, 
+    name: 'EvalReport', 
+    params: { taskId: task.id }
   })
 }
 
 const handleStartEvaluation = (task) => {
   if(task.method === '主观评测') {
-    router.push({ path: `/evaluation/subjective` })
+    router.push({
+      name: 'SubjectiveEval',
+      params: { taskId: task.id }
+    })
   } else if(task.method === '对抗评测'){
-    router.push({ path: `/evaluation/adversarial` })
+    router.push({
+      name: 'AdversarialEval',
+      params: { taskId: task.id }
+    })
   }
 }
 
 const handleViewEvaluation = (task) => {
   if(task.method === '主观评测') {
-    router.push({ path: `/evaluation/subjective-result` })
+    router.push({ 
+      name: 'SubjectResult',
+      params: { taskId: task.id }
+    })
   } else if(task.method === '对抗评测'){
-    router.push({ path: `/evaluation/adversarial-result` })
+    router.push({ 
+      name: 'AdversarialResult',
+      params: { taskId: task.id }
+    })
   }
 }
 
 const handleSubmit =() => {
   fetchAllTasks();
 }
-
-const showEvalDialog = ref(false)
 
 onMounted(() => {
   fetchAllTasks()
