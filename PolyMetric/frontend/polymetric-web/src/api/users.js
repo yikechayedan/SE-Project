@@ -59,38 +59,7 @@ export function resetPassword(email, code, password) {
   return request.post("/api/users/reset-password/", { email, code, password });
 }
 
-// ========== 关注相关 API ==========
-
-/**
- * 获取用户关注的模型列表
- */
-export function getFollowedModels() {
-  return request.get("/api/users/followed-models/");
-}
-
-/**
- * 获取用户关注的数据集列表
- */
-export function getFollowedDatasets() {
-  return request.get("/api/users/followed-datasets/");
-}
-
-/**
- * 取消关注模型
- * @param {number} modelId - 模型ID
- */
-export function unfollowModel(modelId) {
-  return request.delete(`/api/users/followed-models/${modelId}/`);
-}
-
-/**
- * 取消关注数据集
- * @param {number} datasetId - 数据集ID
- */
-export function unfollowDataset(datasetId) {
-  return request.delete(`/api/users/followed-datasets/${datasetId}/`);
-}
-
+// ========== 头像上传 ==========
 
 export function uploadAvatar(file) {
   const formData = new FormData()
@@ -98,4 +67,111 @@ export function uploadAvatar(file) {
   return request.post('/api/users/avatar/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
+}
+
+// ========== 关注模型/数据集 API（复用现有接口）==========
+
+/**
+ * 获取关注的模型列表
+ * @param {number} userId - 可选，不传则获取自己的，传了获取指定用户的
+ */
+export function getFollowedModels(userId = null) {
+  if (userId) {
+    return request.get("/api/models/followed/", { params: { user_id: userId } });
+  }
+  return request.get("/api/models/followed/");
+}
+
+/**
+ * 获取关注的数据集列表
+ * @param {number} userId - 可选，不传则获取自己的，传了获取指定用户的
+ */
+export function getFollowedDatasets(userId = null) {
+  if (userId) {
+    return request.get("/api/datasets/followed/", { params: { user_id: userId } });
+  }
+  return request.get("/api/datasets/followed/");
+}
+
+/**
+ * 取消关注模型（复用模型模块的 API）
+ * @param {number} modelId - 模型ID
+ */
+export function unfollowModel(modelId) {
+  return request.delete(`/api/models/${modelId}/follow/`);
+}
+
+/**
+ * 取消关注数据集（复用数据集模块的 API）
+ * @param {number} datasetId - 数据集ID
+ */
+export function unfollowDataset(datasetId) {
+  return request.delete(`/api/datasets/${datasetId}/follow/`);
+}
+
+// ========== 用户关注用户 API ==========
+
+/**
+ * 获取其他用户的公开信息
+ * @param {number} userId - 用户ID
+ */
+export function getPublicUserInfo(userId) {
+  return request.get(`/api/users/${userId}/public/`);
+}
+
+/**
+ * 关注用户
+ * @param {number} userId - 要关注的用户ID
+ */
+export function followUser(userId) {
+  return request.post(`/api/users/${userId}/follow/`);
+}
+
+/**
+ * 取消关注用户
+ * @param {number} userId - 要取消关注的用户ID
+ */
+export function unfollowUser(userId) {
+  return request.delete(`/api/users/${userId}/follow/`);
+}
+
+/**
+ * 获取当前用户关注的用户列表
+ */
+export function getFollowedUsers() {
+  return request.get("/api/users/followed/");
+}
+
+/**
+ * 获取某用户的关注者列表（粉丝）
+ * @param {number} userId - 用户ID
+ */
+export function getUserFollowers(userId) {
+  return request.get(`/api/users/${userId}/followers/`);
+}
+
+/**
+ * 更新用户隐私设置
+ * @param {object} settings - 隐私设置 { show_followed_models: boolean, show_followed_datasets: boolean }
+ */
+export function updatePrivacySettings(settings) {
+  return request.put("/api/users/privacy/", settings);
+}
+
+// ========== 兼容性别名（复用上面的函数）==========
+
+/**
+ * 获取某用户关注的模型（别名，兼容旧调用）
+ * @param {number} userId - 用户ID
+ */
+export function getUserFollowedModels(userId) {
+  return getFollowedModels(userId);
+}
+
+/**
+ * 获取某用户关注的数据集（别名，兼容旧调用）
+ * @param {number} userId - 用户ID
+ */
+export function getUserFollowedDatasets(userId) {
+  return getFollowedDatasets(userId);
 }
