@@ -1,3 +1,8 @@
+import os
+import json
+import csv
+import io
+import zipfile
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,10 +11,6 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import models
 from django.http import FileResponse
-import os
-import json
-import csv
-import io
 
 from .models import Dataset, DatasetFollow
 from .serializers import (
@@ -127,16 +128,28 @@ class DatasetViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        return Response({"code": 200, "msg": "查询成功", "data": serializer.data})
+        return Response({
+            "code": 200,
+            "msg": "查询成功",
+            "data": serializer.data
+        })
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(
+            instance, 
+            data=request.data, 
+            partial=partial
+        )
 
         if serializer.is_valid():
             self.perform_update(serializer)
-            return Response({"code": 200, "msg": "更新成功", "data": serializer.data})
+            return Response({
+                "code": 200,
+                "msg": "更新成功",
+                "data": serializer.data
+            })
 
         return Response({
             "code": 400,
@@ -155,7 +168,10 @@ class DatasetViewSet(viewsets.ModelViewSet):
             except:
                 pass
         self.perform_destroy(instance)
-        return Response({"code": 200, "msg": "删除成功"}, status=status.HTTP_200_OK)
+        return Response(
+            {"code": 200, "msg": "删除成功"}, 
+            status=status.HTTP_200_OK
+        )
 
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
@@ -164,12 +180,18 @@ class DatasetViewSet(viewsets.ModelViewSet):
         
         # 检查文件是否存在
         if not dataset.has_file():
-            return Response({"code": 404, "msg": "该数据集没有上传文件"}, status=404)
+            return Response(
+                {"code": 404, "msg": "该数据集没有上传文件"}, 
+                status=404
+            )
         
         try:
             file_path = dataset.file_path.path
             if not os.path.exists(file_path):
-                return Response({"code": 404, "msg": "文件不存在"}, status=404)
+                return Response(
+                    {"code": 404, "msg": "文件不存在"}, 
+                    status=404
+                )
             
             # 获取原始文件名
             original_name = os.path.basename(dataset.file_path.name)
@@ -185,7 +207,10 @@ class DatasetViewSet(viewsets.ModelViewSet):
             return response
             
         except Exception as e:
-            return Response({"code": 500, "msg": f"下载失败: {str(e)}"}, status=500)
+            return Response(
+                {"code": 500, "msg": f"下载失败: {str(e)}"}, 
+                status=500
+            )
 
     @action(detail=True, methods=["get"])
     def preview(self, request, pk=None):
@@ -207,12 +232,19 @@ class DatasetViewSet(viewsets.ModelViewSet):
         try:
             file_path = dataset.file_path.path
             if not os.path.exists(file_path):
-                return Response({"code": 404, "msg": "文件不存在"}, status=404)
+                return Response(
+                    {"code": 404, "msg": "文件不存在"}, 
+                    status=404
+                )
             
             # 获取预览行数
             limit = min(int(request.query_params.get("limit", 20)), 100)
             
-            preview_data = self._read_file_preview(file_path, dataset.file_format, limit)
+            preview_data = self._read_file_preview(
+                file_path, 
+                dataset.file_format, 
+                limit
+            )
             
             return Response({
                 "code": 200,
@@ -221,7 +253,10 @@ class DatasetViewSet(viewsets.ModelViewSet):
             })
             
         except Exception as e:
-            return Response({"code": 500, "msg": f"预览失败: {str(e)}"}, status=500)
+            return Response(
+                {"code": 500, "msg": f"预览失败: {str(e)}"}, 
+                status=500
+            )
 
     def _read_file_preview(self, file_path, file_format, limit=20):
         """读取文件预览内容"""
@@ -277,7 +312,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
                         result["headers"] = list(data.keys()) if isinstance(data, dict) else []
                         
             elif file_format == "zip":
-                import zipfile
                 with zipfile.ZipFile(file_path, 'r') as zf:
                     file_list = [f for f in zf.namelist() if not f.endswith('/')]
                     result["total"] = len(file_list)
@@ -298,14 +332,22 @@ class DatasetViewSet(viewsets.ModelViewSet):
         try:
             dataset = self.get_object()
         except:
-            return Response({"code": 404, "msg": "数据集不存在", "data": None}, status=404)
+            return Response(
+                {"code": 404, "msg": "数据集不存在", "data": None}, 
+                status=404
+            )
 
         if request.method == "POST":
             follow, created = DatasetFollow.objects.get_or_create(
-                user=request.user, dataset=dataset
+                user=request.user, 
+                dataset=dataset
             )
             if not created:
-                return Response({"code": 200, "msg": "已关注该数据集", "data": None})
+                return Response({
+                    "code": 200, 
+                    "msg": "已关注该数据集", 
+                    "data": None
+                })
             return Response({
                 "code": 201,
                 "msg": "关注成功",
@@ -313,34 +355,58 @@ class DatasetViewSet(viewsets.ModelViewSet):
             }, status=201)
 
         deleted, _ = DatasetFollow.objects.filter(
-            user=request.user, dataset=dataset
+            user=request.user, 
+            dataset=dataset
         ).delete()
 
         if deleted == 0:
-            return Response({"code": 404, "msg": "未关注该数据集", "data": None}, status=404)
+            return Response(
+                {"code": 404, "msg": "未关注该数据集", "data": None}, 
+                status=404
+            )
 
-        return Response({"code": 200, "msg": "已取消关注", "data": None})
+        return Response({
+            "code": 200, 
+            "msg": "已取消关注", 
+            "data": None
+        })
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def followed(self, request):
         """获取我关注的数据集"""
         follows = DatasetFollow.objects.filter(user=request.user)
         datasets = [f.dataset for f in follows]
-        serializer = DatasetSerializer(datasets, many=True, context={"request": request})
+        serializer = DatasetSerializer(
+            datasets, 
+            many=True, 
+            context={"request": request}
+        )
         data = serializer.data
 
         for d in data:
             f = follows.get(dataset_id=d["id"])
             d["followed_at"] = f.created_at
 
-        return Response({"code": 200, "msg": "查询成功", "data": data})
+        return Response({
+            "code": 200, 
+            "msg": "查询成功", 
+            "data": data
+        })
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def my_datasets(self, request):
         """获取我创建的数据集"""
         queryset = Dataset.objects.filter(creator=request.user)
-        serializer = DatasetSerializer(queryset, many=True, context={"request": request})
-        return Response({"code": 200, "msg": "查询成功", "data": serializer.data})
+        serializer = DatasetSerializer(
+            queryset, 
+            many=True, 
+            context={"request": request}
+        )
+        return Response({
+            "code": 200, 
+            "msg": "查询成功", 
+            "data": serializer.data
+        })
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
     def verify(self, request, pk=None):
@@ -348,7 +414,10 @@ class DatasetViewSet(viewsets.ModelViewSet):
         dataset = self.get_object()
         dataset.is_verified = True
         dataset.save()
-        return Response({"code": 200, "msg": "数据集审核通过"})
+        return Response({
+            "code": 200, 
+            "msg": "数据集审核通过"
+        })
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
@@ -358,3 +427,145 @@ class DatasetViewSet(viewsets.ModelViewSet):
             "msg": str(exc) if status_code != 403 else "权限不足",
             "data": None
         }, status=status_code)
+
+    @action(detail=True, methods=["get"])
+    def entries(self, request, pk=None):
+        """分页获取数据集中的数据条目"""
+        dataset = self.get_object()
+        
+        # 检查文件是否存在
+        if not dataset.has_file():
+            return Response(
+                {"code": 404, "msg": "该数据集没有上传文件", "data": None},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 检查文件格式是否支持
+        if dataset.file_format not in ["json", "zip"]:
+            return Response(
+                {"code": 400, "msg": "该数据集格式不支持预览", "data": None},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # 获取分页参数
+            page = int(request.query_params.get("page", 1))
+            page_size = int(request.query_params.get("page_size", 10))
+            
+            # 限制page_size范围
+            page_size = max(5, min(page_size, 50))
+            
+            # 读取并解析文件内容
+            file_path = dataset.file_path.path
+            all_entries, fields = self._parse_dataset_file(
+                file_path, 
+                dataset.file_format
+            )
+            
+            # 计算总条目数
+            total = len(all_entries)
+            
+            # 计算分页偏移量
+            start = (page - 1) * page_size
+            end = start + page_size
+            current_entries = all_entries[start:end]
+            
+            # 为条目添加id字段（如果不存在）
+            for idx, entry in enumerate(current_entries, start=start + 1):
+                if "id" not in entry:
+                    entry["id"] = idx
+            
+            # 准备响应数据
+            response_data = {
+                "entries": current_entries,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "fields": fields if fields else (
+                    list(current_entries[0].keys()) if current_entries else []
+                )
+            }
+            
+            return Response({
+                "code": 200,
+                "msg": "查询成功",
+                "data": response_data
+            })
+            
+        except FileNotFoundError:
+            return Response(
+                {"code": 404, "msg": "数据集文件不存在", "data": None},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"code": 500, "msg": f"数据集文件读取失败: {str(e)}", "data": None},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def _parse_dataset_file(self, file_path, file_format):
+        """解析数据集文件，返回所有条目和字段列表"""
+        entries = []
+        fields = []
+        
+        if file_format == "json":
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            data = json.loads(content.decode('utf-8'))
+            
+            # 处理不同JSON结构
+            if isinstance(data, list):
+                entries = data
+            elif isinstance(data, dict):
+                # 查找常见的数据数组键
+                for key in ['data', 'items', 'records', 'rows', 'samples', 'entries']:
+                    if key in data and isinstance(data[key], list):
+                        entries = data[key]
+                        break
+                else:
+                    # 如果没有找到数组，将整个对象作为一个条目
+                    entries = [data]
+        
+        elif file_format == "zip":
+            with open(file_path, 'rb') as f:
+                zip_content = f.read()
+            
+            with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as zf:
+                # 查找data.json或第一个json文件
+                json_files = [
+                    f for f in zf.namelist() 
+                    if f.lower().endswith('.json') and not f.endswith('/')
+                ]
+                
+                if not json_files:
+                    raise Exception("ZIP文件中未找到JSON文件")
+                
+                # 优先使用data.json
+                target_file = "data.json" if "data.json" in json_files else json_files[0]
+                
+                with zf.open(target_file) as f:
+                    content = f.read()
+                    data = json.loads(content.decode('utf-8'))
+                    
+                    # 处理不同JSON结构
+                    if isinstance(data, list):
+                        entries = data
+                    elif isinstance(data, dict):
+                        # 查找常见的数据数组键
+                        for key in ['data', 'items', 'records', 'rows', 'samples', 'entries']:
+                            if key in data and isinstance(data[key], list):
+                                entries = data[key]
+                                break
+                        else:
+                            # 如果没有找到数组，将整个对象作为一个条目
+                            entries = [data]
+        
+        # 提取字段列表（从第一条数据）
+        if entries and isinstance(entries[0], dict):
+            fields = list(entries[0].keys())
+            # 确保id字段在最前面
+            if "id" in fields:
+                fields.remove("id")
+                fields.insert(0, "id")
+        
+        return entries, fields
