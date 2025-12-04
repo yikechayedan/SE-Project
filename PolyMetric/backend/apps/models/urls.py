@@ -10,7 +10,8 @@ router.register(r"models", ModelViewSet, basename="my-model")
 
 urlpatterns = [
     # 包含视图集的路由（列表、详情、follow/unfollow 操作）
-    path("", include(router.urls)),
+    
     # 用户关注的模型列表：/api/models/followed/
     path("models/followed/", FollowedModelsListAPIView.as_view(), name="followed-models"),
+    path("", include(router.urls)),
 ]
