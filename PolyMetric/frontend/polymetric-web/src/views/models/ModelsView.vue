@@ -46,57 +46,72 @@
     <div v-else>
       <el-empty v-if="filteredModels.length === 0" description="暂无模型" />
       
-      <el-table 
-        v-else 
-        :data="filteredModels" 
-        border 
-        stripe
-        style="width: 100%;"
-      >
-        <el-table-column prop="name" label="模型名称" min-width="180">
-          <template #default="{ row }">
-            <div class="model-name">
-              <el-icon><Box /></el-icon>
-              <span>{{ row.name }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="company" label="所属公司" width="140">
-          <template #default="{ row }">
-            {{ row.company || '未知' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="category" label="类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getCategoryType(row.category)" size="small">
-              {{ getCategoryLabel(row.category) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="parameter_size" label="参数量" width="120" align="center">
-          <template #default="{ row }">
-            {{ row.parameter_size || '未知' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button type="primary" size="small" @click="showDetail(row)">
-                详情
-              </el-button>
-              <el-button 
-                :type="row.is_followed ? 'warning' : 'info'" 
-                size="small" 
-                :icon="row.is_followed ? StarFilled : Star"
-                @click="handleToggleFollow(row)"
-                :loading="row.followLoading"
-              >
-                {{ row.is_followed ? '已关注' : '关注' }}
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+      <template v-else>
+        <el-table 
+          :data="paginatedModels" 
+          border 
+          stripe
+          style="width: 100%;"
+        >
+          <el-table-column prop="name" label="模型名称" min-width="180">
+            <template #default="{ row }">
+              <div class="model-name">
+                <el-icon><Box /></el-icon>
+                <span>{{ row.name }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="company" label="所属公司" width="140">
+            <template #default="{ row }">
+              {{ row.company || '未知' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="category" label="类型" width="120">
+            <template #default="{ row }">
+              <el-tag :type="getCategoryType(row.category)" size="small">
+                {{ getCategoryLabel(row.category) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="parameter_size" label="参数量" width="120" align="center">
+            <template #default="{ row }">
+              {{ row.parameter_size || '未知' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="200" align="center" fixed="right">
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <el-button type="primary" size="small" @click="showDetail(row)">
+                  详情
+                </el-button>
+                <el-button 
+                  :type="row.is_followed ? 'warning' : 'info'" 
+                  size="small" 
+                  :icon="row.is_followed ? StarFilled : Star"
+                  @click="handleToggleFollow(row)"
+                  :loading="row.followLoading"
+                >
+                  {{ row.is_followed ? '已关注' : '关注' }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 分页组件 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[5, 10, 20, 50]"
+            :total="filteredModels.length"
+            :background="true"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </template>
     </div>
 
     <!-- 模型详情弹窗 -->
@@ -144,7 +159,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Box, Loading, Star, StarFilled } from '@element-plus/icons-vue'
 import { getAllModels, getModelDetail, followModel, unfollowModel } from '@/api/models'
@@ -154,6 +169,10 @@ const loading = ref(false)
 const allModels = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
+
+// 分页状态
+const currentPage = ref(1)
+const pageSize = ref(5)
 
 // 详情弹窗
 const showDetailDialog = ref(false)
@@ -180,6 +199,29 @@ const filteredModels = computed(() => {
   
   return result
 })
+
+// 分页后的模型（当前页显示的数据）
+const paginatedModels = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredModels.value.slice(start, end)
+})
+
+// 监听筛选条件变化，重置到第一页
+watch([searchQuery, categoryFilter], () => {
+  currentPage.value = 1
+})
+
+// 处理每页条数变化
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1  // 切换每页条数时回到第一页
+}
+
+// 处理页码变化
+const handlePageChange = (val) => {
+  currentPage.value = val
+}
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -238,13 +280,14 @@ const fetchAllModels = async () => {
 
 // 本地筛选
 const handleLocalFilter = () => {
-  // 筛选由 computed 自动完成
+  // 筛选由 computed 自动完成，页码重置由 watch 处理
 }
 
 // 重置筛选
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  currentPage.value = 1
   fetchAllModels()
 }
 
@@ -426,9 +469,21 @@ onMounted(() => {
   padding: 10px 0;
 }
 
+/* 分页容器样式 */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 15px 0;
+}
+
 :deep(.el-table th) {
   background: #f5f7fa;
   color: #303133;
   font-weight: 600;
+}
+
+:deep(.el-pagination) {
+  --el-pagination-button-bg-color: #fff;
 }
 </style>
