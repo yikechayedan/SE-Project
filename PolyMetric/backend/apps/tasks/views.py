@@ -1,33 +1,21 @@
 # apps/tasks/views.py
-
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
+
 from .run_logic import run_evaluation
-from .models import EvaluationTask, EvaluationItem, EvaluationModel
+from .models import EvaluationTask, EvaluationItem
 from .serializers import (
     EvaluationTaskSerializer,
     EvaluationTaskDetailSerializer,
 )
-from .permissions import IsTaskOwnerOrAdmin
 
 User = get_user_model()
 
 
 class EvaluationTaskViewSet(viewsets.ModelViewSet):
-    """
-    严格对齐 API 文档的 Task ViewSet：
-    - POST   /evaluation-tasks/           创建任务
-    - GET    /evaluation-tasks/           列表
-    - GET    /evaluation-tasks/{id}/      详情（仅创建者或管理员）
-    - PUT    /evaluation-tasks/{id}/      全量更新（仅创建者或管理员）
-    - PATCH  /evaluation-tasks/{id}/      部分更新（仅创建者或管理员）
-    - DELETE /evaluation-tasks/{id}/      删除（仅创建者或管理员）
-    - POST   /evaluation-tasks/{id}/      提交主观 / 对抗评分
-    """
-
     queryset = EvaluationTask.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
 
@@ -38,7 +26,6 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
 
     # -----------------------------
     # 工具：检查是否任务创建者或管理员
-    # 返回 Response 表示无权限；返回 None 表示通过
     # -----------------------------
     def _check_owner_or_admin(self, request, task: EvaluationTask):
         user = request.user
@@ -51,23 +38,21 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         return None
 
     # -----------------------------
-    # 1 创建任务  POST /evaluation-tasks/
+    # 1 创建任务：POST /api/tasks/evaluation-tasks/
     # -----------------------------
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            # 文档中 400 的 error 是一个字符串形式的 dict
             return Response({"error": str(serializer.errors)}, status=400)
 
-        # creator 从当前登录用户自动填充
+        # creator 固定为当前登录用户
         serializer.save(creator=request.user)
         task = serializer.instance
-        # 返回完整对象，字段与文档一致
         data = self.get_serializer(task).data
         return Response(data, status=status.HTTP_201_CREATED)
 
     # -----------------------------
-    # 2 获取列表  GET /evaluation-tasks/
+    # 2 列表：GET /api/tasks/evaluation-tasks/
     # -----------------------------
     def list(self, request, *args, **kwargs):
         tasks = self.get_queryset()
@@ -75,8 +60,7 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     # -----------------------------
-    # 3 获取单条详情  GET /evaluation-tasks/{id}/
-    # 仅创建者或管理员
+    # 3 详情：GET /api/tasks/evaluation-tasks/{id}/
     # -----------------------------
     def retrieve(self, request, *args, **kwargs):
         task = self.get_object()
@@ -88,7 +72,7 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     # -----------------------------
-    # 4 全量更新  PUT /evaluation-tasks/{id}/
+    # 4 全量更新：PUT /api/tasks/evaluation-tasks/{id}/
     # -----------------------------
     def update(self, request, *args, **kwargs):
         task = self.get_object()
@@ -103,7 +87,7 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     # -----------------------------
-    # 5 部分更新  PATCH /evaluation-tasks/{id}/
+    # 5 部分更新：PATCH /api/tasks/evaluation-tasks/{id}/
     # -----------------------------
     def partial_update(self, request, *args, **kwargs):
         task = self.get_object()
@@ -118,7 +102,7 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     # -----------------------------
-    # 6 删除任务  DELETE /evaluation-tasks/{id}/
+    # 6 删除任务：DELETE /api/tasks/evaluation-tasks/{id}/
     # -----------------------------
     def destroy(self, request, *args, **kwargs):
         task = self.get_object()
@@ -130,123 +114,83 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         return Response(status=204)
 
     # -----------------------------
-    # 7 / 8 提交主观 / 对抗评测（一题一传）
-    # POST /evaluation-tasks/{id}/
+    # 7 / 8 提交主观 / 对抗评分：
+    #    POST /api/tasks/evaluation-tasks/{id}/
+    #    body 里包含：
+    #    {
+    #      "myModel": 1,
+    #      "dataset": 1,
+    #      "reviewer": 1,
+    #      "time_stamp": "...",   # 可选，目前未使用
+    #      "itemID": 1,
+    #      "score": 6,           # 主观
+    #      "preference": "left"  # 对抗
+    #    }
     # -----------------------------
     def submit_score(self, request, pk=None):
-        """
-        请求示例（主观）：
-        {
-          "method": "subjective",
-          "model": 1,
-          "dataset": 1,
-          "reviewer": 1,
-          "time_stamp": "2025-11-30T10:00:00Z",
-          "itemID": 1,
-          "score": 6
-        }
-
-        请求示例（对抗）：
-        {
-          "method": "adversarial",
-          "model": 1,
-          "dataset": 1,
-          "reviewer": 1,
-          "time_stamp": "2025-11-30T10:00:00Z",
-          "itemID": 1,
-          "preference": "left"
-        }
-
-        失败响应（400）：
-        {
-          "error": "Task or Reviewer ID not found, or all items are completed."
-        }
-        """
         try:
             task = EvaluationTask.objects.get(pk=pk)
         except EvaluationTask.DoesNotExist:
-            return Response(
-                {"error": "Task or Reviewer ID not found, or all items are completed."},
-                status=400
-            )
+            return Response({"error": "Task not found"}, status=400)
 
-        method = request.data.get("method")
-        model_id = request.data.get("model")
+        # method 直接以任务本身为准，不强依赖前端传的 method
+        method = task.method
+
+        my_model_id = request.data.get("myModel")
         dataset_id = request.data.get("dataset")
         reviewer_id = request.data.get("reviewer")
         item_id = request.data.get("itemID")
         score = request.data.get("score")
         preference = request.data.get("preference")
 
-        # 校验 reviewer 存在
+        # 校验 reviewer 是否存在
         try:
             reviewer = User.objects.get(id=reviewer_id)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "Task or Reviewer ID not found, or all items are completed."},
-                status=400
-            )
+        except (User.DoesNotExist, TypeError, ValueError):
+            return Response({"error": "Reviewer not found"}, status=400)
 
-        # 校验 model/dataset 与 task 一致
-        if task.model_id != int(model_id) or task.dataset_id != int(dataset_id):
-            return Response(
-                {"error": "Task or Reviewer ID not found, or all items are completed."},
-                status=400
-            )
+        # ⭐ 校验 myModel 和 dataset 是否与任务一致（使用 My_Model）
+        try:
+            if int(my_model_id) != task.myModel_id or int(dataset_id) != task.dataset_id:
+                return Response({"error": "Model or dataset mismatch"}, status=400)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid myModel or dataset id"}, status=400)
 
-        # 获取条目
+        # 找到对应条目
         try:
             item = EvaluationItem.objects.get(task=task, id=item_id)
-        except EvaluationItem.DoesNotExist:
-            return Response(
-                {"error": "Task or Reviewer ID not found, or all items are completed."},
-                status=400
-            )
+        except (EvaluationItem.DoesNotExist, TypeError, ValueError):
+            return Response({"error": "Item not found"}, status=400)
 
-        # 根据 method 写入不同字段
+        # 根据任务类型填充字段
         if method == "subjective":
-            if score is None:
-                return Response(
-                    {"error": "Task or Reviewer ID not found, or all items are completed."},
-                    status=400
-                )
-            item.score = int(score)
+            # 主观评分必须有 score
+            try:
+                item.score = int(score)
+            except (TypeError, ValueError):
+                return Response({"error": "Invalid score"}, status=400)
+
         elif method == "adversarial":
-            if preference is None:
-                return Response(
-                    {"error": "Task or Reviewer ID not found, or all items are completed."},
-                    status=400
-                )
+            # 对抗评测必须有 preference
+            if preference not in ("left", "right"):
+                return Response({"error": "Invalid preference"}, status=400)
             item.preference = preference
         else:
-            return Response(
-                {"error": "Task or Reviewer ID not found, or all items are completed."},
-                status=400
-            )
+            # 目前文档只定义了主观 & 对抗两类提交
+            return Response({"error": "Invalid method for submit_score"}, status=400)
 
         item.save()
-        # 文档没有要求返回内容，返回一个空对象即可
+        # 此处暂不记录 reviewer / time_stamp，可根据需要扩展模型
         return Response({}, status=200)
 
 
 # --------------------------------------------------
-# 9. 请求待测条目列表
-# GET /api/tasks/get-pending-items?task=1&reviewer=1
+# 9. 请求待测条目列表：
+#    GET /api/tasks/get-pending-items?taskid=1&reviewerid=1
 # --------------------------------------------------
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_pending_items(request):
-    """
-    成功响应（200）：
-    {
-      "task": 1,
-      "reviewer": 1,
-      "pending_count": 98,
-      "pengdingItem_ids": ["1", "2", ...]
-    }
-    """
-    # 兼容几种参数名：task / taskid / task_id
     task_param = (
         request.query_params.get("task")
         or request.query_params.get("taskid")
@@ -262,72 +206,47 @@ def get_pending_items(request):
         task_id = int(task_param)
         reviewer_id = int(reviewer_param)
     except (TypeError, ValueError):
-        return Response({"error": "Task or Reviewer ID not found, or all items are completed."}, status=400)
+        return Response({"error": "Invalid parameters"}, status=400)
 
     try:
         task = EvaluationTask.objects.get(id=task_id)
     except EvaluationTask.DoesNotExist:
-        return Response({"error": "Task or Reviewer ID not found, or all items are completed."}, status=400)
+        return Response({"error": "Task not found"}, status=400)
 
-    # reviewer 仅用于记录，可以校验是否存在
     try:
         User.objects.get(id=reviewer_id)
     except User.DoesNotExist:
-        return Response({"error": "Task or Reviewer ID not found, or all items are completed."}, status=400)
+        return Response({"error": "Reviewer not found"}, status=400)
 
+    # 简化：当前实现是“条目全局只测一次”，未区分不同 reviewer
     pending = task.items.filter(score__isnull=True, preference__isnull=True)
     ids = [str(i.id) for i in pending]
 
-    # 注意：字段名故意使用文档中的拼写 pengdingItem_ids
-    return Response({
-        "task": task.id,
-        "reviewer": reviewer_id,
-        "pending_count": len(ids),
-        "pengdingItem_ids": ids,
-    }, status=200)
+    return Response(
+        {
+            "task": task.id,
+            "reviewer": reviewer_id,
+            "pending_count": len(ids),
+            "pengdingItem_ids": ids,
+        }
+    )
 
 
 # --------------------------------------------------
-# 10. 请求条目详情（主观 / 对抗评测界面条目展示）
-# GET /api/tasks/get-item-detail
+# 10. 请求单条条目详情：
+#     GET /api/tasks/get-item-detail?task=1&itemID=1
 # --------------------------------------------------
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_item_detail(request):
-    """
-    请求格式（JSON 或 query）：
-    {
-      "task": 1,
-      "itemID": 1
-    }
-
-    成功响应（200）：
-    {
-      "method": "subjective",
-      "itemID": 1,
-      "item_content": {
-        "input_query": "...",
-        "model1_response": "...",
-        "model2_response": null
-      }
-    }
-    """
-    # 兼容 query 参数和 body
-    task_param = (
-        request.query_params.get("task")
-        or request.data.get("task")
-    )
-    item_param = (
-        request.query_params.get("itemID")
-        or request.data.get("itemID")
-    )
+    task_param = request.query_params.get("task") or request.data.get("task")
+    item_param = request.query_params.get("itemID") or request.data.get("itemID")
 
     try:
         task_id = int(task_param)
         item_id = int(item_param)
     except (TypeError, ValueError):
-        return Response({"error": "Task or item not found"}, status=400)
+        return Response({"error": "Invalid parameters"}, status=400)
 
     try:
         task = EvaluationTask.objects.get(id=task_id)
@@ -335,34 +254,31 @@ def get_item_detail(request):
     except (EvaluationTask.DoesNotExist, EvaluationItem.DoesNotExist):
         return Response({"error": "Task or item not found"}, status=400)
 
-    return Response({
-        "method": task.method,
-        "itemID": item.id,
-        "item_content": {
-            "input_query": item.content,
-            "model1_response": item.predicted_answer,
-            "model2_response": None,   # 对抗评测模式下可用
-        },
-    }, status=200)
+    return Response(
+        {
+            "method": task.method,
+            "itemID": item.id,
+            "item_content": {
+                "input_query": item.content,
+                "myModel1_response": item.predicted_answer,  # 对齐文档中的 myModel1_response
+                "myModel2_response": None,  # 对抗评测下启用，可后续扩展
+            },
+        }
+    )
 
+
+# --------------------------------------------------
+# 11. 手动运行任务：POST /api/tasks/run-task
+# --------------------------------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def run_task(request):
-    """
-    测试版：手动触发评测任务
-    请求:
-    POST /api/tasks/run-task
-    {
-        "task_id": 1
-    }
-    """
     task_id = request.data.get("task_id")
 
     try:
         EvaluationTask.objects.get(id=task_id)
-    except:
+    except EvaluationTask.DoesNotExist:
         return Response({"error": "task not found"}, status=404)
 
     result = run_evaluation(task_id)
-
     return Response({"msg": "task executed", "data": result})
