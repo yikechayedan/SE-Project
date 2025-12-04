@@ -7,6 +7,10 @@ from datetime import timedelta
 # -----------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+LLM_API_KEY = "sk-lvu1gprkETFqF587yTOFjg"   
+LLM_BASE_URL = "https://llmapi.paratera.com/v1/"
+
 # 媒体文件配置（上传的数据集文件存储路径）
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")

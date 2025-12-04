@@ -1,0 +1,7 @@
+POST http://127.0.0.1:8000/api/tasks/run-task
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0ODMwMjE4LCJpYXQiOjE3NjQ4MjY2MTksImp0aSI6ImEyYzZjMTNiNzc2ODQxZjg5YjNiZjg5ZTZjMzJhYzdkIiwidXNlcl9pZCI6IjIifQ.BamtErHuVCaSeeQGNm-UZ69wUVOFZoEqWW9-FoptG_0
+
+{
+  "task_id": 1
+}

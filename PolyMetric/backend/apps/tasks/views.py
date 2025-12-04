@@ -5,7 +5,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-
+from .run_logic import run_evaluation
 from .models import EvaluationTask, EvaluationItem, EvaluationModel
 from .serializers import (
     EvaluationTaskSerializer,
@@ -344,3 +344,25 @@ def get_item_detail(request):
             "model2_response": None,   # 对抗评测模式下可用
         },
     }, status=200)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def run_task(request):
+    """
+    测试版：手动触发评测任务
+    请求:
+    POST /api/tasks/run-task
+    {
+        "task_id": 1
+    }
+    """
+    task_id = request.data.get("task_id")
+
+    try:
+        EvaluationTask.objects.get(id=task_id)
+    except:
+        return Response({"error": "task not found"}, status=404)
+
+    result = run_evaluation(task_id)
+
+    return Response({"msg": "task executed", "data": result})
