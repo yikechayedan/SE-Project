@@ -3,9 +3,12 @@ from django.conf import settings
 
 def call_llm_api(prompt: str, model_name: str):
     """
-    调用外部大模型 API，统一封装，方便任务评测使用
+    通用大模型调用接口
+    :param prompt: 输入文本
+    :param model_name: My_Model.name 字段，例如 "gpt-4o-mini"
     """
-    url = settings.LLM_BASE_URL + "chat/completions"
+
+    url = settings.LLM_BASE_URL.rstrip("/") + "/chat/completions"
 
     headers = {
         "Authorization": f"Bearer {settings.LLM_API_KEY}",
@@ -14,16 +17,17 @@ def call_llm_api(prompt: str, model_name: str):
 
     payload = {
         "model": model_name,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "stream": False,
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=60)
-        response.raise_for_status()
-        data = response.json()
+        resp = requests.post(url, json=payload, headers=headers, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # 通用返回结构
         return data["choices"][0]["message"]["content"]
+
     except Exception as e:
         return f"[LLM Error] {str(e)}"

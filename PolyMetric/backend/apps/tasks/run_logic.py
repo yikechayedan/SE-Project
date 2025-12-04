@@ -1,12 +1,13 @@
-from .services_llm import call_llm
+# apps/tasks/run_logic.py
+from .services import call_llm_api
 from .models import EvaluationTask, EvaluationItem
 from django.utils import timezone
 
+
 def run_evaluation(task_id: int):
     """
-    测试版评测逻辑：
-    不依赖 EvaluationTask.start_evaluation()
-    也不依赖 Celery（你们之后可以再加）
+    同步执行（非 Celery）版本的任务执行函数：
+    供前端 / 测试环境直接使用
     """
 
     try:
@@ -17,27 +18,30 @@ def run_evaluation(task_id: int):
     task.status = "running"
     task.save()
 
-    model_name = task.model.name
+    # ⭐ 使用 myModel
+    model_name = task.myModel.name
     items = task.items.all()
 
     correct = 0
     total = items.count()
 
     for item in items:
-        prediction = call_llm(item.content, model_name)
+        # 调用统一的大模型 API
+        prediction = call_llm_api(item.content, model_name)
         item.predicted_answer = prediction
 
+        # 客观评测：判断是否正确
         if task.method == "objective" and item.correct_answer:
-            if prediction.strip() == item.correct_answer.strip():
-                item.is_correct = 1
-                correct += 1
-            else:
-                item.is_correct = 0
+            item.is_correct = (
+                1 if prediction.strip() == item.correct_answer.strip() else 0
+            )
+            correct += item.is_correct or 0
 
         item.save()
 
+    # 计算 accuracy
     if task.method == "objective":
-        task.accuracy = correct / total if total > 0 else 0.0
+        task.accuracy = round(correct / total, 4) if total > 0 else 0.0
 
     task.status = "completed"
     task.time_used = timezone.now() - task.created_at

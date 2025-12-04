@@ -1,5 +1,7 @@
+# apps/tasks/serializers.py
 from rest_framework import serializers
-from .models import EvaluationTask, EvaluationItem, EvaluationModel
+from .models import EvaluationTask, EvaluationItem
+from apps.models.models import My_Model  # 仅供类型提示 / 可选引用
 
 
 # ------------------------------------
@@ -25,7 +27,9 @@ class EvaluationItemSerializer(serializers.ModelSerializer):
 class EvaluationTaskSerializer(serializers.ModelSerializer):
     creator_username = serializers.CharField(source="creator.username", read_only=True)
     dataset_name = serializers.CharField(source="dataset.name", read_only=True)
-    model_name = serializers.CharField(source="model.name", read_only=True)
+
+    # ⭐ 对齐 API 文档：myModel_name
+    myModel_name = serializers.CharField(source="myModel.name", read_only=True)
 
     class Meta:
         model = EvaluationTask
@@ -38,8 +42,8 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
             "dataset",
             "dataset_name",
             "method",
-            "model",
-            "model_name",
+            "myModel",        # 前端传入 myModel = My_Model 的 ID
+            "myModel_name",
             "status",
             "accuracy",
             "score",
@@ -58,7 +62,10 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user
+        # 保险起见，从 context 中再写一次 creator
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            validated_data["creator"] = request.user
         return super().create(validated_data)
 
 
@@ -66,6 +73,7 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
 # Task 详情 Serializer（多一个 data 字段）
 # ------------------------------------
 class EvaluationTaskDetailSerializer(EvaluationTaskSerializer):
+    # API 文档中的 data 字段，包含所有条目列表
     data = EvaluationItemSerializer(source="items", many=True, read_only=True)
 
     class Meta(EvaluationTaskSerializer.Meta):
