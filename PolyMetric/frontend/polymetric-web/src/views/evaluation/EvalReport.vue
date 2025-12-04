@@ -60,7 +60,7 @@
         
         <el-table-column label="结果" width="100" align="center">
           <template #default="scope">
-            <el-icon v-if="scope.row.result === 'correct'" class="result-icon correct-icon">
+            <el-icon v-if="scope.row.is_correct === 1" class="result-icon correct-icon">
               <Check />
             </el-icon>
             <el-icon v-else class="result-icon incorrect-icon">
@@ -87,56 +87,63 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, defineProps } from 'vue'
 import { Document, Check, Close } from '@element-plus/icons-vue'
+import { getEvaluationTaskDetail } from '@/api/tasks.js'
 
 const currentPage = ref(1)
 const pageSize = 10
 
+//接收任务中的路由ID
+const props = defineProps({
+    taskId: {
+        type: String, // ID 可能是字符串或数字
+        required: true
+    }
+})
+
 // ===================== 模拟数据定义 (静态数据) =====================
-const fullItemList = [
-  { id: 1, name: "计算题：1+1=?", correct_answer: "2", predicted_answer: "2", result: "correct" },
-  { id: 2, name: "几何题：三角形面积", correct_answer: "B", predicted_answer: "B", result: "correct" },
-  { id: 3, name: "逻辑题：鸡兔同笼", correct_answer: "C", predicted_answer: "D", result: "incorrect" },
-  { id: 4, name: "应用题：速度与时间", correct_answer: "A", predicted_answer: "A", result: "correct" },
-  { id: 5, name: "代数题：解方程", correct_answer: "D", predicted_answer: "D", result: "correct" },
-  { id: 6, name: "概率题：摸球问题", correct_answer: "A", predicted_answer: "A", result: "correct" },
-  { id: 7, name: "微积分基础", correct_answer: "B", predicted_answer: "C", result: "incorrect" },
-  { id: 8, name: "离散数学：集合", correct_answer: "C", predicted_answer: "C", result: "correct" },
-  { id: 9, name: "编程题：排序算法", correct_answer: "A", predicted_answer: "A", result: "correct" },
-  { id: 10, name: "应用题：利润计算", correct_answer: "D", predicted_answer: "D", result: "correct" },
-  { id: 11, name: "数论题：质数判定", correct_answer: "B", predicted_answer: "B", result: "correct" },
-  { id: 12, name: "组合数学：排列组合", correct_answer: "C", predicted_answer: "D", result: "incorrect" },
-  { id: 13, name: "图论基础", correct_answer: "A", predicted_answer: "A", result: "correct" },
-  { id: 14, name: "线性代数：矩阵运算", correct_answer: "D", predicted_answer: "D", result: "correct" },
-  { id: 15, name: "微分方程入门", correct_answer: "B", predicted_answer: "C", result: "incorrect" },
-];
 
-const mockReportData = {
-    id: "TASK-20250101-001",
-    name: "LLM数学能力评测",
-    dataset: "初中数学竞赛题",
-    evaluation_method: "客观评测",
-    model: "DeepMind Alpha",
-    evaluation_time: "2025-01-01T10:30:00Z",
-    evaluation_duration: "00:05:00",
-    summary: {
-        total_count: 100,
-        correct_count: 82,
-        accuracy_rate: 0.82, 
-        score: 82
-    },
-    pagination: {
-        current_page: 1,  
-        total_items: 100,  
-        total_pages: 10,
-        page_size: 10
-    },
-    items: fullItemList
+
+const reportData = ref({
+    // 任务基础信息
+    id: null,
+    name: '',
+    description: '',
+    creator: null,
+    creator_username: '',
+    
+    // 关联信息
+    dataset: null,
+    dataset_name: '',
+    model: null,
+    model_name: '',
+
+    // 状态与结果
+    method: '',
+    status: 'pending',
+    accuracy: null,
+    score: null,
+    
+    // 时间信息
+    created_at: '',
+    updated_at: '',
+    time_used: null,
+
+    // 嵌套的评测条目列表（最重要，必须是空数组）
+    data: [], 
+});
+
+const loading = ref(true); // 用于加载状态
+const errorMessage = ref(null); // 用于错误信息
+
+// 格式化时间函数（示例）
+const formatTime = (timeString) => {
+  if (!timeString) return 'N/A';
+  // 实际项目中应使用库（如 dayjs/moment）处理时间
+  return new Date(timeString).toLocaleString();
 };
-
-const reportData = ref(mockReportData)
-const paginatedItems = computed(() => reportData.value.items.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
+const paginatedItems = computed(() => reportData.value.data.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
 
 // ===================== 辅助函数 =====================
 
@@ -167,6 +174,27 @@ const getAccuracyColor = (rate) => {
     if (rate >= 0.9) return '#E6FAF5'; // 高分绿色
     if (rate >= 0.7) return '#FFF9E6'; // 中分黄色
     return '#FBEAEA'; // 低分红色
+}
+
+const fetchReportData = async () => {
+  loading.value = true;
+  errorMessage.value = null;
+  try{
+    const response = await getEvaluationTaskDetail(props.taskId);
+    if (response.data?.code === 200) {
+        reportData.value = response.data;
+    } else {
+        errorMessage.value = '获取评测报告失败';
+    }
+  }catch(error){
+    errorMessage.value = '获取评测报告时发生错误';
+    console.error('获取评测报告错误:', error);
+  }
+}
+
+onMounted
+{
+    fetchReportData();
 }
 </script>
 
