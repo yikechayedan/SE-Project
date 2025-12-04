@@ -1,0 +1,49 @@
+# apps/models/serializers.py
+from rest_framework import serializers
+# 关键修改：导入 My_Model 而非 Model/LargeModel
+from .models import My_Model, ModelFollow
+from apps.users.models import User
+
+class ModelListSerializer(serializers.ModelSerializer):
+    is_followed = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = My_Model  # 改为 My_Model
+        fields = [
+            'id', 'name', 'company', 'category', 'parameter_size',
+            'description', 'version', 'release_date', 'official_url',
+            'is_followed', 'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+
+class ModelDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = My_Model  # 改为 My_Model
+        fields = [
+            'id', 'name', 'company', 'category', 'parameter_size',
+            'description', 'version', 'release_date', 'official_url',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+
+class ModelFollowSerializer(serializers.ModelSerializer):
+    model_id = serializers.IntegerField(source='model.id', read_only=True)
+
+    class Meta:
+        model = ModelFollow
+        fields = ['id', 'model_id', 'created_at']
+        read_only_fields = fields
+
+
+class FollowedModelSerializer(serializers.ModelSerializer):
+    followed_at = serializers.DateTimeField(source='modelfollow.created_at', read_only=True)
+
+    class Meta:
+        model = My_Model  # 改为 My_Model
+        fields = [
+            'id', 'name', 'company', 'category', 'parameter_size',
+            'description', 'version', 'release_date', 'official_url',
+            'created_at', 'updated_at', 'followed_at'
+        ]
