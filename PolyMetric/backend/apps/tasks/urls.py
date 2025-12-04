@@ -1,5 +1,5 @@
 # apps/tasks/urls.py
-
+from .views import run_task
 from django.urls import path
 from .views import (
     EvaluationTaskViewSet,
@@ -35,4 +35,6 @@ urlpatterns = [
 
     # 10 请求条目详情
     path("get-item-detail", get_item_detail, name="get-item-detail"),
+
+    path("run-task", run_task),
 ]
