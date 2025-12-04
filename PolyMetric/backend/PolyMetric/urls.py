@@ -12,6 +12,9 @@ urlpatterns = [
     path("api/", include("apps.datasets.urls")),     # 数据集模块
 
     path("api/tasks/", include("apps.tasks.urls")),  # 评测任务
+
+    # 大模型模块（核心）
+    path("api/", include("apps.models.urls")),
 ]
 
 if settings.DEBUG:
