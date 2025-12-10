@@ -13,7 +13,7 @@
           </p>
         </div>
         <div class="banner-actions">
-          <el-button type="primary" size="large" round :icon="Aim" @click="showEvalDialog = true">
+          <el-button type="primary" size="large" round :icon="Aim" @click="goToEvaluation">
             发起评测
           </el-button>
           <el-button size="large" round :icon="QuestionFilled" @click="showTutorial = true">
@@ -31,7 +31,7 @@
         </div>
         <div class="stat-info">
           <span class="stat-value">{{ stats.modelCount }}</span>
-          <span class="stat-label">已评测模型</span>
+          <span class="stat-label">模型总数</span>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="hover">
@@ -185,7 +185,7 @@
               </div>
               <span>数据集</span>
             </div>
-            <div class="quick-item" @click="showEvalDialog = true">
+            <div class="quick-item" @click="goToEvaluation">
               <div class="quick-icon" style="background: #fff0e8;">
                 <el-icon :size="24" color="#e6a23c"><Aim /></el-icon>
               </div>
@@ -237,15 +237,15 @@
           </div>
         </el-card>
 
-        <!-- 最近活动 -->
+        <!-- 最新动态 -->
         <el-card class="activity-card" shadow="never">
           <template #header>
             <div class="card-header">
               <el-icon class="header-icon"><Bell /></el-icon>
-              <span>最近动态</span>
+              <span>最新动态</span>
             </div>
           </template>
-          <el-timeline>
+          <el-timeline v-if="recentActivities.length > 0">
             <el-timeline-item 
               v-for="(activity, index) in recentActivities" 
               :key="index"
@@ -256,6 +256,7 @@
               {{ activity.content }}
             </el-timeline-item>
           </el-timeline>
+          <el-empty v-else description="暂无动态" :image-size="60" />
         </el-card>
       </div>
     </div>
@@ -299,13 +300,14 @@
       </template>
     </el-dialog>
 
-    <!-- 评测弹窗 -->
+    <!-- 评测弹窗（保留作为备用） -->
     <EvalDialog v-model:showDialog="showEvalDialog" @close="showEvalDialog = false" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
   TrophyBase, Aim, QuestionFilled, Box, Folder, Document, User, 
@@ -314,6 +316,10 @@ import {
 } from '@element-plus/icons-vue'
 import EvalDialog from '../components/common/EvalDialog.vue'
 import { getAllDatasets } from '@/api/datasets'
+import { getAllModels } from '@/api/models'
+import { getEvaluationTasks } from '@/api/tasks'
+
+const router = useRouter()
 
 // 状态
 const showTutorial = ref(false)
@@ -330,26 +336,178 @@ const stats = ref({
   userCount: 0
 })
 
-// 获取真实数据集数量
+// 导航到评测页面
+const goToEvaluation = () => {
+  router.push('/evaluation')
+}
+
+// 获取真实统计数据
 const fetchStats = async () => {
   try {
-    const res = await getAllDatasets()
-    let datasets = []
-    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
-      datasets = res.data.data
-    } else if (Array.isArray(res.data)) {
-      datasets = res.data
+    // 并行获取所有统计数据
+    const [modelsRes, datasetsRes, tasksRes] = await Promise.all([
+      getAllModels().catch(() => null),
+      getAllDatasets().catch(() => null),
+      getEvaluationTasks().catch(() => null)
+    ])
+    
+    // 处理模型数量
+    if (modelsRes) {
+      let models = []
+      if (modelsRes.data?.code === 200 && Array.isArray(modelsRes.data.data)) {
+        models = modelsRes.data.data
+      } else if (Array.isArray(modelsRes.data)) {
+        models = modelsRes.data
+      }
+      stats.value.modelCount = models.length
     }
-    stats.value.datasetCount = datasets.length
-    // 其他数据暂时使用模拟值（等待后端 API）
-    stats.value.modelCount = 12
-    stats.value.taskCount = 156
-    stats.value.userCount = 89
+    
+    // 处理数据集数量
+    if (datasetsRes) {
+      let datasets = []
+      if (datasetsRes.data?.code === 200 && Array.isArray(datasetsRes.data.data)) {
+        datasets = datasetsRes.data.data
+      } else if (Array.isArray(datasetsRes.data)) {
+        datasets = datasetsRes.data
+      }
+      stats.value.datasetCount = datasets.length
+    }
+    
+    // 处理任务数量
+    if (tasksRes) {
+      let tasks = []
+      if (tasksRes.data?.code === 200 && Array.isArray(tasksRes.data.data)) {
+        tasks = tasksRes.data.data
+      } else if (Array.isArray(tasksRes.data)) {
+        tasks = tasksRes.data
+      } else if (tasksRes.data?.results && Array.isArray(tasksRes.data.results)) {
+        tasks = tasksRes.data.results
+      }
+      stats.value.taskCount = tasks.length
+    }
+    
+    // 活跃用户数暂时显示注册用户的估计值（后端暂无统计 API）
+    // 可以根据实际情况添加一个用户统计 API
+    stats.value.userCount = Math.max(10, stats.value.modelCount + stats.value.datasetCount)
+    
   } catch (error) {
     console.error('获取统计数据失败:', error)
     // 使用默认值
-    stats.value = { modelCount: 12, datasetCount: 8, taskCount: 156, userCount: 89 }
+    stats.value = { modelCount: 0, datasetCount: 0, taskCount: 0, userCount: 0 }
   }
+}
+
+// 获取最新动态（从评测任务、数据集、模型中汇总）
+const fetchRecentActivities = async () => {
+  try {
+    const activities = []
+    
+    // 获取最新的评测任务
+    const tasksRes = await getEvaluationTasks().catch(() => null)
+    if (tasksRes) {
+      let tasks = []
+      if (tasksRes.data?.code === 200 && Array.isArray(tasksRes.data.data)) {
+        tasks = tasksRes.data.data
+      } else if (Array.isArray(tasksRes.data)) {
+        tasks = tasksRes.data
+      } else if (tasksRes.data?.results && Array.isArray(tasksRes.data.results)) {
+        tasks = tasksRes.data.results
+      }
+      
+      // 取最新的几个任务
+      tasks.slice(0, 3).forEach(task => {
+        const statusText = task.status === 'completed' ? '完成' : 
+                          task.status === 'running' ? '进行中' : 
+                          task.status === 'failed' ? '失败' : '等待中'
+        activities.push({
+          content: `评测任务「${task.name || task.model_name || '未命名'}」${statusText}`,
+          time: formatTime(task.created_at || task.updated_at),
+          type: task.status === 'completed' ? 'success' : 
+                task.status === 'failed' ? 'danger' : 'primary',
+          timestamp: new Date(task.created_at || task.updated_at || Date.now()).getTime()
+        })
+      })
+    }
+    
+    // 获取最新的数据集
+    const datasetsRes = await getAllDatasets().catch(() => null)
+    if (datasetsRes) {
+      let datasets = []
+      if (datasetsRes.data?.code === 200 && Array.isArray(datasetsRes.data.data)) {
+        datasets = datasetsRes.data.data
+      } else if (Array.isArray(datasetsRes.data)) {
+        datasets = datasetsRes.data
+      }
+      
+      // 取最新的几个数据集
+      datasets.slice(0, 2).forEach(ds => {
+        activities.push({
+          content: `新增数据集「${ds.name || '未命名数据集'}」`,
+          time: formatTime(ds.created_at || ds.upload_time),
+          type: 'success',
+          timestamp: new Date(ds.created_at || ds.upload_time || Date.now()).getTime()
+        })
+      })
+    }
+    
+    // 获取最新的模型
+    const modelsRes = await getAllModels().catch(() => null)
+    if (modelsRes) {
+      let models = []
+      if (modelsRes.data?.code === 200 && Array.isArray(modelsRes.data.data)) {
+        models = modelsRes.data.data
+      } else if (Array.isArray(modelsRes.data)) {
+        models = modelsRes.data
+      }
+      
+      // 取最新的几个模型
+      models.slice(0, 2).forEach(model => {
+        activities.push({
+          content: `新模型「${model.name}」已添加 (${model.company || '未知厂商'})`,
+          time: formatTime(model.created_at),
+          type: 'primary',
+          timestamp: new Date(model.created_at || Date.now()).getTime()
+        })
+      })
+    }
+    
+    // 按时间排序，取最新的 5 条
+    activities.sort((a, b) => b.timestamp - a.timestamp)
+    recentActivities.value = activities.slice(0, 5)
+    
+    // 如果没有真实数据，显示默认提示
+    if (recentActivities.value.length === 0) {
+      recentActivities.value = [
+        { content: '欢迎使用 PolyMetric 大模型评测平台', time: '刚刚', type: 'primary' }
+      ]
+    }
+    
+  } catch (error) {
+    console.error('获取最新动态失败:', error)
+    recentActivities.value = [
+      { content: '欢迎使用 PolyMetric 大模型评测平台', time: '刚刚', type: 'primary' }
+    ]
+  }
+}
+
+// 格式化时间
+const formatTime = (dateStr) => {
+  if (!dateStr) return '刚刚'
+  
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
+  if (hours < 24) return `${hours} 小时前`
+  if (days < 7) return `${days} 天前`
+  
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
 }
 
 // 排行榜数据（模拟数据，等待后端 API 实现）
@@ -388,13 +546,8 @@ const rankings = ref([
   }
 ])
 
-// 最近活动
-const recentActivities = ref([
-  { content: 'GPT-4o 完成了新一轮综合评测', time: '10 分钟前', type: 'primary' },
-  { content: '新增数据集「中文逻辑推理v2」', time: '1 小时前', type: 'success' },
-  { content: 'Claude 3.5 排名上升 1 位', time: '3 小时前', type: 'warning' },
-  { content: '系统完成 23 个模型的批量评测', time: '昨天', type: 'info' }
-])
+// 最近活动（动态获取）
+const recentActivities = ref([])
 
 // 最后更新时间
 const lastUpdated = computed(() => {
@@ -429,6 +582,7 @@ const getScoreColor = (score) => {
 
 onMounted(() => {
   fetchStats()
+  fetchRecentActivities()
 })
 </script>
 
@@ -449,8 +603,8 @@ onMounted(() => {
 
 .banner-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -478,7 +632,7 @@ onMounted(() => {
 .stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  gap: 16px;
   padding: 0 20px;
   margin-bottom: 20px;
 }

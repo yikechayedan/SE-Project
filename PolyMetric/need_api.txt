@@ -258,3 +258,104 @@ GET /api/users/me/ 返回:
 }
 
 
+
+
+==========================================
+首页统计与动态所需 API（2024-12-11 新增）
+==========================================
+
+目前首页使用以下现有 API 获取统计数据：
+- GET /api/models/        → 模型总数
+- GET /api/datasets/      → 数据集总数  
+- GET /api/tasks/evaluation-tasks/  → 评测任务总数
+
+【待实现】用户统计 API
+------------------------------------------
+GET /api/users/stats/
+
+请求头:
+{
+  "Authorization": "Bearer <access_token>"  (可选)
+}
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "total_users": 156,      // 总用户数
+    "active_users": 89       // 活跃用户数（7天内有操作）
+  }
+}
+
+
+【待实现】平台统计汇总 API（建议合并为一个接口）
+------------------------------------------
+GET /api/stats/overview/
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "查询成功", 
+  "data": {
+    "model_count": 12,       // 模型总数
+    "dataset_count": 8,      // 数据集总数
+    "task_count": 156,       // 评测任务总数
+    "user_count": 89,        // 活跃用户数
+    "completed_tasks": 120   // 已完成评测数
+  }
+}
+
+说明：这个 API 可以减少前端多次请求，提升首页加载速度
+
+
+【待实现】最新动态 API（可选，推荐）
+------------------------------------------
+GET /api/activities/recent/
+
+请求参数:
+- limit: 返回条数，默认 10
+
+成功响应 (200):
+{
+  "code": 200,
+  "msg": "查询成功",
+  "data": [
+    {
+      "type": "task_completed",      // task_created, task_completed, dataset_added, model_added
+      "content": "评测任务「GPT-4 vs Claude」已完成",
+      "user": "张三",                // 操作用户（可选）
+      "created_at": "2024-12-11T10:30:00Z"
+    },
+    {
+      "type": "dataset_added",
+      "content": "新增数据集「中文逻辑推理v2」",
+      "user": "李四",
+      "created_at": "2024-12-11T09:00:00Z"
+    }
+  ]
+}
+
+说明：目前前端通过分别请求任务、数据集、模型列表来组装动态，
+      如果后端实现此 API 可以简化逻辑并支持更丰富的动态类型
+
+
+==========================================
+当前首页实现说明（前端已完成）
+==========================================
+
+1. 统计数据获取：
+   - 模型总数：调用 getAllModels() → /api/models/
+   - 数据集总数：调用 getAllDatasets() → /api/datasets/
+   - 任务总数：调用 getEvaluationTasks() → /api/tasks/evaluation-tasks/
+   - 用户数：暂时使用估算值（模型+数据集数量）
+
+2. 最新动态：
+   - 从任务、数据集、模型列表中各取前几条
+   - 按时间排序合并展示
+   - 显示相对时间（x分钟前、x小时前等）
+
+3. 发起评测按钮：
+   - 点击后跳转到 /evaluation 页面
+   - 不再弹出对话框
+

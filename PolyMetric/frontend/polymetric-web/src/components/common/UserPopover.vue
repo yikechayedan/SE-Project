@@ -1,11 +1,12 @@
 <template>
   <el-popover
+    ref="popoverRef"
     :visible="visible"
     placement="bottom-start"
-    :width="280"
+    :width="300"
     trigger="click"
+    popper-class="user-popover-popper"
     @show="handleShow"
-    @hide="visible = false"
   >
     <template #reference>
       <span 
@@ -19,33 +20,46 @@
 
     <!-- 弹窗内容 -->
     <div class="user-popover" v-loading="loading">
+      <!-- 关闭按钮 -->
+      <el-icon class="close-btn" @click="closePopover"><Close /></el-icon>
+      
+      <!-- 用户头像和基本信息 -->
       <div class="user-header">
-        <el-avatar :size="60" :src="userInfo.avatar || defaultAvatar" />
+        <el-avatar :size="64" :src="userInfo.avatar || defaultAvatar" class="user-avatar" />
         <div class="user-basic">
-          <h4>{{ userInfo.username || username }}</h4>
-          <p class="email">{{ userInfo.email || '邮箱未公开' }}</p>
+          <h4 class="user-name">
+            {{ userInfo.username || username }}
+            <el-tag v-if="isSelf" size="small" type="success" class="self-tag">我</el-tag>
+          </h4>
+          <p class="user-email">
+            <el-icon><Message /></el-icon>
+            {{ userInfo.email || '邮箱未公开' }}
+          </p>
         </div>
       </div>
       
-      <div class="user-intro">
+      <!-- 个人简介 -->
+      <div class="user-bio">
         <p>{{ userInfo.bio || '这个人很懒，什么都没写~' }}</p>
       </div>
 
+      <!-- 隐私权限状态（非自己才显示） -->
       <div class="user-permissions" v-if="!isSelf">
-        <div class="permission-item">
-          <el-icon><Box /></el-icon>
-          <span>关注的模型</span>
-          <el-icon v-if="!userInfo.show_followed_models" class="lock-icon"><Lock /></el-icon>
-          <el-icon v-else class="unlock-icon"><Unlock /></el-icon>
+        <div class="permission-item" :class="{ 'is-public': userInfo.show_followed_models }">
+          <el-icon class="permission-icon"><Box /></el-icon>
+          <span class="permission-text">关注的模型</span>
+          <el-icon v-if="userInfo.show_followed_models" class="status-icon unlock"><Unlock /></el-icon>
+          <el-icon v-else class="status-icon lock"><Lock /></el-icon>
         </div>
-        <div class="permission-item">
-          <el-icon><Folder /></el-icon>
-          <span>关注的数据集</span>
-          <el-icon v-if="!userInfo.show_followed_datasets" class="lock-icon"><Lock /></el-icon>
-          <el-icon v-else class="unlock-icon"><Unlock /></el-icon>
+        <div class="permission-item" :class="{ 'is-public': userInfo.show_followed_datasets }">
+          <el-icon class="permission-icon"><Folder /></el-icon>
+          <span class="permission-text">关注的数据集</span>
+          <el-icon v-if="userInfo.show_followed_datasets" class="status-icon unlock"><Unlock /></el-icon>
+          <el-icon v-else class="status-icon lock"><Lock /></el-icon>
         </div>
       </div>
 
+      <!-- 操作按钮 -->
       <div class="user-actions">
         <el-button 
           v-if="!isSelf"
@@ -54,6 +68,7 @@
           :icon="userInfo.is_followed ? StarFilled : Star"
           @click="handleToggleFollow"
           :loading="followLoading"
+          round
         >
           {{ userInfo.is_followed ? '取消关注' : '关注' }}
         </el-button>
@@ -63,7 +78,7 @@
           plain
           :icon="User"
           @click="goToProfile"
-          :disabled="!canViewProfile"
+          round
         >
           {{ isSelf ? '我的主页' : '查看主页' }}
         </el-button>
@@ -73,10 +88,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Box, Folder, Lock, Unlock, Star, StarFilled, User } from '@element-plus/icons-vue'
+import { Box, Folder, Lock, Unlock, Star, StarFilled, User, Message, Close } from '@element-plus/icons-vue'
 import { getPublicUserInfo, followUser, unfollowUser } from '@/api/users'
 
 const props = defineProps({
@@ -91,6 +106,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const popoverRef = ref(null)
 const visible = ref(false)
 const loading = ref(false)
 const followLoading = ref(false)
@@ -119,11 +135,29 @@ const isSelf = computed(() => {
   return currentUserId.value && currentUserId.value === parseInt(props.userId)
 })
 
-// 是否可以查看主页（自己 或者 至少有一个权限开放）
-const canViewProfile = computed(() => {
-  if (isSelf.value) return true
-  return userInfo.value.show_followed_models || userInfo.value.show_followed_datasets
-})
+// 关闭弹窗
+const closePopover = () => {
+  visible.value = false
+}
+
+// 点击外部关闭弹窗
+const handleClickOutside = (event) => {
+  if (!visible.value) return
+  
+  // 检查点击是否在弹窗内部
+  const popoverEl = document.querySelector('.user-popover-popper')
+  const referenceEl = popoverRef.value?.$el?.querySelector('.username-link')
+  
+  if (popoverEl && popoverEl.contains(event.target)) {
+    return // 点击在弹窗内部，不关闭
+  }
+  if (referenceEl && referenceEl.contains(event.target)) {
+    return // 点击在触发元素上，不关闭（由 handleClick 处理）
+  }
+  
+  // 点击在外部，关闭弹窗
+  visible.value = false
+}
 
 // 点击用户名
 const handleClick = () => {
@@ -205,6 +239,15 @@ const goToProfile = () => {
     router.push(`/user/${props.userId}`)
   }
 }
+
+// 生命周期钩子 - 添加全局点击监听
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
@@ -213,6 +256,9 @@ const goToProfile = () => {
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .username-link:hover {
@@ -224,46 +270,98 @@ const goToProfile = () => {
   color: #67c23a;
 }
 
-.user-popover {
-  padding: 5px;
+.username-link.is-self:hover {
+  color: #85ce61;
 }
 
+.user-popover {
+  padding: 5px;
+  position: relative;
+}
+
+/* 关闭按钮 */
+.close-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 16px;
+  color: #909399;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  color: #f56c6c;
+  background: #fef0f0;
+}
+
+/* 用户头部信息 */
 .user-header {
   display: flex;
   align-items: center;
   gap: 15px;
   margin-bottom: 12px;
+  padding-right: 20px;
 }
 
-.user-basic h4 {
-  margin: 0 0 5px;
+.user-avatar {
+  flex-shrink: 0;
+  border: 2px solid #f0f2f5;
+}
+
+.user-basic {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  margin: 0 0 6px;
   font-size: 16px;
   color: #303133;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.user-basic .email {
+.self-tag {
+  font-size: 10px;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 16px;
+}
+
+.user-email {
   margin: 0;
   font-size: 12px;
   color: #909399;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.user-intro {
-  padding: 10px;
-  background: #f5f7fa;
-  border-radius: 6px;
+/* 个人简介 */
+.user-bio {
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);
+  border-radius: 8px;
   margin-bottom: 12px;
 }
 
-.user-intro p {
+.user-bio p {
   margin: 0;
   font-size: 13px;
   color: #606266;
   line-height: 1.5;
+  word-break: break-word;
 }
 
+/* 权限状态 */
 .user-permissions {
-  margin-bottom: 12px;
-  padding: 8px 0;
+  margin-bottom: 15px;
+  padding: 10px 0;
   border-top: 1px solid #ebeef5;
   border-bottom: 1px solid #ebeef5;
 }
@@ -272,26 +370,56 @@ const goToProfile = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+  background: #f5f7fa;
+}
+
+.permission-item:last-child {
+  margin-bottom: 0;
+}
+
+.permission-item.is-public {
+  background: #f0f9eb;
+}
+
+.permission-icon {
+  font-size: 14px;
+  color: #909399;
+}
+
+.permission-item.is-public .permission-icon {
+  color: #67c23a;
+}
+
+.permission-text {
+  flex: 1;
   font-size: 13px;
   color: #606266;
 }
 
-.permission-item span {
-  flex: 1;
+.status-icon {
+  font-size: 14px;
 }
 
-.lock-icon {
-  color: #909399;
+.status-icon.lock {
+  color: #c0c4cc;
 }
 
-.unlock-icon {
+.status-icon.unlock {
   color: #67c23a;
 }
 
+/* 操作按钮 */
 .user-actions {
   display: flex;
   gap: 10px;
   justify-content: center;
+}
+
+.user-actions .el-button {
+  flex: 1;
 }
 </style>
