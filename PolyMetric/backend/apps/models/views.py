@@ -4,6 +4,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+from apps.users.models import UserFollow
+
+User = get_user_model()
 import django.db.models as models  # 显式导入 models 避免混淆
 # 关键修改：导入 My_Model
 from .models import My_Model, ModelFollow
@@ -91,19 +95,51 @@ class FollowedModelsListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # 查询当前用户关注的所有模型，并关联关注时间
-        return My_Model.objects.filter(
-            followers__user=self.request.user
-        ).prefetch_related(
+        user_id = self.request.query_params.get('user_id')
+        
+        if user_id:
+            # 查询他人的关注列表
+            try:
+                target_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return My_Model.objects.none()
+                
+            # 检查隐私设置
+            if target_user != self.request.user and not target_user.show_followed_models:
+                return My_Model.objects.none()
+                
+            queryset = My_Model.objects.filter(
+                followers__user=target_user
+            )
+        else:
+            # 查询自己的关注列表
+            queryset = My_Model.objects.filter(
+                followers__user=self.request.user
+            )
+            
+        # 关联关注时间
+        return queryset.prefetch_related(
             models.Prefetch(
                 'followers',
-                queryset=ModelFollow.objects.filter(user=self.request.user),
-                to_attr='modelfollow'  # 用于序列化器获取关注时间
+                queryset=ModelFollow.objects.filter(user=self.request.user if not user_id else target_user),
+                to_attr='modelfollow'
             )
         ).order_by('-followers__created_at')
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        user_id = request.query_params.get('user_id')
+        
+        # 处理隐私限制返回
+        if user_id and queryset.count() == 0:
+            target_user = User.objects.filter(id=user_id).first()
+            if target_user and target_user != request.user and not target_user.show_followed_models:
+                return Response({
+                    'code': 200,
+                    'msg': '该用户未公开关注的模型',
+                    'data': None
+                })
+                
         serializer = self.get_serializer(queryset, many=True)
         return Response({
             'code': 200,
