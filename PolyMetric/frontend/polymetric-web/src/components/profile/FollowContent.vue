@@ -143,7 +143,7 @@
         <div class="card-content">
           <div class="card-header">
             <div class="title-row">
-              <el-avatar :size="40" :src="item.avatar || defaultAvatar" />
+              <el-avatar :size="40" :src="getFullAvatarUrl(item.avatar)" />
               <div class="user-info">
                 <span class="item-name clickable" @click="goToUserProfile(item)">
                   {{ item.username }}
@@ -227,6 +227,27 @@ import { getFollowedUsers, unfollowUser } from '@/api/users'
 
 const router = useRouter()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+// 后端基础URL
+const API_BASE_URL = 'http://127.0.0.1:8000'
+
+// 处理头像URL，确保是完整路径
+const getFullAvatarUrl = (avatar) => {
+  if (!avatar) return defaultAvatar
+  // 如果已经是完整URL，直接返回
+  if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+    return avatar
+  }
+  // 确保路径以 /media/ 开头
+  let path = avatar
+  if (!path.startsWith('/')) {
+    path = '/' + path
+  }
+  if (!path.startsWith('/media/')) {
+    path = '/media' + path
+  }
+  return `${API_BASE_URL}${path}`
+}
 
 // 当前展示类型：model、dataset 或 user
 const activeType = ref('dataset')  // 默认显示数据集
