@@ -14,3 +14,13 @@ export function createEvaluationTask(data) {
 export function getEvaluationTaskDetail(id) {
     return request.get(`/api/tasks/evaluation-tasks/${id}/`)
 }
+
+//删除评测任务
+export function deleteEvaluationTask(id) {
+    return request.delete(`/api/tasks/evaluation-tasks/${id}/`)
+}
+
+//更新评测任务
+export function updateEvaluationTask(id, data) {
+    return request.put(`/api/tasks/evaluation-tasks/${id}/`, data)
+}
