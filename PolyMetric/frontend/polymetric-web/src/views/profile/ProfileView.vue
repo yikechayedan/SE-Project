@@ -18,13 +18,13 @@
       <el-col :span="16">
         <el-tabs v-model="activeTab">
           <el-tab-pane label="关注" name="follow">
-            <FollowContent />
+            <FollowContent v-if="activeTab==='follow'"/>
           </el-tab-pane>
           <el-tab-pane label="数据集" name="datasets">
-            <MyDatasets />
+            <MyDatasets v-if="activeTab==='datasets'"/>
           </el-tab-pane>
           <el-tab-pane label="任务" name="tasks">
-            <MyTasks />
+            <MyTasks v-if="activeTab==='tasks'"/>
           </el-tab-pane>
         </el-tabs>
       </el-col>

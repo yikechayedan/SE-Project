@@ -47,6 +47,8 @@ class EvaluationTask(models.Model):
         on_delete=models.CASCADE,
         related_name="evaluation_tasks",
         verbose_name="评测模型",
+        null=True,
+        blank=True,
     )
 
     # 任务状态：pending / running / completed
