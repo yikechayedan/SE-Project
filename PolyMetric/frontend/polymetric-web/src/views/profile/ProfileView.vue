@@ -8,7 +8,11 @@
           <p>{{ form.intro || '暂无个人介绍' }}</p>
           <p>邮箱: {{ form.email || '未设置' }}</p>
           <p>手机号: {{ form.phone || '未设置' }}</p>
-          <el-button type="primary" plain @click="openEditDialog">编辑</el-button>
+          <el-button type="primary" plain @click="openEditDialog">编辑资料</el-button>
+          <el-button plain @click="openPrivacyDialog" style="margin-top: 10px;">
+            <el-icon><Setting /></el-icon>
+            隐私设置
+          </el-button>
         </el-card>
       </el-col>
       <el-col :span="16">
@@ -73,6 +77,39 @@
         <el-button type="primary" :loading="loading" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 隐私设置弹窗 -->
+    <el-dialog v-model="showPrivacy" title="隐私设置" width="450px">
+      <div class="privacy-settings">
+        <p class="privacy-desc">设置您的关注列表对其他用户的可见性</p>
+        
+        <div class="privacy-item">
+          <div class="privacy-label">
+            <el-icon><Box /></el-icon>
+            <span>公开关注的模型</span>
+          </div>
+          <el-switch v-model="privacyForm.show_followed_models" />
+        </div>
+        
+        <div class="privacy-item">
+          <div class="privacy-label">
+            <el-icon><Folder /></el-icon>
+            <span>公开关注的数据集</span>
+          </div>
+          <el-switch v-model="privacyForm.show_followed_datasets" />
+        </div>
+        
+        <el-alert type="info" :closable="false" style="margin-top: 15px;">
+          <template #title>
+            开启后，其他用户可以在您的主页查看对应的关注列表
+          </template>
+        </el-alert>
+      </div>
+      <template #footer>
+        <el-button @click="showPrivacy = false">取消</el-button>
+        <el-button type="primary" :loading="privacyLoading" @click="savePrivacy">保存设置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -80,7 +117,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getUserInfo, updateUserInfo, uploadAvatar } from '@/api/users'
+import { Setting, Box, Folder } from '@element-plus/icons-vue'
+import { getUserInfo, updateUserInfo, uploadAvatar, updatePrivacySettings } from '@/api/users'
 import FollowContent from '../../components/profile/FollowContent.vue'
 import MyDatasets from '../../components/profile/MyDatasets.vue'
 import MyTasks from '../../components/profile/MyTasks.vue'
@@ -88,7 +126,9 @@ import MyTasks from '../../components/profile/MyTasks.vue'
 const router = useRouter()
 const activeTab = ref('follow')
 const showEdit = ref(false)
+const showPrivacy = ref(false)
 const loading = ref(false)
+const privacyLoading = ref(false)
 const avatarUploading = ref(false)
 const editFormRef = ref(null)
 
@@ -100,7 +140,9 @@ const form = reactive({
   intro: '',
   email: '',
   phone: '',
-  avatar: ''
+  avatar: '',
+  show_followed_models: true,
+  show_followed_datasets: true
 })
 
 const editForm = reactive({
@@ -108,6 +150,11 @@ const editForm = reactive({
   intro: '',
   email: '',
   phone: ''
+})
+
+const privacyForm = reactive({
+  show_followed_models: true,
+  show_followed_datasets: true
 })
 
 // 计算头像 URL
@@ -140,6 +187,8 @@ const fetchUserInfo = async () => {
     form.email = data.email || ''
     form.phone = data.phone || ''
     form.avatar = data.avatar || ''
+    form.show_followed_models = data.show_followed_models !== false
+    form.show_followed_datasets = data.show_followed_datasets !== false
     
   } catch (error) {
     if (error.response?.status === 401) {
@@ -159,6 +208,13 @@ const openEditDialog = () => {
   editForm.email = form.email
   editForm.phone = form.phone
   showEdit.value = true
+}
+
+// 打开隐私设置弹窗
+const openPrivacyDialog = () => {
+  privacyForm.show_followed_models = form.show_followed_models
+  privacyForm.show_followed_datasets = form.show_followed_datasets
+  showPrivacy.value = true
 }
 
 // 头像上传处理
@@ -246,6 +302,36 @@ const saveEdit = () => {
     }
   })
 }
+
+// 保存隐私设置
+const savePrivacy = async () => {
+  privacyLoading.value = true
+  try {
+    const res = await updatePrivacySettings({
+      show_followed_models: privacyForm.show_followed_models,
+      show_followed_datasets: privacyForm.show_followed_datasets
+    })
+    
+    if (res.data?.code === 200) {
+      form.show_followed_models = privacyForm.show_followed_models
+      form.show_followed_datasets = privacyForm.show_followed_datasets
+      ElMessage.success('隐私设置已更新')
+      showPrivacy.value = false
+    } else {
+      ElMessage.error(res.data?.msg || '设置更新失败')
+    }
+  } catch (error) {
+    if (error.response?.status === 401) {
+      ElMessage.error('登录已过期，请重新登录')
+      localStorage.clear()
+      router.push('/login')
+    } else {
+      ElMessage.error('设置更新失败，请稍后重试')
+    }
+  } finally {
+    privacyLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -292,5 +378,39 @@ const saveEdit = () => {
   font-size: 12px;
   color: #999;
   margin-top: 5px;
+}
+
+/* 隐私设置样式 */
+.privacy-settings {
+  padding: 10px 0;
+}
+
+.privacy-desc {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.privacy-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.privacy-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: #303133;
+}
+
+.privacy-label .el-icon {
+  font-size: 18px;
+  color: #409eff;
 }
 </style>

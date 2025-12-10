@@ -12,6 +12,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     2. 后端保存文件到磁盘，数据库存储文件路径
     3. 返回文件下载 URL 供前端使用
     """
+    creator_id = serializers.IntegerField(source='creator.id', read_only=True)  # 新增
     creator_username = serializers.CharField(source="creator.username", read_only=True)
     file_url = serializers.SerializerMethodField(read_only=True)
     has_file = serializers.SerializerMethodField(read_only=True)
@@ -21,7 +22,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         model = Dataset
         fields = [
             "id", "name", "description", "category", "file_format",
-            "file_size", "sample_count", "creator", "creator_username",
+            "file_size", "sample_count", "creator", "creator_id", "creator_username",
             "is_public", "is_verified", "is_followed", "has_file",
             "created_at", "updated_at", "file_url", "file_path"
         ]

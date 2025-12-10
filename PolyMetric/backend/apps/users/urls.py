@@ -5,7 +5,9 @@ from .views import (
     RegisterView, UserInfoView, ChangePasswordView,
     LogoutView, AdminUserListView, AdminUserDeleteView,
     ForgotPasswordView, VerifyCodeView, ResetPasswordView,
-    AvatarUploadView
+    AvatarUploadView,
+    UserPublicView, UserFollowView, FollowedUsersListView,
+    PrivacySettingView, CurrentUserView
 )
 
 urlpatterns = [
@@ -16,7 +18,6 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
     # 用户信息
-    path("me/", UserInfoView.as_view(), name="user_info"),
     path("change_password/", ChangePasswordView.as_view(), name="change_password"),
     path("logout/", LogoutView.as_view(), name="logout"),
 
@@ -31,4 +32,10 @@ urlpatterns = [
 
     # 头像上传
     path("avatar/", AvatarUploadView.as_view(), name="upload_avatar"),
+
+    path('<int:id>/public/', UserPublicView.as_view(), name='user-public'),
+    path('<int:id>/follow/', UserFollowView.as_view(), name='user-follow'),
+    path('followed/', FollowedUsersListView.as_view(), name='user-followed-list'),  # 改为测试用例的名称
+    path('privacy/', PrivacySettingView.as_view(), name='user-privacy-update'), 
+    path("me/", CurrentUserView.as_view(), name="user-me"),
 ]

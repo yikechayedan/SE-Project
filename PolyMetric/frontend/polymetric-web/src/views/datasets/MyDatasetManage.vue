@@ -201,27 +201,65 @@
         <el-icon class="is-loading" :size="24"><Loading /></el-icon>
         <span>加载中...</span>
       </div>
-      <div v-else-if="previewData">
+      <div v-else-if="previewEntries.length > 0">
         <div class="preview-info">
-          <span>格式: {{ previewData.format?.toUpperCase() }}</span>
-          <span>总条目: {{ previewData.total }}</span>
-          <span>当前显示: {{ previewData.rows?.length || 0 }} 条</span>
+          <span>总条目: {{ previewTotal }} 条</span>
+          <span>当前页: {{ previewCurrentPage }} / {{ Math.ceil(previewTotal / previewPageSize) || 1 }}</span>
+          <span>每页: {{ previewPageSize }} 条</span>
         </div>
-        <el-table :data="previewData.rows" border stripe max-height="400" v-if="previewData.rows?.length">
+        
+        <!-- 数据表格 -->
+        <el-table :data="previewEntries" border stripe max-height="400" size="small">
           <el-table-column 
-            v-for="header in previewData.headers" 
-            :key="header" 
-            :prop="header" 
-            :label="header"
-            min-width="120"
+            v-for="field in previewFields" 
+            :key="field" 
+            :prop="field" 
+            :label="field"
+            :min-width="getFieldWidth(field)"
             show-overflow-tooltip
-          />
+          >
+            <template #default="{ row }">
+              <span class="cell-content">{{ formatCellValue(row[field]) }}</span>
+            </template>
+          </el-table-column>
         </el-table>
-        <el-empty v-else description="暂无数据" />
+
+        <!-- 分页组件 -->
+        <div class="preview-pagination" v-if="previewTotal > 0">
+          <el-pagination
+            v-model:current-page="previewCurrentPage"
+            :page-size="previewPageSize"
+            :page-sizes="[5, 10, 20, 50]"
+            :total="previewTotal"
+            :background="true"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handlePreviewSizeChange"
+            @current-change="handlePreviewPageChange"
+            small
+          />
+          
+          <!-- 快速跳转 Goto 功能 -->
+          <div class="goto-container">
+            <span>跳转至:</span>
+            <el-input-number 
+              v-model="gotoPage" 
+              :min="1" 
+              :max="Math.ceil(previewTotal / previewPageSize) || 1" 
+              size="small"
+              controls-position="right"
+              style="width: 100px; margin: 0 8px;"
+            />
+            <el-button size="small" type="primary" @click="handleGotoPage">Go</el-button>
+          </div>
+        </div>
       </div>
       <div v-else>
-        <el-empty description="无法加载预览数据" />
+        <el-empty description="暂无数据条目或不支持预览该格式" :image-size="80" />
       </div>
+      
+      <template #footer>
+        <el-button @click="showPreviewDialog = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -232,7 +270,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading, View, UploadFilled
 } from '@element-plus/icons-vue'
-import { getMyDatasets, updateDataset, deleteDataset } from '@/api/datasets'
+import { getMyDatasets, updateDataset, deleteDataset, getDatasetEntries } from '@/api/datasets'
 import request from '@/api/request'
 
 // 状态
@@ -246,10 +284,15 @@ const showUploadDialog = ref(false)
 const showEditDialog = ref(false)
 const showPreviewDialog = ref(false)
 
-// 预览相关
+// 预览相关 - 参考 DatasetSquare.vue 的实现
 const currentDataset = ref(null)
-const previewData = ref(null)
 const loadingPreview = ref(false)
+const previewEntries = ref([])  // 当前页的条目数据
+const previewFields = ref([])   // 字段列表
+const previewCurrentPage = ref(1)
+const previewPageSize = ref(10)
+const previewTotal = ref(0)
+const gotoPage = ref(1)
 
 // 表单引用
 const uploadFormRef = ref(null)
@@ -318,6 +361,28 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('zh-CN')
 }
 
+// 根据字段名获取列宽度 - 复用 DatasetSquare.vue 的逻辑
+const getFieldWidth = (field) => {
+  const fieldLower = field.toLowerCase()
+  if (fieldLower.includes('content') || fieldLower.includes('text') || 
+      fieldLower.includes('answer') || fieldLower.includes('question') ||
+      fieldLower.includes('description') || fieldLower.includes('prompt')) {
+    return 200
+  }
+  if (fieldLower === 'id' || fieldLower.includes('_id')) {
+    return 60
+  }
+  return 120
+}
+
+// 格式化单元格值 - 复用 DatasetSquare.vue 的逻辑
+const formatCellValue = (value) => {
+  if (value === null || value === undefined) return '-'
+  if (typeof value === 'object') return JSON.stringify(value)
+  if (typeof value === 'boolean') return value ? '是' : '否'
+  return String(value)
+}
+
 // 获取我的数据集
 const fetchMyDatasets = async () => {
   loading.value = true
@@ -341,7 +406,6 @@ const fetchMyDatasets = async () => {
 
 // 文件选择处理
 const handleFileChange = (file) => {
-  // 验证文件大小
   if (file.raw.size > 100 * 1024 * 1024) {
     ElMessage.error('文件大小不能超过 100MB')
     uploadRef.value?.clearFiles()
@@ -373,7 +437,6 @@ const submitUpload = async () => {
   
   uploading.value = true
   try {
-    // 使用 FormData 上传文件
     const formData = new FormData()
     formData.append('name', uploadForm.name)
     formData.append('description', uploadForm.description || '')
@@ -381,7 +444,6 @@ const submitUpload = async () => {
     formData.append('file_format', uploadForm.file_format)
     formData.append('is_public', uploadForm.is_public)
     
-    // 如果有文件则添加
     if (uploadForm.file) {
       formData.append('file_path', uploadForm.file)
     }
@@ -390,7 +452,7 @@ const submitUpload = async () => {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
-      timeout: 60000  // 上传文件超时时间设长一点
+      timeout: 60000
     })
     
     if (res.data?.code === 201 || res.data?.code === 200) {
@@ -485,10 +547,9 @@ const handleDownload = async (dataset) => {
     
     const res = await request.get(`/api/datasets/${dataset.id}/download/`, {
       responseType: 'blob',
-      timeout: 120000  // 下载超时2分钟
+      timeout: 120000
     })
     
-    // 检查是否是错误响应
     if (res.data.type === 'application/json') {
       const reader = new FileReader()
       reader.onload = () => {
@@ -503,7 +564,6 @@ const handleDownload = async (dataset) => {
       return
     }
     
-    // 创建 Blob 并触发下载
     const blob = new Blob([res.data])
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -525,7 +585,9 @@ const handleDownload = async (dataset) => {
   }
 }
 
-// 预览
+// ============ 预览功能 - 参考 DatasetSquare.vue 实现 ============
+
+// 打开预览弹窗
 const handlePreview = async (dataset) => {
   if (!dataset.has_file) {
     ElMessage.warning('该数据集没有上传文件')
@@ -534,24 +596,83 @@ const handlePreview = async (dataset) => {
   
   currentDataset.value = dataset
   showPreviewDialog.value = true
+  
+  // 重置分页状态
+  previewCurrentPage.value = 1
+  previewPageSize.value = 10
+  previewTotal.value = 0
+  previewEntries.value = []
+  previewFields.value = []
+  gotoPage.value = 1
+  
+  // 获取第一页数据
+  await fetchPreviewEntries(1)
+}
+
+// 获取预览数据（分页）- 复用 DatasetSquare.vue 中 fetchDatasetEntries 的逻辑
+const fetchPreviewEntries = async (page = 1) => {
+  if (!currentDataset.value) return
+  
   loadingPreview.value = true
-  previewData.value = null
+  previewCurrentPage.value = page
   
   try {
-    const res = await request.get(`/api/datasets/${dataset.id}/preview/`, {
-      params: { limit: 20 }
+    const res = await getDatasetEntries(currentDataset.value.id, {
+      page: page,
+      page_size: previewPageSize.value
     })
     
-    if (res.data?.code === 200) {
-      previewData.value = res.data.data
+    // 后端返回格式: { code: 200, msg: "查询成功", data: { entries: [...], total: 100, fields: [...] } }
+    if (res.data?.code === 200 && res.data.data) {
+      const { entries, total, fields } = res.data.data
+      previewEntries.value = entries || []
+      previewTotal.value = total || 0
+      
+      // 如果后端返回了字段列表则使用，否则从第一条数据中提取
+      if (fields && fields.length > 0) {
+        previewFields.value = fields
+      } else if (entries && entries.length > 0) {
+        previewFields.value = Object.keys(entries[0])
+      } else {
+        previewFields.value = []
+      }
     } else {
-      ElMessage.error(res.data?.msg || '预览失败')
+      previewEntries.value = []
+      previewTotal.value = 0
+      previewFields.value = []
     }
   } catch (error) {
-    console.error('预览失败:', error)
-    ElMessage.error('预览失败')
+    console.error('获取预览数据失败:', error)
+    // 不显示错误提示，可能是格式不支持
+    previewEntries.value = []
+    previewTotal.value = 0
+    previewFields.value = []
   } finally {
     loadingPreview.value = false
+  }
+}
+
+// 分页 - 页码改变
+const handlePreviewPageChange = (page) => {
+  gotoPage.value = page
+  fetchPreviewEntries(page)
+}
+
+// 分页 - 每页条数改变
+const handlePreviewSizeChange = (size) => {
+  previewPageSize.value = size
+  previewCurrentPage.value = 1
+  gotoPage.value = 1
+  fetchPreviewEntries(1)
+}
+
+// 分页 - 跳转到指定页
+const handleGotoPage = () => {
+  const totalPages = Math.ceil(previewTotal.value / previewPageSize.value) || 1
+  const page = Math.max(1, Math.min(gotoPage.value, totalPages))
+  if (page !== previewCurrentPage.value) {
+    previewCurrentPage.value = page
+    fetchPreviewEntries(page)
   }
 }
 
@@ -656,6 +777,28 @@ onMounted(() => {
   color: #606266;
   display: flex;
   gap: 20px;
+  font-size: 14px;
+}
+
+.preview-pagination {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.goto-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.cell-content {
+  word-break: break-all;
 }
 
 :deep(.el-table th) {
