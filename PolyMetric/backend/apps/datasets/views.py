@@ -3,14 +3,17 @@ import json
 import csv
 import io
 import zipfile
-from rest_framework import viewsets, filters, status
+from rest_framework import viewsets, filters, generics, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db import models
 from django.http import FileResponse
+from django.contrib.auth import get_user_model
+from apps.users.models import UserFollow
 
 from .models import Dataset, DatasetFollow
 from .serializers import (
@@ -20,6 +23,7 @@ from .serializers import (
 )
 from .permissions import IsCreatorOrAdminOrPublic
 
+User = get_user_model()
 
 class DatasetViewSet(viewsets.ModelViewSet):
     """
@@ -569,3 +573,78 @@ class DatasetViewSet(viewsets.ModelViewSet):
                 fields.insert(0, "id")
         
         return entries, fields
+    
+    @action(detail=False, methods=["get"])
+    def followed(self, request):
+        """获取关注的数据集列表，支持user_id参数"""
+        user_id = request.query_params.get('user_id')
+        
+        if user_id:
+            # 查询他人的关注列表
+            try:
+                target_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    "code": 404,
+                    "msg": "用户不存在",
+                    "data": None
+                })
+                
+            # 检查隐私设置
+            if target_user != request.user and not target_user.show_followed_datasets:
+                return Response({
+                    "code": 200,
+                    "msg": "该用户未公开关注的数据集",
+                    "data": None
+                })
+                
+            follows = DatasetFollow.objects.filter(user=target_user)
+        else:
+            # 查询自己的关注列表
+            follows = DatasetFollow.objects.filter(user=request.user)
+            
+        datasets = [follow.dataset for follow in follows]
+        page = self.paginate_queryset(datasets)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                "code": 200,
+                "msg": "查询成功",
+                "data": serializer.data
+            })
+            
+        serializer = self.get_serializer(datasets, many=True)
+        return Response({
+            "code": 200,
+            "msg": "查询成功",
+            "data": serializer.data
+        })
+    
+class FollowedDatasetsListAPIView(generics.ListAPIView):
+    serializer_class = DatasetSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id')
+        
+        if user_id:
+            try:
+                target_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Dataset.objects.none()
+                
+            if target_user != self.request.user and not target_user.show_followed_datasets:
+                return Dataset.objects.none()
+                
+            queryset = Dataset.objects.filter(followers__user=target_user)
+        else:
+            queryset = Dataset.objects.filter(followers__user=self.request.user)
+            
+        return queryset.prefetch_related(
+            models.Prefetch(
+                'followers',
+                queryset=DatasetFollow.objects.filter(user=self.request.user if not user_id else target_user),
+                to_attr='datasetfollow'
+            )
+        ).order_by('-followers__created_at')
