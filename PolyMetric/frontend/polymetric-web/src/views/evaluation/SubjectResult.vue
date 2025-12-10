@@ -92,6 +92,13 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+const props = defineProps({
+    taskId: {
+        type: String, // ID 可能是字符串或数字
+        required: true
+    }
+});
+
 const router = useRouter();
 
 // --- 评分表单数据 (模拟从后端获取的已提交结果) ---

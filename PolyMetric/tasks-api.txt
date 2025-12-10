@@ -8,7 +8,7 @@ json
   "name": "GPT-4V 图像分类评测",
   "description": "使用 COCO 数据集测试 GPT-4V 的图像分类能力",
   "method": "objective"
-  "model": 1 //使用模型的ID（主观/客观测评必填）
+  "myModel": 1 //使用模型的ID（主观/客观测评必填）
   "dataset": 1  // 关联数据集的 ID（必填）
 }
 成功返回（201 Created）：
@@ -22,8 +22,8 @@ json
   "dataset": 1,
   "dataset_name": "COCO 2017",
   "method": "objective",
-  "model": 1,
-  "model_name": "GPT-4V",
+  "myModel": 1,
+  "myModel_name": "GPT-4V",
   "status": "pending", //客观评测：进行中和已完成，主观/对抗评测：待测评和已测评
   "accuracy": null, 
   "score": null,
@@ -34,7 +34,7 @@ json
 失败返回（400 Bad Request）：
 json
 {
-  "error": "{'name': ['该字段为必填项'], 'model': ['该字段为必填项'], 'dataset': ['该字段为必填项']}"
+  "error": "{'name': ['该字段为必填项'], 'myModel': ['该字段为必填项'], 'dataset': ['该字段为必填项']}"
 }
 
 2. 查看评测任务列表
@@ -52,8 +52,8 @@ json
     "dataset": 1,
     "dataset_name": "COCO 2017",
     "method": "objective",
-    "model": 1,
-    "model_name": "GPT-4V",
+    "myModel": 1,
+    "myModel_name": "GPT-4V",
     "status": "pending",
     "accuracy": null,
     "score": null,
@@ -70,8 +70,8 @@ json
     "dataset": 2,
     "dataset_name": "CNN/Daily Mail",
     "method": "subjective",
-    "model": 1,
-    "model_name": "GPT-4V",
+    "myModel": 1,
+    "myModel_name": "GPT-4V",
     "status": "completed",
     "accuracy": 0.89,
     "score": 89,
@@ -95,8 +95,8 @@ json
   "dataset": 1,
   "dataset_name": "COCO 2017",
   "method": "objective",
-  "model": 1,
-  "model_name": "GPT-4V",
+  "myModel": 1,
+  "myModel_name": "GPT-4V",
   "status": "pending",
   "accuracy": null,
   "score": null,
@@ -135,7 +135,7 @@ json
   "name": "GPT-4V 图像分类评测（V2）",
   "description": "使用 COCO 2017 数据集测试 GPT-4V 的图像分类能力（优化版）",
   "method": "objective"
-  "model": 1 //可修改
+  "myModel": 1 //可修改
   "dataset": 1  // 可保持原数据集，也可修改为其他数据集ID
 }
 成功返回（200 OK）：
@@ -149,8 +149,8 @@ json
   "dataset": 1,
   "dataset_name": "COCO 2017",
   "method": "objective",
-  "model": 1,
-  "model_name": "GPT-4V",
+  "myModel": 1,
+  "myModel_name": "GPT-4V",
   "status": "pending",
   "accuracy": null,
   "score": null,
@@ -178,8 +178,8 @@ json
   "dataset": 1,
   "dataset_name": "COCO 2017",
   "method": "objective",
-  "model": 1,
-  "model_name": "GPT-4V",
+  "myModel": 1,
+  "myModel_name": "GPT-4V",
   "status": "pending",
   "accuracy": null,
   "score": null,
@@ -204,7 +204,7 @@ json
 请求示例（json）：
 {
   "method":"subjective"
-  "model":1
+  "myModel":1
   "dataset":1
   "reviewer":1 //测评者id
   "time_stamp": "2025-11-30T10:00:00Z"
@@ -224,7 +224,7 @@ json
 请求示例（json）：
 {
   "method":"subjective"
-  "model":1
+  "myModel":1
   "dataset":1
   "reviewer":1 //测评者id
   "time_stamp": "2025-11-30T10:00:00Z"
@@ -265,7 +265,7 @@ json
   "itemID":1
   "item_content":{
     "input_query": "请用一段话解释量子纠缠，并保持幽默风趣的口吻。"
-    "model1_response": "量子纠缠就像是一对分手的恋人，无论他们相隔多远，只要你踢一下其中一个（测量它的状态），另一个会立刻尖叫（确定它的状态）...",
-    "model2_response":null //对抗评测下启用
+    "myModel1_response": "量子纠缠就像是一对分手的恋人，无论他们相隔多远，只要你踢一下其中一个（测量它的状态），另一个会立刻尖叫（确定它的状态）...",
+    "myModel2_response":null //对抗评测下启用
   }
 }

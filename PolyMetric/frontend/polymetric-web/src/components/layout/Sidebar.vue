@@ -1,6 +1,6 @@
 <template>
   <div class="sidebar">
-    <el-menu :default-active="$route.path" router background-color="#e6f7ff" text-color="#595959" active-text-color="#1890ff">
+    <el-menu :default-active="route.path" router background-color="#e6f7ff" text-color="#595959" active-text-color="#1890ff">
       <el-menu-item index="/home">
         <el-icon><House /></el-icon>
         <span>首页</span>
@@ -27,6 +27,9 @@
 
 <script setup>
 import { House, Document, Cpu, Timer, User } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router' // ⬅️ 【新增】导入 useRoute
+
+const route = useRoute() // ⬅️ 【新增】调用 useRoute 获得响应式的 route 对象
 </script>
 
 <style scoped>

@@ -21,10 +21,31 @@ const routes = [
   
   // ✅ 修正：使用实际存在的文件名
   { path: '/evaluation', name: 'Evaluation', component: () => import('../views/evaluation/EvaluationHall.vue') },
-  { path: '/evaluation/objective', name: 'ObjectiveEval', component: () => import('../views/evaluation/ObjectiveEval.vue') },
-  { path: '/evaluation/subjective', name: 'SubjectiveEval', component: () => import('../views/evaluation/SubjectiveEval.vue') },
-  { path: '/evaluation/adversarial', name: 'AdversarialEval', component: () => import('../views/evaluation/AdversarialEval.vue') },
-  { path: '/tasks/my-manage', name: 'MyTaskManage', component: () => import('../views/evaluation/MyTaskManage.vue') },
+  { 
+    path: '/evaluation/report/:taskId', 
+    name: 'EvalReport', 
+    component: () => import('../views/evaluation/EvalReport.vue'),
+    props: true // ⬅️ 关键：启用 props 模式，可以直接在组件内接收 taskId
+  },
+  {
+    path: '/evaluation/subjective/:taskId', 
+    name: 'SubjectiveEval', 
+    component: () => import('../views/evaluation/SubjectiveEval.vue'),
+    props: true
+  },
+  { 
+    path: '/evaluation/subjective-result', 
+    name: 'SubjectResult', 
+    component: () => import('../views/evaluation/SubjectResult.vue'),
+    props: true
+  },
+  { 
+    path: '/evaluation/adversarial/:taskId', 
+    name: 'AdversarialEval', 
+    component: () => import('../views/evaluation/AdversarialEval.vue'),
+    props: true
+  },
+  { path: '/evaluation/adversarial-result', name: 'AdversarialResult', component: () => import('../views/evaluation/AdversarialResult.vue') },
   
   { path: '/user/:id', name: 'UserProfile', component: () => import('../views/profile/UserProfile.vue') },
   { path: '/user/:id/datasets', name: 'UserDatasets', component: () => import('../views/profile/UserDatasets.vue') },
