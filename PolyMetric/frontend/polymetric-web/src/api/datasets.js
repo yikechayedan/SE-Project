@@ -122,3 +122,18 @@ export function unfollowDataset(id) {
 export function getFollowedDatasets() {
   return request.get("/api/datasets/followed/")
 }
+
+/**
+ * 13. 获取数据集条目（分页）
+ * 接口: GET /api/datasets/{id}/entries/
+ * @param {number} id - 数据集ID
+ * @param {Object} params - 分页参数 { page: 1, page_size: 10 }
+ */
+export function getDatasetEntries(id, params = {}) {
+  return request.get("/api/datasets/" + id + "/entries/", {
+    params: {
+      page: params.page || 1,
+      page_size: params.page_size || 10
+    }
+  })
+}
