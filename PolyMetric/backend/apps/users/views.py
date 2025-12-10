@@ -32,17 +32,6 @@ class RegisterView(generics.CreateAPIView):
             "data": UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
 
-class UserInfoView(generics.RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer
-
-    def get_object(self):
-        return self.request.user
-
-    def update(self, request, *args, **kwargs):
-        kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)
-
 class ChangePasswordView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ChangePasswordSerializer
@@ -329,19 +318,77 @@ class PrivacySettingView(generics.UpdateAPIView):
         })
 
 # ========== 修复当前用户信息视图（API6） ==========
-class CurrentUserView(generics.RetrieveAPIView):
-    serializer_class = UserMeSerializer
+class CurrentUserView(generics.RetrieveUpdateAPIView):
+    """
+    GET: 获取当前用户信息（返回隐私设置字段）
+    PUT/PATCH: 更新当前用户信息（email, phone, bio等）
+    """
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
 
+    def get_serializer_class(self):
+        # GET 请求用 UserMeSerializer（包含隐私设置字段）
+        # PUT/PATCH 请求用 UserSerializer（用于更新基本资料）
+        if self.request.method == 'GET':
+            return UserMeSerializer
+        return UserSerializer
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
-        # 返回格式必须包含 code/msg/data，且 data 中有隐私字段
         return Response({
             "code": 200,
             "msg": "查询成功",
+            "data": serializer.data
+        })
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response({
+            "code": 200,
+            "msg": "更新成功",
+            "data": serializer.data
+        })
+
+# ========== 修复当前用户信息视图（API6） ==========
+class CurrentUserView(generics.RetrieveUpdateAPIView):
+    """
+    GET: 获取当前用户信息（返回隐私设置字段）
+    PUT/PATCH: 更新当前用户信息（email, phone, bio等）
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def get_serializer_class(self):
+        # GET 请求用 UserMeSerializer（包含隐私设置字段）
+        # PUT/PATCH 请求用 UserSerializer（用于更新基本资料）
+        if self.request.method == 'GET':
+            return UserMeSerializer
+        return UserSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({
+            "code": 200,
+            "msg": "查询成功",
+            "data": serializer.data
+        })
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response({
+            "code": 200,
+            "msg": "更新成功",
             "data": serializer.data
         })

@@ -35,21 +35,20 @@
       <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="100px">
         <el-form-item label="头像">
           <div class="avatar-upload">
-            <el-avatar :size="80" :src="avatarUrl" />
+            <el-avatar :size="80" :src="previewAvatarUrl" />
             <el-upload
               action="#"
               :auto-upload="false"
               :show-file-list="false"
               :on-change="handleAvatarChange"
               accept="image/jpeg,image/png,image/gif"
-              :disabled="avatarUploading"
             >
-              <el-button type="primary" plain size="small" :loading="avatarUploading">
-                {{ avatarUploading ? '上传中...' : '上传头像' }}
+              <el-button type="primary" plain size="small">
+                选择头像
               </el-button>
             </el-upload>
           </div>
-          <p class="tip">支持 jpg/png/gif 格式，最大 2MB</p>
+          <p class="tip">支持 jpg/png/gif 格式，最大 2MB（保存时上传）</p>
         </el-form-item>
         <el-form-item label="用户名">
           <el-input v-model="editForm.username" disabled />
@@ -73,7 +72,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEdit = false">取消</el-button>
+        <el-button @click="cancelEdit">取消</el-button>
         <el-button type="primary" :loading="loading" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
@@ -129,7 +128,6 @@ const showEdit = ref(false)
 const showPrivacy = ref(false)
 const loading = ref(false)
 const privacyLoading = ref(false)
-const avatarUploading = ref(false)
 const editFormRef = ref(null)
 
 // 默认头像
@@ -157,8 +155,23 @@ const privacyForm = reactive({
   show_followed_datasets: true
 })
 
-// 计算头像 URL
+// 待上传的头像文件（用于延迟上传）
+const pendingAvatarFile = ref(null)
+// 预览用的头像URL（本地预览，不需要上传）
+const previewAvatarUrlLocal = ref('')
+
+// 计算头像 URL（用于页面展示）
 const avatarUrl = computed(() => form.avatar || defaultAvatar)
+
+// 计算编辑弹窗中的头像预览 URL
+const previewAvatarUrl = computed(() => {
+  // 如果有本地预览图（用户选择了新头像但未保存）
+  if (previewAvatarUrlLocal.value) {
+    return previewAvatarUrlLocal.value
+  }
+  // 否则显示当前头像
+  return form.avatar || defaultAvatar
+})
 
 const editRules = {
   email: [
@@ -180,15 +193,20 @@ onMounted(async () => {
 const fetchUserInfo = async () => {
   try {
     const res = await getUserInfo()
-    const data = res.data
     
-    form.username = data.username || ''
-    form.intro = data.bio || ''
-    form.email = data.email || ''
-    form.phone = data.phone || ''
-    form.avatar = data.avatar || ''
-    form.show_followed_models = data.show_followed_models !== false
-    form.show_followed_datasets = data.show_followed_datasets !== false
+    // 处理后端返回的 { code, msg, data } 格式
+    let userData = res.data
+    if (res.data?.code === 200 && res.data?.data) {
+      userData = res.data.data
+    }
+    
+    form.username = userData.username || ''
+    form.intro = userData.bio || ''
+    form.email = userData.email || ''
+    form.phone = userData.phone || ''
+    form.avatar = userData.avatar || ''
+    form.show_followed_models = userData.show_followed_models !== false
+    form.show_followed_datasets = userData.show_followed_datasets !== false
     
   } catch (error) {
     if (error.response?.status === 401) {
@@ -207,7 +225,21 @@ const openEditDialog = () => {
   editForm.intro = form.intro
   editForm.email = form.email
   editForm.phone = form.phone
+  // 清除待上传的头像
+  pendingAvatarFile.value = null
+  previewAvatarUrlLocal.value = ''
   showEdit.value = true
+}
+
+// 取消编辑
+const cancelEdit = () => {
+  // 清除本地预览
+  if (previewAvatarUrlLocal.value) {
+    URL.revokeObjectURL(previewAvatarUrlLocal.value)
+  }
+  pendingAvatarFile.value = null
+  previewAvatarUrlLocal.value = ''
+  showEdit.value = false
 }
 
 // 打开隐私设置弹窗
@@ -217,8 +249,8 @@ const openPrivacyDialog = () => {
   showPrivacy.value = true
 }
 
-// 头像上传处理
-const handleAvatarChange = async (uploadFile) => {
+// 头像选择处理（不立即上传，仅预览）
+const handleAvatarChange = (uploadFile) => {
   const file = uploadFile.raw
   
   // 1. 验证文件格式
@@ -235,31 +267,16 @@ const handleAvatarChange = async (uploadFile) => {
     return
   }
   
-  // 3. 上传到后端
-  avatarUploading.value = true
-  try {
-    const res = await uploadAvatar(file)
-    
-    // 根据后端返回格式处理
-    if (res.data && res.data.code === 200) {
-      form.avatar = res.data.data.avatar
-      ElMessage.success('头像上传成功')
-    } else {
-      ElMessage.error(res.data?.msg || '上传失败')
-    }
-  } catch (error) {
-    if (error.response?.status === 401) {
-      ElMessage.error('登录已过期，请重新登录')
-      localStorage.clear()
-      router.push('/login')
-    } else if (error.response?.status === 413) {
-      ElMessage.error('文件过大，最大支持 2MB')
-    } else {
-      ElMessage.error(error.response?.data?.msg || '头像上传失败')
-    }
-  } finally {
-    avatarUploading.value = false
+  // 3. 保存文件引用，等待保存时上传
+  pendingAvatarFile.value = file
+  
+  // 4. 创建本地预览URL
+  if (previewAvatarUrlLocal.value) {
+    URL.revokeObjectURL(previewAvatarUrlLocal.value)
   }
+  previewAvatarUrlLocal.value = URL.createObjectURL(file)
+  
+  ElMessage.success('头像已选择，点击保存后生效')
 }
 
 // 保存编辑
@@ -271,27 +288,62 @@ const saveEdit = () => {
     }
     
     loading.value = true
+    
     try {
+      // 1. 如果有待上传的头像，先上传头像
+      if (pendingAvatarFile.value) {
+        try {
+          const avatarRes = await uploadAvatar(pendingAvatarFile.value)
+          if (avatarRes.data?.code === 200 && avatarRes.data?.data?.avatar) {
+            form.avatar = avatarRes.data.data.avatar
+            ElMessage.success('头像上传成功')
+          } else {
+            ElMessage.warning(avatarRes.data?.msg || '头像上传失败，其他信息仍将保存')
+          }
+        } catch (avatarError) {
+          console.error('头像上传失败:', avatarError)
+          ElMessage.warning('头像上传失败，其他信息仍将保存')
+        }
+      }
+      
+      // 2. 更新用户基本信息
       const res = await updateUserInfo({
         email: editForm.email,
         phone: editForm.phone,
         bio: editForm.intro
       })
       
-      const data = res.data
+      // 处理返回数据
+      let updatedData = res.data
+      if (res.data?.code === 200 && res.data?.data) {
+        updatedData = res.data.data
+      }
+      
       // 更新本地数据
-      form.email = data.email || ''
-      form.phone = data.phone || ''
-      form.intro = data.bio || ''
+      if (updatedData.email !== undefined) form.email = updatedData.email
+      if (updatedData.phone !== undefined) form.phone = updatedData.phone
+      if (updatedData.bio !== undefined) form.intro = updatedData.bio
+      
+      // 清理
+      pendingAvatarFile.value = null
+      if (previewAvatarUrlLocal.value) {
+        URL.revokeObjectURL(previewAvatarUrlLocal.value)
+        previewAvatarUrlLocal.value = ''
+      }
       
       ElMessage.success('保存成功')
       showEdit.value = false
       
     } catch (error) {
+      console.error('保存失败:', error)
       if (error.response?.status === 401) {
         ElMessage.error('登录已过期，请重新登录')
         localStorage.clear()
         router.push('/login')
+      } else if (error.response?.status === 405) {
+        // 后端不支持此方法
+        ElMessage.error('更新用户资料失败：后端接口不支持此操作')
+        console.error('提示：后端 /api/users/me/ 需要支持 PUT/PATCH 方法')
       } else if (error.response?.status === 400) {
         ElMessage.error(error.response?.data?.msg || '输入信息有误')
       } else {

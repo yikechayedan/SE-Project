@@ -16,9 +16,9 @@ export function getUserInfo() {
   return request.get("/api/users/me/");
 }
 
-// 修改个人资料
+// 修改个人资料（使用 PATCH 方法）
 export function updateUserInfo(data) {
-  return request.put("/api/users/me/", data);
+  return request.patch("/api/users/me/", data);
 }
 
 // 修改密码
