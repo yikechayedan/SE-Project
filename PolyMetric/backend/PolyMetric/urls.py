@@ -15,6 +15,8 @@ urlpatterns = [
 
     # 大模型模块（核心）
     path("api/", include("apps.models.urls")),
+
+    path('api/users/', include('apps.users.urls')),
 ]
 
 if settings.DEBUG:

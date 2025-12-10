@@ -17,6 +17,13 @@
           <el-icon><Folder /></el-icon>
           关注的数据集
         </el-button>
+        <el-button 
+          :type="activeType === 'user' ? 'primary' : ''" 
+          @click="activeType = 'user'"
+        >
+          <el-icon><UserFilled /></el-icon>
+          关注的用户
+        </el-button>
       </el-button-group>
     </div>
 
@@ -76,7 +83,7 @@
     </div>
 
     <!-- 数据集列表 -->
-    <div v-else class="list">
+    <div v-else-if="activeType === 'dataset'" class="list">
       <el-empty v-if="datasetList.length === 0" description="暂无关注的数据集" />
       <el-card 
         v-for="item in datasetList" 
@@ -123,11 +130,79 @@
         </div>
       </el-card>
     </div>
+
+    <!-- 用户列表 -->
+    <div v-else-if="activeType === 'user'" class="list">
+      <el-empty v-if="userList.length === 0" description="暂无关注的用户" />
+      <el-card 
+        v-for="item in userList" 
+        :key="item.id" 
+        shadow="hover" 
+        class="follow-card user-card"
+      >
+        <div class="card-content">
+          <div class="card-header">
+            <div class="title-row">
+              <el-avatar :size="40" :src="item.avatar || defaultAvatar" />
+              <div class="user-info">
+                <span class="item-name clickable" @click="goToUserProfile(item)">
+                  {{ item.username }}
+                </span>
+                <span class="user-bio">{{ item.bio || '暂无介绍' }}</span>
+              </div>
+            </div>
+            <div class="user-actions">
+              <el-button 
+                type="primary" 
+                size="small" 
+                plain
+                @click="goToUserProfile(item)"
+                :disabled="!item.show_followed_models && !item.show_followed_datasets"
+              >
+                查看主页
+              </el-button>
+              <el-button 
+                type="warning" 
+                size="small" 
+                :icon="StarFilled"
+                @click="handleUnfollowUser(item)"
+                :loading="item.unfollowing"
+              >
+                取消关注
+              </el-button>
+            </div>
+          </div>
+          <div class="card-info">
+            <el-tag v-if="item.email" type="info" size="small">
+              <el-icon><Message /></el-icon>
+              {{ item.email }}
+            </el-tag>
+            <el-tag :type="item.show_followed_models ? 'success' : 'info'" size="small">
+              <el-icon v-if="item.show_followed_models"><Unlock /></el-icon>
+              <el-icon v-else><Lock /></el-icon>
+              模型{{ item.show_followed_models ? '公开' : '私密' }}
+            </el-tag>
+            <el-tag :type="item.show_followed_datasets ? 'success' : 'info'" size="small">
+              <el-icon v-if="item.show_followed_datasets"><Unlock /></el-icon>
+              <el-icon v-else><Lock /></el-icon>
+              数据集{{ item.show_followed_datasets ? '公开' : '私密' }}
+            </el-tag>
+          </div>
+          <div class="card-meta">
+            <span class="meta-item">
+              <el-icon><Calendar /></el-icon>
+              关注时间：{{ formatDate(item.followed_at) }}
+            </span>
+          </div>
+        </div>
+      </el-card>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Box, 
@@ -136,22 +211,31 @@ import {
   DataLine, 
   Calendar,
   User,
+  UserFilled,
   Collection,
   Document,
   Loading,
   StarFilled,
-  Cpu
+  Cpu,
+  Message,
+  Lock,
+  Unlock
 } from '@element-plus/icons-vue'
 import { getFollowedDatasets, unfollowDataset } from '@/api/datasets'
 import { getFollowedModels, unfollowModel } from '@/api/models'
+import { getFollowedUsers, unfollowUser } from '@/api/users'
 
-// 当前展示类型：model 或 dataset
+const router = useRouter()
+const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+// 当前展示类型：model、dataset 或 user
 const activeType = ref('dataset')  // 默认显示数据集
 const loading = ref(false)
 
 // 关注列表数据
 const modelList = ref([])
 const datasetList = ref([])
+const userList = ref([])
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -202,7 +286,6 @@ const fetchFollowedModels = async () => {
   loading.value = true
   try {
     const res = await getFollowedModels()
-    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
     if (res.data?.code === 200 && Array.isArray(res.data.data)) {
       modelList.value = res.data.data.map(item => ({ ...item, unfollowing: false }))
     } else if (Array.isArray(res.data)) {
@@ -224,7 +307,6 @@ const fetchFollowedDatasets = async () => {
   loading.value = true
   try {
     const res = await getFollowedDatasets()
-    // 后端返回格式: { code: 200, msg: "查询成功", data: [...] }
     if (res.data?.code === 200 && Array.isArray(res.data.data)) {
       datasetList.value = res.data.data.map(item => ({ ...item, unfollowing: false }))
     } else if (Array.isArray(res.data)) {
@@ -236,6 +318,27 @@ const fetchFollowedDatasets = async () => {
     console.error('获取关注数据集失败:', error)
     ElMessage.error('获取关注列表失败')
     datasetList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取关注的用户列表
+const fetchFollowedUsers = async () => {
+  loading.value = true
+  try {
+    const res = await getFollowedUsers()
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      userList.value = res.data.data.map(item => ({ ...item, unfollowing: false }))
+    } else if (Array.isArray(res.data)) {
+      userList.value = res.data.map(item => ({ ...item, unfollowing: false }))
+    } else {
+      userList.value = []
+    }
+  } catch (error) {
+    console.error('获取关注用户失败:', error)
+    ElMessage.error('获取关注列表失败')
+    userList.value = []
   } finally {
     loading.value = false
   }
@@ -255,7 +358,6 @@ const handleUnfollowModel = async (item) => {
     
     if (res.data?.code === 200 || res.data?.code === 204) {
       ElMessage.success('已取消关注')
-      // 从列表中移除
       modelList.value = modelList.value.filter(m => m.id !== item.id)
     } else {
       ElMessage.error(res.data?.msg || '取消关注失败')
@@ -284,7 +386,6 @@ const handleUnfollowDataset = async (item) => {
     
     if (res.data?.code === 200 || res.data?.code === 204) {
       ElMessage.success('已取消关注')
-      // 从列表中移除
       datasetList.value = datasetList.value.filter(d => d.id !== item.id)
     } else {
       ElMessage.error(res.data?.msg || '取消关注失败')
@@ -299,12 +400,51 @@ const handleUnfollowDataset = async (item) => {
   }
 }
 
+// 取消关注用户
+const handleUnfollowUser = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要取消关注用户「${item.username}」吗？`,
+      '取消关注',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    
+    item.unfollowing = true
+    const res = await unfollowUser(item.id)
+    
+    if (res.data?.code === 200 || res.data?.code === 204) {
+      ElMessage.success('已取消关注')
+      userList.value = userList.value.filter(u => u.id !== item.id)
+    } else {
+      ElMessage.error(res.data?.msg || '取消关注失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消关注失败:', error)
+      ElMessage.error('取消关注失败，请稍后重试')
+    }
+  } finally {
+    item.unfollowing = false
+  }
+}
+
+// 跳转到用户主页
+const goToUserProfile = (item) => {
+  if (!item.show_followed_models && !item.show_followed_datasets) {
+    ElMessage.warning('该用户未公开关注列表')
+    return
+  }
+  router.push(`/user/${item.id}`)
+}
+
 // 监听类型切换，加载对应数据
 watch(activeType, (newType) => {
   if (newType === 'model') {
     fetchFollowedModels()
   } else if (newType === 'dataset') {
     fetchFollowedDatasets()
+  } else if (newType === 'user') {
+    fetchFollowedUsers()
   }
 })
 
@@ -401,6 +541,35 @@ onMounted(() => {
   color: #303133;
 }
 
+.item-name.clickable {
+  cursor: pointer;
+  color: #409eff;
+}
+
+.item-name.clickable:hover {
+  text-decoration: underline;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-bio {
+  font-size: 13px;
+  color: #909399;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .card-info {
   display: flex;
   flex-wrap: wrap;
@@ -430,5 +599,22 @@ onMounted(() => {
 
 :deep(.el-empty) {
   padding: 40px 0;
+}
+
+.user-card .card-header {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .user-card .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .user-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 </style>
