@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const service = axios.create({
-  baseURL: "http://127.0.0.1:8000", // 后端 Django 项目地址
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000", // 后端 Django 项目地址
   timeout: 5000
 });
 
@@ -33,7 +33,8 @@ service.interceptors.response.use(
       const refresh = localStorage.getItem("refresh");
       if (refresh) {
         try {
-          const res = await axios.post("http://127.0.0.1:8000/api/users/token/refresh/", {
+          const baseURL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+          const res = await axios.post(`${baseURL}/api/users/token/refresh/`, {
             refresh: refresh
           });
 
