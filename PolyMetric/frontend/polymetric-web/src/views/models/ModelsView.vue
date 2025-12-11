@@ -142,6 +142,52 @@
       </div>
     </div>
   </div>
+
+
+    <!-- 模型详情弹窗 -->
+    <el-dialog 
+      v-model="showDetailDialog" 
+      :title="currentModel?.name" 
+      width="800px"
+      :close-on-click-modal="false"
+    >
+      <div v-if="detailLoading" class="dialog-loading">
+        <el-icon class="is-loading" :size="24"><Loading /></el-icon>
+        <span>加载详情中...</span>
+      </div>
+      
+      <div class="detail-content" v-else-if="modelDetail">
+        <el-descriptions :column="2" border size="default">
+          <el-descriptions-item label="模型名称">{{ modelDetail.name }}</el-descriptions-item>
+          <el-descriptions-item label="公司/组织">{{ modelDetail.company || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="分类">
+            <el-tag :type="getCategoryType(modelDetail.category)" size="small">
+              {{ getCategoryLabel(modelDetail.category) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="版本">{{ modelDetail.version || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="参数量">{{ modelDetail.parameters || '未知' }}</el-descriptions-item>
+          <el-descriptions-item label="发布日期">{{ formatDate(modelDetail.release_date) }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDate(modelDetail.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ formatDate(modelDetail.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item label="描述" :span="2">
+            {{ modelDetail.description || '暂无描述' }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <template #footer>
+        <el-button @click="showDetailDialog = false">关闭</el-button>
+        <el-button 
+          :type="modelDetail?.is_followed ? 'warning' : 'info'" 
+          :icon="modelDetail?.is_followed ? StarFilled : Star"
+          @click="handleToggleFollowInDialog"
+          :loading="dialogFollowLoading"
+        >
+          {{ modelDetail?.is_followed ? '取消关注' : '关注' }}
+        </el-button>
+      </template>
+    </el-dialog>
 </template>
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
