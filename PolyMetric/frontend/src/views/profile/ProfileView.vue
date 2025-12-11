@@ -3,16 +3,62 @@
     <el-row :gutter="30">
       <el-col :span="8">
         <el-card class="user-info">
-          <el-avatar :size="120" :src="avatarUrl" />
-          <h2>{{ form.username }}</h2>
-          <p>{{ form.intro || '暂无个人介绍' }}</p>
-          <p>邮箱: {{ form.email || '未设置' }}</p>
-          <p>手机号: {{ form.phone || '未设置' }}</p>
-          <el-button type="primary" plain @click="openEditDialog">编辑资料</el-button>
-          <el-button plain @click="openPrivacyDialog" style="margin-top: 10px;">
-            <el-icon><Setting /></el-icon>
-            隐私设置
-          </el-button>
+          <div class="card-hero">
+            <div class="avatar-wrap">
+              <span class="avatar-glow" />
+              <el-avatar :size="110" :src="avatarUrl" />
+            </div>
+            <div class="name-block">
+              <div class="name-line">
+                <h2>{{ form.username || '未命名用户' }}</h2>
+                <el-tag size="small" effect="dark" type="info">个人主页</el-tag>
+              </div>
+              <p class="subtitle">{{ form.intro || '暂无个人介绍' }}</p>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <div class="info-grid">
+            <div class="info-item">
+              <el-icon><Message /></el-icon>
+              <div class="info-text">
+                <span class="label">邮箱</span>
+                <span class="value">{{ form.email || '未设置' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <el-icon><Phone /></el-icon>
+              <div class="info-text">
+                <span class="label">手机号</span>
+                <span class="value">{{ form.phone || '未设置' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <el-icon><User /></el-icon>
+              <div class="info-text">
+                <span class="label">昵称</span>
+                <span class="value">{{ form.username || '未设置' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="visibility-row">
+            <el-tag :type="form.show_followed_models ? 'success' : 'warning'" effect="light">
+              {{ form.show_followed_models ? '模型关注公开' : '模型关注隐藏' }}
+            </el-tag>
+            <el-tag :type="form.show_followed_datasets ? 'success' : 'warning'" effect="light">
+              {{ form.show_followed_datasets ? '数据集关注公开' : '数据集关注隐藏' }}
+            </el-tag>
+          </div>
+
+          <div class="action-row">
+            <el-button type="primary" plain @click="openEditDialog">编辑资料</el-button>
+            <el-button plain @click="openPrivacyDialog">
+              <el-icon><Setting /></el-icon>
+              隐私设置
+            </el-button>
+          </div>
         </el-card>
       </el-col>
       <el-col :span="16">
@@ -116,7 +162,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Setting, Box, Folder } from '@element-plus/icons-vue'
+import { Setting, Box, Folder, Message, Phone, User } from '@element-plus/icons-vue'
 import { getUserInfo, updateUserInfo, uploadAvatar, updatePrivacySettings } from '@/api/users'
 import FollowContent from '../../components/profile/FollowContent.vue'
 import MyDatasets from '../../components/profile/MyDatasets.vue'
@@ -387,37 +433,136 @@ const savePrivacy = async () => {
 </script>
 
 <style scoped>
-.profile-view { 
-  padding: 20px; 
-  background: white; 
-  border-radius: 8px; 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-  height: 100%; 
+.profile-view {
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 45%, #f9fbff 100%);
+  border-radius: 14px;
+  box-shadow: 0 6px 28px rgba(31, 41, 61, 0.08);
+  min-height: 100%;
 }
 
-.user-info { 
-  text-align: center; 
-  background: #fafafa; 
-  border-radius: 12px; 
-  padding: 30px 20px; 
-  color: #333; 
+.user-info {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(18, 38, 63, 0.06);
+  padding: 26px 22px;
+}
+
+.user-info::before {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -80px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle at 30% 30%, rgba(96, 130, 255, 0.18), rgba(96, 130, 255, 0));
+  transform: rotate(-12deg);
+}
+
+.card-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-glow {
+  position: absolute;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 130, 255, 0.15), rgba(96, 130, 255, 0.02));
+  filter: blur(2px);
+}
+
+.name-block {
+  flex: 1;
+}
+
+.name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .user-info h2 {
-  margin: 15px 0 10px;
+  margin: 0;
   font-size: 22px;
+  color: #1f2d3d;
 }
 
-.user-info p {
-  margin: 8px 0;
-  color: #666;
+.subtitle {
+  margin: 8px 0 0;
+  color: #5b667a;
   font-size: 14px;
 }
 
-.el-tabs { 
-  background: #fafafa; 
-  border-radius: 12px; 
-  padding: 20px; 
+.info-grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f6f8fb;
+  border-radius: 12px;
+  border: 1px solid #eef2f9;
+}
+
+.info-item .el-icon {
+  font-size: 18px;
+  color: #5f8bff;
+}
+
+.info-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  color: #7a869a;
+  font-size: 13px;
+}
+
+.value {
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.visibility-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.el-tabs {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px rgba(18, 38, 63, 0.06);
 }
 
 .avatar-upload {
@@ -466,3 +611,4 @@ const savePrivacy = async () => {
   color: #409eff;
 }
 </style>
+
