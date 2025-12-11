@@ -27,21 +27,21 @@
     </div>
 
     <el-table :data="filteredEvaluations" border style="width: 100%; margin-bottom: 40px;">
-      <el-table-column prop="initiator" label="发起人" />
-      <el-table-column prop="taskName" label="任务名称" />
-      <el-table-column prop="model" label="模型">
+      <el-table-column prop="initiator" label="发起人" show-overflow-tooltip/>
+      <el-table-column prop="taskName" label="任务名称" show-overflow-tooltip/>
+      <el-table-column prop="model" label="模型" show-overflow-tooltip>
         <template #default="{ row }">
-              <div class="model-name">
+              <div class="model-name overflow-container">
                 <el-icon><Box /></el-icon>
-                <span>{{ row.myModel_name }}</span>
+                <span class="ellipsis-content">{{ row.myModel_name }}</span>
               </div>
             </template>
       </el-table-column>
       <el-table-column prop="dataset" label="使用数据集" >
         <template #default="{ row }">
-              <div class="dataset-name">
+              <div class="dataset-name overflow-container">
                 <el-icon><Folder /></el-icon>
-                <span>{{ row.dataset_name }}</span>
+                <span class="ellipsis-content">{{ row.dataset_name }}</span>
               </div>
             </template>
       </el-table-column>
@@ -136,12 +136,14 @@ const router = useRouter()
 const filteredEvaluations = computed(() => {
   // 1. 根据搜索和分类条件进行过滤
   const filteredBySearchAndCategory = evaluations.value.filter(item => {
-    // 检查是否符合搜索条件
-    const matchesSearch = item.taskName.includes(searchQuery.value) || 
-                          item.model.includes(searchQuery.value) ||
-                          item.dataset.includes(searchQuery.value) ||
-                          item.initiator.includes(searchQuery.value)
-    
+    // 确保 item 存在，并且相关属性不是 null/undefined
+    if (!item) return false; // 添加对 item 本身的检查
+
+    // 使用安全访问 (?. 或 || '') 确保属性存在且是字符串，防止对 undefined 调用 includes()
+    const matchesSearch = (item.taskName || '').includes(searchQuery.value) || 
+                          (item.model || '').includes(searchQuery.value) || 
+                          (item.dataset || '').includes(searchQuery.value) || 
+                          (item.initiator || '').includes(searchQuery.value);
     // 检查是否符合分类条件
     // 如果 categoryFilter 为空字符串 ('')，表示“全部分类”，即所有都符合
     const matchesCategory = !categoryFilter.value || (item.method === categoryFilter.value)
@@ -333,20 +335,56 @@ onMounted(() => {
   gap: 10px;
 }
 
+.overflow-container {
+    overflow: hidden; 
+    display: flex; 
+    align-items: center;
+    gap: 8px; 
+}
+
+.ellipsis-content {
+    white-space: nowrap; 
+    overflow: hidden;    
+    text-overflow: ellipsis; 
+    flex: 1; 
+    display: block; 
+}
+
 .dataset-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   color: #409eff;
   font-weight: 500;
 }
 
 .model-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   color: #409eff;
   font-weight: 500;
+}
+
+.my-tasks-container {
+  padding: 20px;
+}
+
+.action-bar { 
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px; 
+}
+
+/* 新增：容器样式，控制溢出和图标对齐 */
+.overflow-container {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 图标和文本之间的间隔 */
+  overflow: hidden; /* 裁剪溢出内容 */
+}
+
+/* 新增：文本样式，实现省略号 */
+.ellipsis-content {
+  white-space: nowrap; 
+  overflow: hidden;    
+  text-overflow: ellipsis; 
+  flex: 1; /* 确保它占据所有剩余空间 */
+  display: block; 
 }
 
 .el-table th { background: #f5f7fa; color: #333; }

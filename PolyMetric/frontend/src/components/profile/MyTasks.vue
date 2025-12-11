@@ -17,15 +17,25 @@
       style="width: 100%;" 
       v-loading="loading"
     >
-      <el-table-column prop="id" label="ID" width="60" />
+      <el-table-column prop="id" label="ID" width="60" show-overflow-tooltip/>
       <el-table-column prop="name" label="任务名称" show-overflow-tooltip />
       
-      <el-table-column prop="model" label="模型" width="140" show-overflow-tooltip>
-        <template #default="scope">
-          {{ scope.row.method === 'adversarial' ? '' : scope.row.model }}
-        </template>
+      <el-table-column prop="model" label="模型" show-overflow-tooltip>
+        <template #default="{ row }">
+              <div class="model-name overflow-container">
+                <el-icon><Box /></el-icon>
+                <span>{{ row.myModel_name }}</span>
+              </div>
+            </template>
       </el-table-column>
-      <el-table-column prop="dataset" label="使用数据集" width="120" show-overflow-tooltip />
+      <el-table-column prop="dataset" label="使用数据集" show-overflow-tooltip>
+        <template #default="{ row }">
+              <div class="dataset-name overflow-container">
+                <el-icon><Folder /></el-icon>
+                <span>{{ row.dataset_name }}</span>
+              </div>
+            </template>
+      </el-table-column>
       
       <el-table-column prop="method" label="评测方法" width="100">
         <template #default="scope">
@@ -45,7 +55,7 @@
       
       <el-table-column prop="time" label="更新时间" width="120" />
       
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="scope">
           <el-button 
             size="small" 
@@ -306,7 +316,7 @@ const getMethodTag = (method) => {
 
 const formatStatus = (status) => {
   const map = {
-    pending: '待运行',
+    pending: '待测评',
     running: '进行中',
     completed: '已完成',
     failed: '失败',
@@ -419,5 +429,35 @@ onMounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 20px; 
+}
+.dataset-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.model-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.overflow-container {
+  display: flex;
+  align-items: center;
+  gap: 8px; 
+  overflow: hidden; 
+}
+
+.ellipsis-content {
+  white-space: nowrap; 
+  overflow: hidden;    
+  text-overflow: ellipsis; 
+  flex: 1; 
+  display: block; 
 }
 </style>
