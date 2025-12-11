@@ -1,104 +1,132 @@
 <template>
   <div class="model-square">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2>
-        <el-icon><Box /></el-icon>
-        模型广场
-      </h2>
-      <p class="subtitle">浏览和发现优质大模型，支持搜索和分类筛选</p>
+    <div class="hero">
+      <div class="hero-left">
+        <div class="title-row">
+          <div class="badge">模型广场</div>
+          <h2>大模型评测榜单</h2>
+        </div>
+        <p class="subtitle">按综合能力、类型与关注度发现模型，像榜单一样浏览。</p>
+        <div class="hero-stats">
+          <div class="stat-card">
+            <div class="label">已收录</div>
+            <div class="value">{{ filteredModels.length }}</div>
+            <div class="hint">模型数量</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">已关注</div>
+            <div class="value">{{ followedCount }}</div>
+            <div class="hint">你的关注</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">类型覆盖</div>
+            <div class="value">{{ categoryCount }}</div>
+            <div class="hint">文本/多模态/代码等</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="mini-rank" v-if="rankedTop3.length">
+          <div class="mini-title">Top 3</div>
+          <div class="mini-item" v-for="item in rankedTop3" :key="item.id">
+            <span class="mini-rank-num">#{{ item._rank }}</span>
+            <div class="mini-info">
+              <div class="mini-name">{{ item.name }}</div>
+              <div class="mini-tags">
+                <el-tag size="small" effect="dark" :type="getCategoryType(item.category)">
+                  {{ getCategoryLabel(item.category) }}
+                </el-tag>
+                <el-tag size="small" effect="plain">{{ item.parameter_size || '参数未知' }}</el-tag>
+              </div>
+            </div>
+            <el-button link type="primary" size="small" @click="showDetail(item)">详情</el-button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 搜索和筛选区域 -->
-    <div class="filter-bar">
-      <el-input 
-        v-model="searchQuery" 
-        placeholder="搜索模型名称..." 
-        :prefix-icon="Search" 
-        clearable
-        @input="handleLocalFilter"
-        @clear="handleLocalFilter"
-        style="width: 300px;"
-      />
-      <el-select 
-        v-model="categoryFilter" 
-        placeholder="选择类型" 
-        clearable
-        @change="handleLocalFilter"
-        style="width: 150px; margin-left: 15px;"
-      >
-        <el-option label="全部类型" value="" />
-        <el-option label="文本生成" value="text" />
-        <el-option label="图像生成" value="image" />
-        <el-option label="多模态" value="multimodal" />
-        <el-option label="代码生成" value="code" />
-      </el-select>
-      <el-button :icon="Refresh" @click="resetFilter" style="margin-left: 15px;">重置</el-button>
+    <div class="filter-card">
+      <div class="filter-bar">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索模型名称..."
+          :prefix-icon="Search"
+          clearable
+          @input="handleLocalFilter"
+          @clear="handleLocalFilter"
+          class="filter-input"
+        />
+        <el-select
+          v-model="categoryFilter"
+          placeholder="选择类型"
+          clearable
+          @change="handleLocalFilter"
+          class="filter-select"
+        >
+          <el-option label="全部类型" value="" />
+          <el-option label="文本生成" value="text" />
+          <el-option label="图像生成" value="image" />
+          <el-option label="多模态" value="multimodal" />
+          <el-option label="代码生成" value="code" />
+        </el-select>
+        <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
+      </div>
     </div>
 
-    <!-- 加载状态 -->
     <div v-if="loading" class="loading-container">
       <el-icon class="is-loading" :size="32"><Loading /></el-icon>
       <span>加载中...</span>
     </div>
 
-    <!-- 模型列表 -->
     <div v-else>
       <el-empty v-if="filteredModels.length === 0" description="暂无模型" />
-      
-      <template v-else>
-        <el-table 
-          :data="paginatedModels" 
-          border 
-          stripe
-          style="width: 100%;"
-        >
-          <el-table-column prop="name" label="模型名称" min-width="180">
-            <template #default="{ row }">
-              <div class="model-name">
-                <el-icon><Box /></el-icon>
-                <span>{{ row.name }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="company" label="所属公司" width="140">
-            <template #default="{ row }">
-              {{ row.company || '未知' }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="category" label="类型" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getCategoryType(row.category)" size="small">
-                {{ getCategoryLabel(row.category) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="parameter_size" label="参数量" width="120" align="center">
-            <template #default="{ row }">
-              {{ row.parameter_size || '未知' }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200" align="center" fixed="right">
-            <template #default="{ row }">
-              <div class="action-buttons">
-                <el-button type="primary" size="small" @click="showDetail(row)">
-                  详情
-                </el-button>
-                <el-button 
-                  :type="row.is_followed ? 'warning' : 'info'" 
-                  size="small" 
-                  :icon="row.is_followed ? StarFilled : Star"
-                  @click="handleToggleFollow(row)"
-                  :loading="row.followLoading"
-                >
-                  {{ row.is_followed ? '已关注' : '关注' }}
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
 
-        <!-- 分页组件 -->
+      <div v-else class="board-list">
+        <div
+          v-for="item in paginatedRankedModels"
+          :key="item.id"
+          class="board-row"
+          :class="{ 'top-row': item._rank <= 3 }"
+        >
+          <div class="rank">
+            <span>#{{ item._rank }}</span>
+          </div>
+          <div class="meta">
+            <div class="name-line">
+              <el-icon><Box /></el-icon>
+              <span class="name">{{ item.name }}</span>
+              <el-tag size="small" :type="getCategoryType(item.category)">{{ getCategoryLabel(item.category) }}</el-tag>
+            </div>
+            <div class="meta-sub">
+              <span>{{ item.company || '未知机构' }}</span>
+              <span class="dot" />
+              <span>参数: {{ item.parameter_size || '未知' }}</span>
+            </div>
+          </div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">关注</div>
+              <div class="metric-value" :class="{ on: item.is_followed }">{{ item.is_followed ? '已关注' : '未关注' }}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">最近更新</div>
+              <div class="metric-value">{{ formatDate(item.updated_at) }}</div>
+            </div>
+          </div>
+          <div class="actions">
+            <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
+            <el-button
+              :type="item.is_followed ? 'warning' : 'info'"
+              size="small"
+              :icon="item.is_followed ? StarFilled : Star"
+              @click="handleToggleFollow(item)"
+              :loading="item.followLoading"
+            >
+              {{ item.is_followed ? '已关注' : '关注' }}
+            </el-button>
+          </div>
+        </div>
+
         <div class="pagination-container">
           <el-pagination
             v-model:current-page="currentPage"
@@ -111,53 +139,10 @@
             @current-change="handlePageChange"
           />
         </div>
-      </template>
+      </div>
     </div>
-
-    <!-- 模型详情弹窗 -->
-    <el-dialog v-model="showDetailDialog" :title="currentModel?.name" width="600px">
-      <div v-if="detailLoading" class="dialog-loading">
-        <el-icon class="is-loading" :size="24"><Loading /></el-icon>
-        <span>加载详情中...</span>
-      </div>
-      <div class="detail-content" v-else-if="modelDetail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="模型名称">{{ modelDetail.name }}</el-descriptions-item>
-          <el-descriptions-item label="所属公司">{{ modelDetail.company || '未知' }}</el-descriptions-item>
-          <el-descriptions-item label="类型">
-            <el-tag :type="getCategoryType(modelDetail.category)">
-              {{ getCategoryLabel(modelDetail.category) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="参数量">{{ modelDetail.parameter_size || '未知' }}</el-descriptions-item>
-          <el-descriptions-item label="发布日期">{{ formatDate(modelDetail.release_date) }}</el-descriptions-item>
-          <el-descriptions-item label="版本">{{ modelDetail.version || '未知' }}</el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">
-            {{ modelDetail.description || '暂无描述' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="官方链接" :span="2">
-            <el-link v-if="modelDetail.official_url" :href="modelDetail.official_url" target="_blank" type="primary">
-              {{ modelDetail.official_url }}
-            </el-link>
-            <span v-else>暂无</span>
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-      <template #footer>
-        <el-button @click="showDetailDialog = false">关闭</el-button>
-        <el-button 
-          :type="modelDetail?.is_followed ? 'warning' : 'info'" 
-          :icon="modelDetail?.is_followed ? StarFilled : Star"
-          @click="handleToggleFollowInDialog"
-          :loading="dialogFollowLoading"
-        >
-          {{ modelDetail?.is_followed ? '取消关注' : '关注' }}
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -184,28 +169,32 @@ const modelDetail = ref(null)
 // 本地筛选后的模型
 const filteredModels = computed(() => {
   let result = allModels.value
-  
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
-    result = result.filter(item => 
+    result = result.filter(item =>
       item.name.toLowerCase().includes(keyword) ||
       (item.company && item.company.toLowerCase().includes(keyword))
     )
   }
-  
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
-  
   return result
 })
 
-// 分页后的模型（当前页显示的数据）
-const paginatedModels = computed(() => {
+// 榜单派生数据
+const followedCount = computed(() => filteredModels.value.filter(item => item.is_followed).length)
+const categoryCount = computed(() => {
+  const set = new Set(filteredModels.value.map(item => item.category).filter(Boolean))
+  return set.size
+})
+const rankedModels = computed(() => filteredModels.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
+const paginatedRankedModels = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
-  return filteredModels.value.slice(start, end)
+  return rankedModels.value.slice(start, end)
 })
+const rankedTop3 = computed(() => rankedModels.value.slice(0, 3))
 
 // 监听筛选条件变化，重置到第一页
 watch([searchQuery, categoryFilter], () => {
@@ -293,22 +282,26 @@ const resetFilter = () => {
 
 // 切换关注状态（列表中）
 const handleToggleFollow = async (row) => {
-  row.followLoading = true
+  // 从原始数组中找到对应的模型对象
+  const originalItem = allModels.value.find(m => m.id === row.id)
+  if (!originalItem) return
+  
+  originalItem.followLoading = true
   try {
-    if (row.is_followed) {
+    if (originalItem.is_followed) {
       // 取消关注
-      const res = await unfollowModel(row.id)
+      const res = await unfollowModel(originalItem.id)
       if (res.data?.code === 200 || res.data?.code === 204) {
-        row.is_followed = false
+        originalItem.is_followed = false
         ElMessage.success('已取消关注')
       } else {
         ElMessage.error(res.data?.msg || '取消关注失败')
       }
     } else {
       // 添加关注
-      const res = await followModel(row.id)
+      const res = await followModel(originalItem.id)
       if (res.data?.code === 200 || res.data?.code === 201) {
-        row.is_followed = true
+        originalItem.is_followed = true
         ElMessage.success('关注成功')
       } else {
         ElMessage.error(res.data?.msg || '关注失败')
@@ -322,7 +315,7 @@ const handleToggleFollow = async (row) => {
       ElMessage.error('操作失败，请稍后重试')
     }
   } finally {
-    row.followLoading = false
+    originalItem.followLoading = false
   }
 }
 
@@ -401,37 +394,163 @@ onMounted(() => {
 
 <style scoped>
 .model-square {
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 50%, #f7fbff 100%);
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(31, 41, 61, 0.08);
   min-height: calc(100vh - 140px);
 }
 
-.page-header {
-  margin-bottom: 25px;
+.hero {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 16px;
 }
 
-.page-header h2 {
+.hero-left {
+  flex: 1;
+  background: linear-gradient(120deg, #1f6bff 0%, #5f8bff 60%, #9ec5ff 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-left::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(255,255,255,0.28), rgba(255,255,255,0));
+  transform: rotate(-10deg);
+}
+
+.title-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0;
-  color: #303133;
+  margin-bottom: 6px;
 }
 
-.page-header .subtitle {
-  color: #909399;
-  font-size: 14px;
-  margin-top: 8px;
+.badge {
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.hero-left h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.subtitle {
+  margin: 4px 0 14px;
+  color: rgba(255,255,255,0.92);
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  backdrop-filter: blur(2px);
+}
+
+.stat-card .label {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.stat-card .value {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 6px 0 2px;
+}
+
+.stat-card .hint {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.hero-right {
+  width: 320px;
+}
+
+.mini-rank {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(18,38,63,0.12);
+  padding: 14px;
+  height: 100%;
+}
+
+.mini-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #1f2d3d;
+}
+
+.mini-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+
+.mini-item:last-child {
+  border-bottom: none;
+}
+
+.mini-rank-num {
+  font-weight: 700;
+  color: #1f6bff;
+}
+
+.mini-name {
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.mini-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.filter-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.06);
+  margin-bottom: 14px;
 }
 
 .filter-bar {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 10px;
+}
+
+.filter-input,
+.filter-select {
+  width: 260px;
 }
 
 .loading-container {
@@ -443,18 +562,103 @@ onMounted(() => {
   color: #909399;
 }
 
-.model-name {
+.board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: 80px 1.3fr 1fr 220px;
+  gap: 16px;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 22px rgba(18, 38, 63, 0.06);
+  border: 1px solid #eef2f9;
+}
+
+.board-row.top-row {
+  border-color: #d8e6ff;
+  box-shadow: 0 10px 28px rgba(31, 107, 255, 0.12);
+}
+
+.rank span {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1f6bff;
+}
+
+.meta .name-line {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #409eff;
-  font-weight: 500;
 }
 
-.action-buttons {
+.meta .name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+
+.meta-sub {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  color: #607086;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.meta-sub .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d0d7e2;
+  display: inline-block;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  background: #f6f8fb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid #eef2f9;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #7a869a;
+}
+
+.metric-value {
+  margin-top: 6px;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+
+.metric-value.on {
+  color: #1f8f4c;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pagination-container {
+  display: flex;
   justify-content: center;
+  margin-top: 6px;
+  padding: 8px 0 4px;
 }
 
 .dialog-loading {
@@ -469,21 +673,9 @@ onMounted(() => {
   padding: 10px 0;
 }
 
-/* 分页容器样式 */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-  padding: 15px 0;
-}
-
-:deep(.el-table th) {
-  background: #f5f7fa;
-  color: #303133;
-  font-weight: 600;
-}
-
-:deep(.el-pagination) {
-  --el-pagination-button-bg-color: #fff;
+:deep(.el-dialog__body) {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 </style>
+

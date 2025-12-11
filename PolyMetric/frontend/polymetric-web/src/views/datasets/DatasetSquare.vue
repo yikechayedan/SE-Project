@@ -1,107 +1,135 @@
 <template>
   <div class="dataset-square">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2>
-        <el-icon><Folder /></el-icon>
-        数据集广场
-      </h2>
-      <p class="subtitle">浏览和发现优质数据集，支持搜索和分类筛选</p>
+    <div class="hero">
+      <div class="hero-left">
+        <div class="title-row">
+          <div class="badge">数据集广场</div>
+          <h2>评测数据集榜单</h2>
+        </div>
+        <p class="subtitle">优先展示高质量、已审核、被关注的数据集，像榜单一样浏览。</p>
+        <div class="hero-stats">
+          <div class="stat-card">
+            <div class="label">已收录</div>
+            <div class="value">{{ filteredDatasets.length }}</div>
+            <div class="hint">数据集数量</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">已审核</div>
+            <div class="value">{{ verifiedCount }}</div>
+            <div class="hint">通过审核</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">已关注</div>
+            <div class="value">{{ followedCount }}</div>
+            <div class="hint">你的关注</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="mini-rank" v-if="rankedTop3.length">
+          <div class="mini-title">Top 3</div>
+          <div class="mini-item" v-for="item in rankedTop3" :key="item.id">
+            <span class="mini-rank-num">#{{ item._rank }}</span>
+            <div class="mini-info">
+              <div class="mini-name">{{ item.name }}</div>
+              <div class="mini-tags">
+                <el-tag size="small" effect="dark" :type="getCategoryType(item.category)">
+                  {{ getCategoryLabel(item.category) }}
+                </el-tag>
+                <el-tag size="small" effect="plain">{{ formatFileSize(item.file_size) }}</el-tag>
+              </div>
+            </div>
+            <el-button link type="primary" size="small" @click="showDetail(item)">详情</el-button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 搜索和筛选区域 -->
-    <div class="filter-bar">
-      <el-input 
-        v-model="searchQuery" 
-        placeholder="搜索数据集名称..." 
-        :prefix-icon="Search" 
-        clearable
-        @input="handleLocalFilter"
-        @clear="handleLocalFilter"
-        style="width: 300px;"
-      />
-      <el-select 
-        v-model="categoryFilter" 
-        placeholder="选择分类" 
-        clearable
-        @change="handleLocalFilter"
-        style="width: 150px; margin-left: 15px;"
-      >
-        <el-option label="全部分类" value="" />
-        <el-option label="图像" value="image" />
-        <el-option label="文本" value="text" />
-        <el-option label="多模态" value="multimodal" />
-      </el-select>
-      <el-button :icon="Refresh" @click="resetFilter" style="margin-left: 15px;">重置</el-button>
+    <div class="filter-card">
+      <div class="filter-bar">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索数据集名称..."
+          :prefix-icon="Search"
+          clearable
+          @input="handleLocalFilter"
+          @clear="handleLocalFilter"
+          class="filter-input"
+        />
+        <el-select
+          v-model="categoryFilter"
+          placeholder="选择分类"
+          clearable
+          @change="handleLocalFilter"
+          class="filter-select"
+        >
+          <el-option label="全部分类" value="" />
+          <el-option label="图像" value="image" />
+          <el-option label="文本" value="text" />
+          <el-option label="多模态" value="multimodal" />
+        </el-select>
+        <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
+      </div>
     </div>
 
-    <!-- 加载状态 -->
     <div v-if="loading" class="loading-container">
       <el-icon class="is-loading" :size="32"><Loading /></el-icon>
       <span>加载中...</span>
     </div>
 
-    <!-- 数据集列表 -->
     <div v-else>
       <el-empty v-if="filteredDatasets.length === 0" description="暂无数据集" />
-      
-      <template v-else>
-        <el-table 
-          :data="paginatedDatasets" 
-          border 
-          stripe
-          style="width: 100%;"
-        >
-          <el-table-column prop="name" label="数据集名称" min-width="180">
-            <template #default="{ row }">
-              <div class="dataset-name">
-                <el-icon><Folder /></el-icon>
-                <span>{{ row.name }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="creator_username" label="上传者" width="160">
-            <template #default="{ row }">
-              <UserPopover :user-id="row.creator_id" :username="row.creator_username" v-if="row.creator_id" />
-              <span v-else>{{ row.creator_username || '未知' }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="category" label="分类" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getCategoryType(row.category)" size="small">
-                {{ getCategoryLabel(row.category) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="file_size" label="大小" width="100" align="center">
-            <template #default="{ row }">
-              {{ formatFileSize(row.file_size) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="260" align="center" fixed="right">
-            <template #default="{ row }">
-              <div class="action-buttons">
-                <el-button type="primary" size="small" @click="showDetail(row)">
-                  详情
-                </el-button>
-                <el-button type="success" size="small" :icon="Download" @click="handleDownload(row)">
-                  下载
-                </el-button>
-                <el-button 
-                  :type="row.is_followed ? 'warning' : 'info'" 
-                  size="small" 
-                  :icon="row.is_followed ? StarFilled : Star"
-                  @click="handleToggleFollow(row)"
-                  :loading="row.followLoading"
-                >
-                  {{ row.is_followed ? '已关注' : '关注' }}
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
 
-        <!-- 分页组件 -->
+      <div v-else class="board-list">
+        <div
+          v-for="item in paginatedRankedDatasets"
+          :key="item.id"
+          class="board-row"
+          :class="{ 'top-row': item._rank <= 3 }"
+        >
+          <div class="rank">
+            <span>#{{ item._rank }}</span>
+          </div>
+          <div class="meta">
+            <div class="name-line">
+              <el-icon><Folder /></el-icon>
+              <span class="name">{{ item.name }}</span>
+              <el-tag size="small" :type="getCategoryType(item.category)">{{ getCategoryLabel(item.category) }}</el-tag>
+            </div>
+            <div class="meta-sub">
+              <span>上传者: 
+                <UserPopover :user-id="item.creator_id" :username="item.creator_username" v-if="item.creator_id" />
+                <span v-else>{{ item.creator_username || '未知' }}</span>
+              </span>
+              <span class="dot" />
+              <span>{{ formatFileSize(item.file_size) }}</span>
+            </div>
+          </div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">审核状态</div>
+              <div class="metric-value" :class="{ on: item.is_verified }">{{ item.is_verified ? '已审核' : '待审核' }}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">最近更新</div>
+              <div class="metric-value">{{ formatDate(item.updated_at) }}</div>
+            </div>
+          </div>
+          <div class="actions">
+            <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
+            <el-button type="success" size="small" :icon="Download" @click="handleDownload(item)">下载</el-button>
+            <el-button
+              :type="item.is_followed ? 'warning' : 'info'"
+              size="small"
+              :icon="item.is_followed ? StarFilled : Star"
+              @click="handleToggleFollow(item)"
+              :loading="item.followLoading"
+            >
+              {{ item.is_followed ? '已关注' : '关注' }}
+            </el-button>
+          </div>
+        </div>
+
         <div class="pagination-container">
           <el-pagination
             v-model:current-page="currentPage"
@@ -114,7 +142,7 @@
             @current-change="handlePageChange"
           />
         </div>
-      </template>
+      </div>
     </div>
 
     <!-- 数据集详情弹窗 -->
@@ -179,15 +207,12 @@
             </el-button>
           </div>
 
-          <!-- 条目加载状态 -->
           <div v-if="entriesLoading" class="entries-loading">
             <el-icon class="is-loading"><Loading /></el-icon>
             <span>加载数据条目中...</span>
           </div>
 
-          <!-- 条目列表 -->
           <div v-else-if="datasetEntries.length > 0" class="entries-container">
-            <!-- 动态表格：根据数据字段自动生成列 -->
             <el-table 
               :data="datasetEntries" 
               border 
@@ -210,7 +235,6 @@
               </el-table-column>
             </el-table>
 
-            <!-- 条目分页 -->
             <div class="entries-pagination">
               <el-pagination
                 v-model:current-page="entriesCurrentPage"
@@ -224,7 +248,6 @@
             </div>
           </div>
 
-          <!-- 无数据 -->
           <el-empty v-else description="暂无数据条目或不支持预览该格式" :image-size="80" />
         </div>
       </div>
@@ -246,7 +269,6 @@
     </el-dialog>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
@@ -283,27 +305,26 @@ const entriesTotal = ref(0)
 // 本地筛选后的数据集
 const filteredDatasets = computed(() => {
   let result = allDatasets.value
-  
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
-    result = result.filter(item => 
-      item.name.toLowerCase().includes(keyword)
-    )
+    result = result.filter(item => item.name.toLowerCase().includes(keyword))
   }
-  
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
-  
   return result
 })
 
-// 分页后的数据集（当前页显示的数据）
-const paginatedDatasets = computed(() => {
+// 榜单派生数据
+const verifiedCount = computed(() => filteredDatasets.value.filter(item => item.is_verified).length)
+const followedCount = computed(() => filteredDatasets.value.filter(item => item.is_followed).length)
+const rankedDatasets = computed(() => filteredDatasets.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
+const paginatedRankedDatasets = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
-  return filteredDatasets.value.slice(start, end)
+  return rankedDatasets.value.slice(start, end)
 })
+const rankedTop3 = computed(() => rankedDatasets.value.slice(0, 3))
 
 // 监听筛选条件变化，重置到第一页
 watch([searchQuery, categoryFilter], () => {
@@ -420,22 +441,26 @@ const resetFilter = () => {
 
 // 切换关注状态（列表中）
 const handleToggleFollow = async (row) => {
-  row.followLoading = true
+  // 从原始数组中找到对应的数据集对象
+  const originalItem = allDatasets.value.find(d => d.id === row.id)
+  if (!originalItem) return
+  
+  originalItem.followLoading = true
   try {
-    if (row.is_followed) {
+    if (originalItem.is_followed) {
       // 取消关注
-      const res = await unfollowDataset(row.id)
+      const res = await unfollowDataset(originalItem.id)
       if (res.data?.code === 200 || res.data?.code === 204) {
-        row.is_followed = false
+        originalItem.is_followed = false
         ElMessage.success('已取消关注')
       } else {
         ElMessage.error(res.data?.msg || '取消关注失败')
       }
     } else {
       // 添加关注
-      const res = await followDataset(row.id)
+      const res = await followDataset(originalItem.id)
       if (res.data?.code === 200 || res.data?.code === 201) {
-        row.is_followed = true
+        originalItem.is_followed = true
         ElMessage.success('关注成功')
       } else {
         ElMessage.error(res.data?.msg || '关注失败')
@@ -449,7 +474,7 @@ const handleToggleFollow = async (row) => {
       ElMessage.error('操作失败，请稍后重试')
     }
   } finally {
-    row.followLoading = false
+    originalItem.followLoading = false
   }
 }
 
@@ -625,37 +650,163 @@ onMounted(() => {
 
 <style scoped>
 .dataset-square {
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  padding: 24px;
+  background: linear-gradient(135deg, #f6fff9 0%, #ffffff 50%, #f8fbff 100%);
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(31, 41, 61, 0.08);
   min-height: calc(100vh - 140px);
 }
 
-.page-header {
-  margin-bottom: 25px;
+.hero {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 16px;
 }
 
-.page-header h2 {
+.hero-left {
+  flex: 1;
+  background: linear-gradient(120deg, #13c27f 0%, #1fc49a 55%, #5de2c2 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 20px 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-left::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(255,255,255,0.24), rgba(255,255,255,0));
+  transform: rotate(-8deg);
+}
+
+.title-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0;
-  color: #303133;
+  margin-bottom: 6px;
 }
 
-.page-header .subtitle {
-  color: #909399;
-  font-size: 14px;
-  margin-top: 8px;
+.badge {
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.hero-left h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.subtitle {
+  margin: 4px 0 14px;
+  color: rgba(255,255,255,0.92);
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.20);
+  border-radius: 12px;
+  padding: 10px 12px;
+  backdrop-filter: blur(2px);
+}
+
+.stat-card .label {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.stat-card .value {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 6px 0 2px;
+}
+
+.stat-card .hint {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.hero-right {
+  width: 320px;
+}
+
+.mini-rank {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(18,38,63,0.12);
+  padding: 14px;
+  height: 100%;
+}
+
+.mini-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #1f2d3d;
+}
+
+.mini-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f8;
+}
+
+.mini-item:last-child {
+  border-bottom: none;
+}
+
+.mini-rank-num {
+  font-weight: 700;
+  color: #13c27f;
+}
+
+.mini-name {
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.mini-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.filter-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.06);
+  margin-bottom: 14px;
 }
 
 .filter-bar {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 10px;
+}
+
+.filter-input,
+.filter-select {
+  width: 260px;
 }
 
 .loading-container {
@@ -667,18 +818,103 @@ onMounted(() => {
   color: #909399;
 }
 
-.dataset-name {
+.board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: 80px 1.3fr 1fr 260px;
+  gap: 16px;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 22px rgba(18, 38, 63, 0.06);
+  border: 1px solid #eef2f9;
+}
+
+.board-row.top-row {
+  border-color: #c8f0df;
+  box-shadow: 0 10px 28px rgba(19, 194, 127, 0.16);
+}
+
+.rank span {
+  font-size: 20px;
+  font-weight: 800;
+  color: #13c27f;
+}
+
+.meta .name-line {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #409eff;
-  font-weight: 500;
 }
 
-.action-buttons {
+.meta .name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+
+.meta-sub {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  color: #607086;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.meta-sub .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d0d7e2;
+  display: inline-block;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  background: #f6fbf8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2f1ea;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #7a869a;
+}
+
+.metric-value {
+  margin-top: 6px;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+
+.metric-value.on {
+  color: #0f9b63;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pagination-container {
+  display: flex;
   justify-content: center;
+  margin-top: 6px;
+  padding: 8px 0 4px;
 }
 
 .dialog-loading {
@@ -693,15 +929,7 @@ onMounted(() => {
   padding: 10px 0;
 }
 
-/* 分页容器样式 */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-  padding: 15px 0;
-}
-
-/* 数据条目区域样式 */
+/* 数据条目区域 */
 .entries-section {
   margin-top: 20px;
   border: 1px solid #ebeef5;
@@ -762,28 +990,9 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-:deep(.el-table th) {
-  background: #f5f7fa;
-  color: #303133;
-  font-weight: 600;
-}
-
-:deep(.el-pagination) {
-  --el-pagination-button-bg-color: #fff;
-}
-
-:deep(.el-collapse-item__header) {
-  font-weight: 600;
-  font-size: 15px;
-}
-
-:deep(.el-collapse-item__content) {
-  padding-bottom: 10px;
-}
-
-/* 弹窗样式优化 */
-:deep(.dataset-detail-dialog .el-dialog__body) {
+:deep(.el-dialog__body) {
   max-height: 70vh;
   overflow-y: auto;
 }
 </style>
+
