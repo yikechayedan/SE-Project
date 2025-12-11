@@ -60,8 +60,32 @@ const userAvatar = ref('')
 // 默认头像
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
+// 后端基础URL
+const API_BASE_URL = 'http://127.0.0.1:8000'
+
+// 处理头像URL，确保是完整路径
+const getFullAvatarUrl = (avatar) => {
+  if (!avatar) return ''
+  // 如果已经是完整URL，直接返回
+  if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
+    return avatar
+  }
+  // 确保路径以 /media/ 开头
+  let path = avatar
+  if (!path.startsWith('/')) {
+    path = '/' + path
+  }
+  if (!path.startsWith('/media/')) {
+    path = '/media' + path
+  }
+  return `${API_BASE_URL}${path}`
+}
+
 // 计算头像 URL
-const avatarUrl = computed(() => userAvatar.value || defaultAvatar)
+const avatarUrl = computed(() => {
+  const url = getFullAvatarUrl(userAvatar.value)
+  return url || defaultAvatar
+})
 
 const passwordForm = reactive({
   old_password: '',
@@ -98,17 +122,28 @@ onMounted(async () => {
 const fetchUserInfo = async () => {
   try {
     const res = await getUserInfo()
-    const data = res.data
+    
+    // 处理后端返回的 { code, msg, data } 格式
+    let userData = res.data
+    if (res.data?.code === 200 && res.data?.data) {
+      userData = res.data.data
+    }
     
     // 更新用户名和头像
-    if (data.username) {
-      username.value = data.username
+    if (userData.username) {
+      username.value = userData.username
+      localStorage.setItem('username', userData.username)
     }
-    if (data.avatar) {
-      userAvatar.value = data.avatar
+    if (userData.avatar) {
+      userAvatar.value = userData.avatar
+      localStorage.setItem('avatar', userData.avatar)
     }
   } catch (error) {
-    // 获取失败时使用默认值，不影响页面显示
+    // 获取失败时使用本地缓存
+    const cachedAvatar = localStorage.getItem('avatar')
+    if (cachedAvatar) {
+      userAvatar.value = cachedAvatar
+    }
     console.warn('获取用户信息失败:', error)
   }
 }

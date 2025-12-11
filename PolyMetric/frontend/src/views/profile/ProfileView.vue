@@ -3,16 +3,62 @@
     <el-row :gutter="30">
       <el-col :span="8">
         <el-card class="user-info">
-          <el-avatar :size="120" :src="avatarUrl" />
-          <h2>{{ form.username }}</h2>
-          <p>{{ form.intro || '暂无个人介绍' }}</p>
-          <p>邮箱: {{ form.email || '未设置' }}</p>
-          <p>手机号: {{ form.phone || '未设置' }}</p>
-          <el-button type="primary" plain @click="openEditDialog">编辑资料</el-button>
-          <el-button plain @click="openPrivacyDialog" style="margin-top: 10px;">
-            <el-icon><Setting /></el-icon>
-            隐私设置
-          </el-button>
+          <div class="card-hero">
+            <div class="avatar-wrap">
+              <span class="avatar-glow" />
+              <el-avatar :size="110" :src="avatarUrl" />
+            </div>
+            <div class="name-block">
+              <div class="name-line">
+                <h2>{{ form.username || '未命名用户' }}</h2>
+                <el-tag size="small" effect="dark" type="info">个人主页</el-tag>
+              </div>
+              <p class="subtitle">{{ form.intro || '暂无个人介绍' }}</p>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <div class="info-grid">
+            <div class="info-item">
+              <el-icon><Message /></el-icon>
+              <div class="info-text">
+                <span class="label">邮箱</span>
+                <span class="value">{{ form.email || '未设置' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <el-icon><Phone /></el-icon>
+              <div class="info-text">
+                <span class="label">手机号</span>
+                <span class="value">{{ form.phone || '未设置' }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <el-icon><User /></el-icon>
+              <div class="info-text">
+                <span class="label">昵称</span>
+                <span class="value">{{ form.username || '未设置' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="visibility-row">
+            <el-tag :type="form.show_followed_models ? 'success' : 'warning'" effect="light">
+              {{ form.show_followed_models ? '模型关注公开' : '模型关注隐藏' }}
+            </el-tag>
+            <el-tag :type="form.show_followed_datasets ? 'success' : 'warning'" effect="light">
+              {{ form.show_followed_datasets ? '数据集关注公开' : '数据集关注隐藏' }}
+            </el-tag>
+          </div>
+
+          <div class="action-row">
+            <el-button type="primary" plain @click="openEditDialog">编辑资料</el-button>
+            <el-button plain @click="openPrivacyDialog">
+              <el-icon><Setting /></el-icon>
+              隐私设置
+            </el-button>
+          </div>
         </el-card>
       </el-col>
       <el-col :span="16">
@@ -35,21 +81,20 @@
       <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="100px">
         <el-form-item label="头像">
           <div class="avatar-upload">
-            <el-avatar :size="80" :src="avatarUrl" />
+            <el-avatar :size="80" :src="previewAvatarUrl" />
             <el-upload
               action="#"
               :auto-upload="false"
               :show-file-list="false"
               :on-change="handleAvatarChange"
               accept="image/jpeg,image/png,image/gif"
-              :disabled="avatarUploading"
             >
-              <el-button type="primary" plain size="small" :loading="avatarUploading">
-                {{ avatarUploading ? '上传中...' : '上传头像' }}
+              <el-button type="primary" plain size="small">
+                选择头像
               </el-button>
             </el-upload>
           </div>
-          <p class="tip">支持 jpg/png/gif 格式，最大 2MB</p>
+          <p class="tip">支持 jpg/png/gif 格式，最大 2MB（保存时上传）</p>
         </el-form-item>
         <el-form-item label="用户名">
           <el-input v-model="editForm.username" disabled />
@@ -73,7 +118,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEdit = false">取消</el-button>
+        <el-button @click="cancelEdit">取消</el-button>
         <el-button type="primary" :loading="loading" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
@@ -117,7 +162,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Setting, Box, Folder } from '@element-plus/icons-vue'
+import { Setting, Box, Folder, Message, Phone, User } from '@element-plus/icons-vue'
 import { getUserInfo, updateUserInfo, uploadAvatar, updatePrivacySettings } from '@/api/users'
 import FollowContent from '../../components/profile/FollowContent.vue'
 import MyDatasets from '../../components/profile/MyDatasets.vue'
@@ -129,7 +174,6 @@ const showEdit = ref(false)
 const showPrivacy = ref(false)
 const loading = ref(false)
 const privacyLoading = ref(false)
-const avatarUploading = ref(false)
 const editFormRef = ref(null)
 
 // 默认头像
@@ -157,8 +201,23 @@ const privacyForm = reactive({
   show_followed_datasets: true
 })
 
-// 计算头像 URL
+// 待上传的头像文件（用于延迟上传）
+const pendingAvatarFile = ref(null)
+// 预览用的头像URL（本地预览，不需要上传）
+const previewAvatarUrlLocal = ref('')
+
+// 计算头像 URL（用于页面展示）
 const avatarUrl = computed(() => form.avatar || defaultAvatar)
+
+// 计算编辑弹窗中的头像预览 URL
+const previewAvatarUrl = computed(() => {
+  // 如果有本地预览图（用户选择了新头像但未保存）
+  if (previewAvatarUrlLocal.value) {
+    return previewAvatarUrlLocal.value
+  }
+  // 否则显示当前头像
+  return form.avatar || defaultAvatar
+})
 
 const editRules = {
   email: [
@@ -180,15 +239,20 @@ onMounted(async () => {
 const fetchUserInfo = async () => {
   try {
     const res = await getUserInfo()
-    const data = res.data
     
-    form.username = data.username || ''
-    form.intro = data.bio || ''
-    form.email = data.email || ''
-    form.phone = data.phone || ''
-    form.avatar = data.avatar || ''
-    form.show_followed_models = data.show_followed_models !== false
-    form.show_followed_datasets = data.show_followed_datasets !== false
+    // 处理后端返回的 { code, msg, data } 格式
+    let userData = res.data
+    if (res.data?.code === 200 && res.data?.data) {
+      userData = res.data.data
+    }
+    
+    form.username = userData.username || ''
+    form.intro = userData.bio || ''
+    form.email = userData.email || ''
+    form.phone = userData.phone || ''
+    form.avatar = userData.avatar || ''
+    form.show_followed_models = userData.show_followed_models !== false
+    form.show_followed_datasets = userData.show_followed_datasets !== false
     
   } catch (error) {
     if (error.response?.status === 401) {
@@ -207,7 +271,21 @@ const openEditDialog = () => {
   editForm.intro = form.intro
   editForm.email = form.email
   editForm.phone = form.phone
+  // 清除待上传的头像
+  pendingAvatarFile.value = null
+  previewAvatarUrlLocal.value = ''
   showEdit.value = true
+}
+
+// 取消编辑
+const cancelEdit = () => {
+  // 清除本地预览
+  if (previewAvatarUrlLocal.value) {
+    URL.revokeObjectURL(previewAvatarUrlLocal.value)
+  }
+  pendingAvatarFile.value = null
+  previewAvatarUrlLocal.value = ''
+  showEdit.value = false
 }
 
 // 打开隐私设置弹窗
@@ -217,8 +295,8 @@ const openPrivacyDialog = () => {
   showPrivacy.value = true
 }
 
-// 头像上传处理
-const handleAvatarChange = async (uploadFile) => {
+// 头像选择处理（不立即上传，仅预览）
+const handleAvatarChange = (uploadFile) => {
   const file = uploadFile.raw
   
   // 1. 验证文件格式
@@ -235,31 +313,16 @@ const handleAvatarChange = async (uploadFile) => {
     return
   }
   
-  // 3. 上传到后端
-  avatarUploading.value = true
-  try {
-    const res = await uploadAvatar(file)
-    
-    // 根据后端返回格式处理
-    if (res.data && res.data.code === 200) {
-      form.avatar = res.data.data.avatar
-      ElMessage.success('头像上传成功')
-    } else {
-      ElMessage.error(res.data?.msg || '上传失败')
-    }
-  } catch (error) {
-    if (error.response?.status === 401) {
-      ElMessage.error('登录已过期，请重新登录')
-      localStorage.clear()
-      router.push('/login')
-    } else if (error.response?.status === 413) {
-      ElMessage.error('文件过大，最大支持 2MB')
-    } else {
-      ElMessage.error(error.response?.data?.msg || '头像上传失败')
-    }
-  } finally {
-    avatarUploading.value = false
+  // 3. 保存文件引用，等待保存时上传
+  pendingAvatarFile.value = file
+  
+  // 4. 创建本地预览URL
+  if (previewAvatarUrlLocal.value) {
+    URL.revokeObjectURL(previewAvatarUrlLocal.value)
   }
+  previewAvatarUrlLocal.value = URL.createObjectURL(file)
+  
+  ElMessage.success('头像已选择，点击保存后生效')
 }
 
 // 保存编辑
@@ -271,27 +334,62 @@ const saveEdit = () => {
     }
     
     loading.value = true
+    
     try {
+      // 1. 如果有待上传的头像，先上传头像
+      if (pendingAvatarFile.value) {
+        try {
+          const avatarRes = await uploadAvatar(pendingAvatarFile.value)
+          if (avatarRes.data?.code === 200 && avatarRes.data?.data?.avatar) {
+            form.avatar = avatarRes.data.data.avatar
+            ElMessage.success('头像上传成功')
+          } else {
+            ElMessage.warning(avatarRes.data?.msg || '头像上传失败，其他信息仍将保存')
+          }
+        } catch (avatarError) {
+          console.error('头像上传失败:', avatarError)
+          ElMessage.warning('头像上传失败，其他信息仍将保存')
+        }
+      }
+      
+      // 2. 更新用户基本信息
       const res = await updateUserInfo({
         email: editForm.email,
         phone: editForm.phone,
         bio: editForm.intro
       })
       
-      const data = res.data
+      // 处理返回数据
+      let updatedData = res.data
+      if (res.data?.code === 200 && res.data?.data) {
+        updatedData = res.data.data
+      }
+      
       // 更新本地数据
-      form.email = data.email || ''
-      form.phone = data.phone || ''
-      form.intro = data.bio || ''
+      if (updatedData.email !== undefined) form.email = updatedData.email
+      if (updatedData.phone !== undefined) form.phone = updatedData.phone
+      if (updatedData.bio !== undefined) form.intro = updatedData.bio
+      
+      // 清理
+      pendingAvatarFile.value = null
+      if (previewAvatarUrlLocal.value) {
+        URL.revokeObjectURL(previewAvatarUrlLocal.value)
+        previewAvatarUrlLocal.value = ''
+      }
       
       ElMessage.success('保存成功')
       showEdit.value = false
       
     } catch (error) {
+      console.error('保存失败:', error)
       if (error.response?.status === 401) {
         ElMessage.error('登录已过期，请重新登录')
         localStorage.clear()
         router.push('/login')
+      } else if (error.response?.status === 405) {
+        // 后端不支持此方法
+        ElMessage.error('更新用户资料失败：后端接口不支持此操作')
+        console.error('提示：后端 /api/users/me/ 需要支持 PUT/PATCH 方法')
       } else if (error.response?.status === 400) {
         ElMessage.error(error.response?.data?.msg || '输入信息有误')
       } else {
@@ -335,37 +433,136 @@ const savePrivacy = async () => {
 </script>
 
 <style scoped>
-.profile-view { 
-  padding: 20px; 
-  background: white; 
-  border-radius: 8px; 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-  height: 100%; 
+.profile-view {
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 45%, #f9fbff 100%);
+  border-radius: 14px;
+  box-shadow: 0 6px 28px rgba(31, 41, 61, 0.08);
+  min-height: 100%;
 }
 
-.user-info { 
-  text-align: center; 
-  background: #fafafa; 
-  border-radius: 12px; 
-  padding: 30px 20px; 
-  color: #333; 
+.user-info {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(18, 38, 63, 0.06);
+  padding: 26px 22px;
+}
+
+.user-info::before {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -80px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle at 30% 30%, rgba(96, 130, 255, 0.18), rgba(96, 130, 255, 0));
+  transform: rotate(-12deg);
+}
+
+.card-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-glow {
+  position: absolute;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 130, 255, 0.15), rgba(96, 130, 255, 0.02));
+  filter: blur(2px);
+}
+
+.name-block {
+  flex: 1;
+}
+
+.name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .user-info h2 {
-  margin: 15px 0 10px;
+  margin: 0;
   font-size: 22px;
+  color: #1f2d3d;
 }
 
-.user-info p {
-  margin: 8px 0;
-  color: #666;
+.subtitle {
+  margin: 8px 0 0;
+  color: #5b667a;
   font-size: 14px;
 }
 
-.el-tabs { 
-  background: #fafafa; 
-  border-radius: 12px; 
-  padding: 20px; 
+.info-grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f6f8fb;
+  border-radius: 12px;
+  border: 1px solid #eef2f9;
+}
+
+.info-item .el-icon {
+  font-size: 18px;
+  color: #5f8bff;
+}
+
+.info-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  color: #7a869a;
+  font-size: 13px;
+}
+
+.value {
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.visibility-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.el-tabs {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px rgba(18, 38, 63, 0.06);
 }
 
 .avatar-upload {
@@ -414,3 +611,4 @@ const savePrivacy = async () => {
   color: #409eff;
 }
 </style>
+
