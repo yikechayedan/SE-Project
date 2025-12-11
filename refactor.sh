@@ -59,7 +59,7 @@ echo ""
 echo "步骤 5/7: 删除冗余文件..."
 [ -f PolyMetric/frontend/package.json ] && rm PolyMetric/frontend/package.json && echo "  - 删除 frontend/package.json"
 [ -f PolyMetric/frontend/package-lock.json ] && rm PolyMetric/frontend/package-lock.json && echo "  - 删除 frontend/package-lock.json"
-[ -f PolyMetric/frontend/polymetric-web/README.md ] && rm PolyMetric/frontend/polymetric-web/README.md && echo "  - 删除 polymetric-web/README.md"
+[ -f PolyMetric/frontend/README.md ] && rm PolyMetric/frontend/README.md && echo "  - 删除 README.md"
 echo -e "${GREEN}✓ 冗余文件清理完成${NC}"
 
 echo ""
@@ -123,7 +123,7 @@ fi
 
 echo ""
 echo "步骤 7/7: 创建前端 README..."
-cat > PolyMetric/frontend/polymetric-web/README.md << 'FRONTEND_README'
+cat > PolyMetric/frontend/README.md << 'FRONTEND_README'
 # PolyMetric Frontend
 
 基于 Vue 3 + Vite + Element Plus 的前端应用

@@ -138,13 +138,6 @@ const loading = ref(true); // 用于加载状态
 const errorMessage = ref(null); // 用于错误信息
 
 // 格式化时间函数（示例）
-const formatTime = (timeString) => {
-  if (!timeString) return 'N/A';
-  // 实际项目中应使用库（如 dayjs/moment）处理时间
-  return new Date(timeString).toLocaleString();
-};
-const paginatedItems = computed(() => reportData.value.data.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
-
 // ===================== 辅助函数 =====================
 
 /**

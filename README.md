@@ -137,7 +137,7 @@ SE-Project
 │  ├─ frontend
 │  │  ├─ package-lock.json
 │  │  ├─ package.json
-│  │  └─ polymetric-web
+│  │  └─ frontend
 │  │     ├─ README.md
 │  │     ├─ index.html
 │  │     ├─ package-lock.json
@@ -343,7 +343,7 @@ SE-Project
 │  ├─ frontend
 │  │  ├─ package-lock.json
 │  │  ├─ package.json
-│  │  └─ polymetric-web
+│  │  └─ frontend
 │  │     ├─ README.md
 │  │     ├─ index.html
 │  │     ├─ package-lock.json
