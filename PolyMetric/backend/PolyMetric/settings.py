@@ -221,3 +221,6 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
+
+# Static files collection directory
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

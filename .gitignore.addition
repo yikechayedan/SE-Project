@@ -1,0 +1,12 @@
+
+# ===== 环境变量文件 =====
+# 实际配置不提交（包含敏感信息）
+.env
+.env.local
+deploy/.env
+
+# 模板文件可以提交
+!.env.example
+!deploy/.env.example
+!PolyMetric/frontend/.env.production
+!PolyMetric/frontend/.env.development
