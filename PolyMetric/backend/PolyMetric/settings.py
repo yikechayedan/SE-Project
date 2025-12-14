@@ -210,3 +210,17 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = '15777303630@163.com'
 EMAIL_HOST_PASSWORD = 'TMjmTBPDLNqVjfb2'  # 授权码
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# ============================
+# Celery 配置
+# ============================
+CELERY_BROKER_URL = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_RESULT_BACKEND = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Static files collection directory
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
