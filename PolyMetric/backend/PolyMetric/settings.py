@@ -106,10 +106,16 @@ WSGI_APPLICATION = 'PolyMetric.wsgi.application'
 # -----------------------------
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'polymetric',
+        'USER': 'postgres',
+        'PASSWORD': 'yhblsqt',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
+
 
 
 # -----------------------------
@@ -186,7 +192,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 # 默认主键类型
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 # =======================
 #  qq 邮箱 SMTP 配置
 # =======================

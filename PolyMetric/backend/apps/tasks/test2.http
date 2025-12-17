@@ -1,4 +1,7 @@
-### 8. 获取待测条目列表
-GET http://127.0.0.1:8000/api/tasks/get-pending-items?task=2&reviewer=1
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0ODQ4OTY3LCJpYXQiOjE3NjQ4NDUzNjcsImp0aSI6ImUwMjlmOWYxNzQ2YzQ2YzNiMWZmZTdlOWI3Y2E5YTcwIiwidXNlcl9pZCI6IjEifQ.-zMrl5IE2g6m4F4CgnAA5uRtTTz9b7ZVRrTiXr4euo4
+POST http://127.0.0.1:8000/api/tasks/run-task/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY1OTY0MTk1LCJpYXQiOjE3NjU5NjA1OTUsImp0aSI6IjE2NTQwODkyMGIwMjRiYzJhNTliNDIwMWFiNjcyMzU3IiwidXNlcl9pZCI6IjEifQ.vI3ugZCZhcrR9sT-idXynotmkoxxmryrFzg6pkXWKkg
+Content-Type: application/json
 
+{
+  "task_id":41
+}
