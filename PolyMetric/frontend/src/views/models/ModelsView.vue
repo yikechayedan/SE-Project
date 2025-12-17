@@ -454,9 +454,9 @@ onMounted(() => {
 
 .hero-left {
   flex: 1;
-  background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
-  border: 1px solid #30363d;
-  color: #c9d1d9;
+  background: var(--header-gradient);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   border-radius: 14px;
   padding: 20px 22px;
   position: relative;
@@ -484,7 +484,7 @@ onMounted(() => {
 .badge {
   background: rgba(56, 139, 253, 0.15);
   border: 1px solid rgba(56, 139, 253, 0.4);
-  color: #58a6ff;
+  color: var(--accent-color);
   border-radius: 20px;
   padding: 4px 10px;
   font-size: 12px;
@@ -494,13 +494,13 @@ onMounted(() => {
 .hero-left h2 {
   margin: 0;
   font-size: 22px;
-  color: #ffffff;
+  color: var(--text-primary);
   text-shadow: 0 0 10px rgba(56, 139, 253, 0.3);
 }
 
 .subtitle {
   margin: 4px 0 14px;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .hero-stats {
@@ -510,33 +510,33 @@ onMounted(() => {
 }
 
 .stat-card {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--bg-body);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 10px 12px;
   transition: border-color 0.2s;
 }
 
 .stat-card:hover {
-  border-color: #58a6ff;
+  border-color: var(--accent-color);
 }
 
 .stat-card .label {
   font-size: 12px;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .stat-card .value {
   font-size: 22px;
   font-weight: 700;
   margin: 6px 0 2px;
-  color: #ffffff;
+  color: var(--text-primary);
   font-family: 'Inter', sans-serif;
 }
 
 .stat-card .hint {
   font-size: 12px;
-  color: #8b949e;
+  color: var(--text-secondary);
   opacity: 0.8;
 }
 
@@ -545,8 +545,8 @@ onMounted(() => {
 }
 
 .mini-rank {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 14px;
   height: 100%;
@@ -555,7 +555,7 @@ onMounted(() => {
 .mini-title {
   font-weight: 700;
   margin-bottom: 10px;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .mini-item {
@@ -564,7 +564,7 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .mini-item:last-child {
@@ -573,13 +573,13 @@ onMounted(() => {
 
 .mini-rank-num {
   font-weight: 700;
-  color: #58a6ff;
+  color: var(--accent-color);
   font-family: 'Share Tech Mono', monospace;
 }
 
 .mini-name {
   font-weight: 600;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .mini-tags {
@@ -590,8 +590,8 @@ onMounted(() => {
 }
 
 .filter-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 14px;
@@ -615,7 +615,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 80px 0;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .board-list {
@@ -629,28 +629,28 @@ onMounted(() => {
   grid-template-columns: 80px 1.3fr 1fr 220px;
   gap: 16px;
   align-items: center;
-  background: #161b22;
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 14px 16px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }
 
 .board-row:hover {
   transform: translateY(-2px);
-  border-color: #58a6ff;
+  border-color: var(--accent-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .board-row.top-row {
-  background: linear-gradient(90deg, rgba(56, 139, 253, 0.05) 0%, #161b22 100%);
+  background: linear-gradient(90deg, rgba(56, 139, 253, 0.05) 0%, var(--bg-secondary) 100%);
   border-color: rgba(56, 139, 253, 0.3);
 }
 
 .rank span {
   font-size: 20px;
   font-weight: 800;
-  color: #58a6ff;
+  color: var(--accent-color);
   font-family: 'Share Tech Mono', monospace;
 }
 
@@ -663,14 +663,14 @@ onMounted(() => {
 .meta .name {
   font-size: 16px;
   font-weight: 700;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .meta-sub {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8b949e;
+  color: var(--text-secondary);
   margin-top: 6px;
   font-size: 13px;
 }
@@ -679,7 +679,7 @@ onMounted(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #30363d;
+  background: var(--border-color);
   display: inline-block;
 }
 
@@ -690,25 +690,25 @@ onMounted(() => {
 }
 
 .metric {
-  background: #0d1117;
+  background: var(--bg-body);
   border-radius: 10px;
   padding: 10px 12px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
 }
 
 .metric-label {
   font-size: 12px;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .metric-value {
   margin-top: 6px;
   font-weight: 700;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .metric-value.on {
-  color: #238636;
+  color: var(--success-color);
 }
 
 .actions {
@@ -726,21 +726,21 @@ onMounted(() => {
 
 /* Pagination Dark Mode Override */
 :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
-  background-color: #1f6bff;
+  background-color: var(--accent-color);
   color: #ffffff;
 }
 
 :deep(.el-pagination.is-background .el-pager li) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 :deep(.el-pagination.is-background .btn-prev),
 :deep(.el-pagination.is-background .btn-next) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .dialog-loading {
@@ -748,7 +748,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   padding: 40px 0;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .detail-content {
@@ -758,22 +758,22 @@ onMounted(() => {
 :deep(.el-dialog__body) {
   max-height: 70vh;
   overflow-y: auto;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 /* Descriptions Dark Mode Override */
 :deep(.el-descriptions__label) {
-  background-color: #161b22 !important;
-  color: #8b949e !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
 }
 
 :deep(.el-descriptions__content) {
-  background-color: #0d1117 !important;
-  color: #c9d1d9 !important;
+  background-color: var(--bg-body) !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.el-descriptions__cell) {
-  border-color: #30363d !important;
+  border-color: var(--border-color) !important;
 }
 </style>
 

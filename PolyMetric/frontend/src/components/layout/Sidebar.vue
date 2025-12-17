@@ -47,8 +47,8 @@ const route = useRoute()
   top: 60px;
   left: 0;
   z-index: 999;
-  background: #0d1117;
-  border-right: 1px solid #30363d;
+  background: var(--bg-body);
+  border-right: 1px solid var(--border-color);
   padding: 12px 0;
   overflow-y: auto;
 }
@@ -63,35 +63,35 @@ const route = useRoute()
   border-radius: 6px;
   height: 40px;
   line-height: 40px;
-  color: #8b949e;
+  color: var(--text-secondary);
   transition: all 0.2s;
   border-left: 3px solid transparent;
 }
 
 :deep(.el-menu-item:hover) {
-  background-color: #161b22 !important;
-  color: #c9d1d9 !important;
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.el-menu-item.is-active) {
-  background-color: #161b22 !important;
-  color: #fff !important;
-  border-left-color: #409eff;
+  background-color: var(--bg-hover) !important;
+  color: var(--accent-color) !important;
+  border-left-color: var(--accent-color);
   font-weight: 500;
 }
 
 :deep(.el-menu-item .el-icon) {
   font-size: 18px;
   margin-right: 12px;
-  color: #8b949e;
+  color: var(--text-secondary);
   transition: color 0.2s;
 }
 
 :deep(.el-menu-item:hover .el-icon) {
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
-  color: #409eff !important;
+  color: var(--accent-color) !important;
 }
 </style>

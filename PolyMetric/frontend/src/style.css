@@ -3,18 +3,55 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  --bg-color: #0d1117;
-  --bg-secondary: #161b22;
+  /* --- Semantic Color System (Default: Dark Mode) --- */
+  
+  /* Backgrounds */
+  --bg-body: #0d1117;
+  --bg-secondary: #161b22; /* Card bg, Sidebar */
+  --bg-tertiary: #010409;  /* Darker input bg */
+  --bg-popover: #161b22;
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-hover: #21262d;
+  
+  /* Gradients */
+  --header-gradient: linear-gradient(180deg, rgba(31, 41, 55, 0.5) 0%, rgba(22, 27, 34, 0) 100%);
+
+  /* Borders */
+  --border-color: #30363d;
+  --border-hover: #8b949e;
+  
+  /* Text */
   --text-primary: #c9d1d9;
   --text-secondary: #8b949e;
-  --accent-color: #409eff;
-  --accent-hover: #66b1ff;
-  --border-color: #30363d;
-  --card-bg: #161b22;
+  --text-inverse: #ffffff;
   
+  /* Accents */
+  --accent-color: #58a6ff;
+  --accent-hover: #79c0ff;
+  --success-color: #238636;
+  --warning-color: #d29922;
+  --danger-color: #f85149;
+
+  /* Rank Colors */
+  --rank-gold: #ffd700;
+  --rank-silver: #c0c0c0;
+  --rank-bronze: #cd7f32;
+  
+  /* Element Plus Mappings (Dark) */
+  --el-bg-color: var(--bg-body);
+  --el-bg-color-overlay: var(--bg-popover);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-border-color: var(--border-color);
+  --el-border-color-light: #30363d;
+  --el-fill-color-blank: var(--bg-body);
+  
+  /* Alias for App.vue compatibility */
+  --bg-color: var(--bg-body);
+
+  color-scheme: dark;
   color: var(--text-primary);
-  background-color: var(--bg-color);
+  background-color: var(--bg-body);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -22,12 +59,62 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* --- Light Mode Overrides --- */
+html.light {
+  /* Backgrounds */
+  --bg-body: #f6f8fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f6f8fa;
+  --bg-popover: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.3);
+  --bg-hover: #eaeef2;
+  
+  /* Gradients */
+  --header-gradient: linear-gradient(180deg, #f0f2f5 0%, #ffffff 100%);
+  
+  /* Borders */
+  --border-color: #d0d7de;
+  --border-hover: #57606a;
+  
+  /* Text */
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-inverse: #ffffff;
+  
+  /* Accents */
+  --accent-color: #0969da;
+  --accent-hover: #218bff;
+  --success-color: #1a7f37;
+  --warning-color: #9a6700;
+  --danger-color: #cf222e;
+
+  /* Rank Colors */
+  --rank-gold: #d4a017;
+  --rank-silver: #a9a9a9;
+  --rank-bronze: #b87333;
+  
+  /* Element Plus Mappings (Light) */
+  --el-bg-color: var(--bg-secondary);
+  --el-bg-color-overlay: var(--bg-popover);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-border-color: var(--border-color);
+  --el-border-color-light: #d0d7de;
+  --el-fill-color-blank: var(--bg-secondary);
+  
+  /* Alias for App.vue compatibility */
+  --bg-color: var(--bg-body);
+
+  color-scheme: light;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--bg-color);
-  /* Optional: Very subtle noise or gradient if desired, but keeping it clean for now to match LoginView */
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
   overflow-x: hidden;
 }
 
@@ -44,109 +131,188 @@ body {
   padding: 24px;
 }
 
-/* Common Card Style - Matching LoginView */
+/* Common Card Style */
 .tech-card {
   background: var(--bg-secondary) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* --- Element Plus Overrides --- */
 
 /* Input */
 .el-input__wrapper {
-  background-color: #0d1117 !important;
-  box-shadow: 0 0 0 1px #30363d inset !important;
+  background-color: var(--bg-tertiary) !important;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
   transition: box-shadow 0.2s;
 }
 .el-input__wrapper:hover, .el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 1px #409eff inset !important;
+  box-shadow: 0 0 0 1px var(--accent-color) inset !important;
 }
 .el-input__inner {
-  color: #fff !important;
+  color: var(--text-primary) !important;
+}
+.el-textarea__inner {
+  background-color: var(--bg-tertiary) !important;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
+  color: var(--text-primary) !important;
 }
 
 /* Button */
-.el-button--primary {
-  --el-button-bg-color: #409eff;
-  --el-button-border-color: #409eff;
+/* Solid Primary Button */
+.el-button--primary:not(.is-plain) {
+  --el-button-bg-color: var(--accent-color);
+  --el-button-border-color: var(--accent-color);
+  --el-button-text-color: #ffffff;
   font-weight: 600;
-  background: #409eff;
-  border: 1px solid #409eff;
+  background: var(--accent-color) !important;
+  border: 1px solid var(--accent-color) !important;
+  color: #ffffff !important;
   transition: all 0.2s;
 }
-.el-button--primary:hover {
-  background: #66b1ff;
-  border-color: #66b1ff;
+.el-button--primary:not(.is-plain):hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
 }
 
-/* Dialog - Clean & Solid */
+/* Plain Primary Button */
+.el-button--primary.is-plain {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--accent-color);
+  --el-button-text-color: var(--accent-color);
+  background: transparent !important;
+  border: 1px solid var(--accent-color) !important;
+  color: var(--accent-color) !important;
+}
+.el-button--primary.is-plain:hover {
+  background: rgba(88, 166, 255, 0.1) !important;
+  color: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+/* Default/Secondary Button */
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.is-text) {
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.is-text):hover {
+  border-color: var(--text-secondary) !important;
+  color: var(--text-primary) !important;
+  background: rgba(125, 125, 125, 0.1) !important;
+}
+
+/* Dialog */
 .el-dialog {
-  background-color: #161b22 !important;
-  border: 1px solid #30363d !important;
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.6) !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
 }
 .el-dialog__title {
-  color: #fff !important;
+  color: var(--text-primary) !important;
   font-weight: 600;
 }
 .el-dialog__body {
   color: var(--text-primary) !important;
-  padding: 20px 24px 24px !important; /* Adjusted padding */
+  padding: 20px 24px 24px !important;
 }
 .el-dialog__headerbtn .el-dialog__close {
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 .el-dialog__headerbtn:hover .el-dialog__close {
-  color: #409eff;
+  color: var(--accent-color);
 }
 
-/* Popover - User Menu & Others */
+/* Popover */
 .el-popper {
-  background: #161b22 !important;
-  border: 1px solid #30363d !important;
-  border-radius: 12px !important; /* Ensure outer border has radius */
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5) !important;
+  background: var(--bg-popover) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2) !important;
   color: var(--text-primary) !important;
-  overflow: hidden !important; /* Hide any overflowing default white background */
 }
 
 .el-popper.is-light {
-  background: #161b22 !important;
-  border: 1px solid #30363d !important;
+  background: var(--bg-popover) !important;
+  border: 1px solid var(--border-color) !important;
   color: var(--text-primary) !important;
 }
 
-/* Specific class for our user menu popover */
 .el-popover.user-menu-popover {
-  background: #161b22 !important;
-  border: none !important; /* Remove this border as it's handled by .el-popper */
+  background: var(--bg-popover) !important;
+  border: none !important;
   padding: 0 !important;
-  border-radius: 12px !important; /* Ensure internal content container also has radius */
-  overflow: hidden !important; /* Essential to hide potential inner white borders */
+  border-radius: 12px !important;
 }
 
 .user-menu-popover .el-popper__arrow {
   display: none !important;
 }
 
-/* Ensure any internal content elements also adhere to dark background */
 .el-popover__content {
-  background: #161b22 !important;
+  background: var(--bg-popover) !important;
   color: var(--text-primary) !important;
-  padding: 0 !important; /* Let inner components control padding */
+  padding: 0 !important;
 }
 
 .el-popper__arrow::before {
-  background: #161b22 !important;
-  border-color: #30363d !important;
+  background: var(--bg-popover) !important;
+  border-color: var(--border-color) !important;
 }
-
 
 /* Form Labels */
 .el-form-item__label {
   color: var(--text-primary) !important;
 }
+
+/* Table */
+.el-table {
+  --el-table-bg-color: var(--bg-secondary);
+  --el-table-tr-bg-color: var(--bg-secondary);
+  --el-table-header-bg-color: var(--bg-body);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-row-hover-bg-color: var(--bg-tertiary);
+}
+.el-table th, .el-table tr, .el-table td {
+  background-color: var(--bg-secondary);
+  border-bottom-color: var(--border-color) !important;
+}
+.el-table__inner-wrapper::before {
+  background-color: var(--border-color);
+}
+
+/* Descriptions */
+.el-descriptions__label {
+  background-color: var(--bg-body) !important;
+  color: var(--text-secondary) !important;
+}
+.el-descriptions__content {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+.el-descriptions__cell {
+  border-color: var(--border-color) !important;
+}
+
+/* Pagination */
+.el-pagination.is-background .el-pager li:not(.is-disabled).is-active {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+}
+.el-pagination.is-background .el-pager li {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+.el-pagination.is-background .btn-prev,
+.el-pagination.is-background .btn-next {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
 

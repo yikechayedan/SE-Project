@@ -15,13 +15,20 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import Header from './components/layout/Header.vue'
 import Sidebar from './components/layout/Sidebar.vue'
 import ParticleBackground from './components/common/ParticleBackground.vue' // Import ParticleBackground
+import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
+const { initTheme } = useTheme()
+
+// Initialize theme on app mount
+onMounted(() => {
+  initTheme()
+})
 
 // 使用 ref 来存储登录状态，使其响应式
 const tokenValue = ref(localStorage.getItem('token'))

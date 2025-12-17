@@ -499,7 +499,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 60px 0;
-  color: #909399;
+  color: #8b949e;
 }
 
 .loading-container .el-icon {
@@ -516,10 +516,19 @@ onMounted(() => {
 .follow-card {
   transition: all 0.3s ease;
   border-radius: 12px;
+  background: #161b22;
+  border: 1px solid #30363d;
 }
 
 .follow-card:hover {
   transform: translateY(-2px);
+  border-color: #58a6ff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.follow-card :deep(.el-card__body) {
+  padding: 16px;
+  background: #161b22;
 }
 
 .card-content {
@@ -547,28 +556,31 @@ onMounted(() => {
 }
 
 .model-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #1f6bff 0%, #161b22 100%);
+  border: 1px solid #30363d;
+  color: #58a6ff;
 }
 
 .dataset-icon {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
+  background: linear-gradient(135deg, #238636 0%, #161b22 100%);
+  border: 1px solid #30363d;
+  color: #3fb950;
 }
 
 .item-name {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: #c9d1d9;
 }
 
 .item-name.clickable {
   cursor: pointer;
-  color: #409eff;
+  color: #58a6ff;
 }
 
 .item-name.clickable:hover {
   text-decoration: underline;
+  color: #79c0ff;
 }
 
 .user-info {
@@ -579,7 +591,7 @@ onMounted(() => {
 
 .user-bio {
   font-size: 13px;
-  color: #909399;
+  color: #8b949e;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -603,12 +615,34 @@ onMounted(() => {
   gap: 4px;
   padding: 6px 12px;
   font-size: 13px;
+  background-color: #0d1117;
+  border-color: #30363d;
+  color: #8b949e;
+}
+
+/* Specific Tag Colors if needed, or let Element handle variants with opacity */
+.card-info .el-tag--success {
+  color: #3fb950;
+  border-color: rgba(63, 185, 80, 0.3);
+  background-color: rgba(63, 185, 80, 0.1);
+}
+
+.card-info .el-tag--warning {
+  color: #d29922;
+  border-color: rgba(210, 153, 34, 0.3);
+  background-color: rgba(210, 153, 34, 0.1);
+}
+
+.card-info .el-tag--primary {
+  color: #58a6ff;
+  border-color: rgba(88, 166, 255, 0.3);
+  background-color: rgba(88, 166, 255, 0.1);
 }
 
 .card-meta {
   display: flex;
   gap: 20px;
-  color: #909399;
+  color: #8b949e;
   font-size: 13px;
 }
 
@@ -620,6 +654,7 @@ onMounted(() => {
 
 :deep(.el-empty) {
   padding: 40px 0;
+  --el-empty-description-color: #8b949e;
 }
 
 .user-card .card-header {

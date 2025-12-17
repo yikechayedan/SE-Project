@@ -5,25 +5,33 @@
       <span>PolyMetric</span>
     </div>
 
-    <el-popover
-      v-model:visible="showMenu"
-      trigger="click"
-      placement="bottom-end"
-      :width="240"
-      popper-class="user-menu-popover"
-      :show-arrow="false"
-      transition="el-zoom-in-top"
-    >
-      <template #reference>
-        <div class="user-info" :class="{ 'active': showMenu }">
-          <el-avatar :size="32" :src="avatarUrl" />
-          <span class="username">{{ username }}</span>
-          <el-icon size="18" class="arrow-icon"><ArrowDown /></el-icon>
-        </div>
-      </template>
+    <div class="header-right">
+      <div class="theme-toggle" @click="toggleTheme" :title="isDark ? '切换亮色模式' : '切换暗色模式'">
+        <el-icon :size="20" class="theme-icon">
+          <Moon v-if="isDark" />
+          <Sunny v-else />
+        </el-icon>
+      </div>
 
-      <!-- Popover Content -->
-      <div class="user-menu-container">
+      <el-popover
+        v-model:visible="showMenu"
+        trigger="click"
+        placement="bottom-end"
+        :width="240"
+        popper-class="user-menu-popover"
+        :show-arrow="false"
+        transition="el-zoom-in-top"
+      >
+        <template #reference>
+          <div class="user-info" :class="{ 'active': showMenu }">
+            <el-avatar :size="32" :src="avatarUrl" />
+            <span class="username">{{ username }}</span>
+            <el-icon size="18" class="arrow-icon"><ArrowDown /></el-icon>
+          </div>
+        </template>
+  
+        <!-- Popover Content -->
+        <div class="user-menu-container">
         <div class="user-card-header">
           <div class="header-decoration"></div>
           <div class="avatar-wrapper">
@@ -54,11 +62,11 @@
             <span class="item-title">退出登录</span>
           </div>
         </div>
-      </div>
-    </el-popover>
-
-    <!-- 修改密码子弹窗 -->
-    <el-dialog 
+              </div>
+            </el-popover>
+          </div>
+      
+          <!-- 修改密码子弹窗 -->    <el-dialog 
       v-model="changePasswordDialog" 
       width="440px" 
       align-center 
@@ -124,10 +132,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { VideoPlay, ArrowDown, Lock, SwitchButton, Key, ArrowRight, Close } from '@element-plus/icons-vue'
+import { VideoPlay, ArrowDown, Lock, SwitchButton, Key, ArrowRight, Close, Sunny, Moon } from '@element-plus/icons-vue'
 import { changePassword, logout, getUserInfo } from '@/api/users'
+import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
+const { isDark, toggleTheme } = useTheme()
 const showMenu = ref(false)
 const changePasswordDialog = ref(false)
 const loading = ref(false)
@@ -300,8 +310,8 @@ const savePassword = () => {
 <style scoped>
 .header {
   height: 60px;
-  background: #0d1117;
-  border-bottom: 1px solid #30363d;
+  background: var(--bg-body);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -317,7 +327,7 @@ const savePassword = () => {
   font-family: 'Share Tech Mono', monospace;
   font-size: 20px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -326,7 +336,30 @@ const savePassword = () => {
 }
 
 .logo:hover {
-  color: #409eff;
+  color: var(--accent-color);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background-color: var(--bg-hover);
+  color: var(--accent-color);
 }
 
 .user-info {
@@ -336,17 +369,17 @@ const savePassword = () => {
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
-  color: #c9d1d9;
+  color: var(--text-primary);
   transition: background-color 0.2s;
   user-select: none;
 }
 
 .user-info:hover, .user-info.active {
-  background-color: #21262d;
+  background-color: var(--bg-hover);
 }
 
 .user-info .arrow-icon {
-  color: #8b949e;
+  color: var(--text-secondary);
   transition: transform 0.2s;
 }
 
@@ -367,15 +400,15 @@ const savePassword = () => {
 .user-menu-container {
   display: flex;
   flex-direction: column;
-  background: #161b22;
+  background: var(--bg-popover);
   min-width: 280px;
 }
 
 .user-card-header {
   position: relative;
   padding: 24px 20px 20px;
-  background: linear-gradient(180deg, rgba(31, 41, 55, 0.5) 0%, rgba(22, 27, 34, 0) 100%);
-  border-bottom: 1px solid #30363d;
+  background: var(--header-gradient);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -387,7 +420,7 @@ const savePassword = () => {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #409eff, #8e44ad);
+  background: linear-gradient(90deg, var(--accent-color), #8e44ad); /* Purple accent remains hardcoded for now */
 }
 
 .avatar-wrapper {
@@ -395,8 +428,8 @@ const savePassword = () => {
 }
 
 .menu-avatar {
-  background: #0d1117;
-  border: 2px solid #30363d;
+  background: var(--bg-body);
+  border: 2px solid var(--border-color);
   padding: 2px; /* Inner ring effect */
   box-sizing: content-box;
 }
@@ -407,8 +440,8 @@ const savePassword = () => {
   right: 2px;
   width: 12px;
   height: 12px;
-  background-color: #238636;
-  border: 2px solid #161b22;
+  background-color: var(--success-color);
+  border: 2px solid var(--bg-secondary);
   border-radius: 50%;
 }
 
@@ -422,7 +455,7 @@ const savePassword = () => {
 .username-large {
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
@@ -431,20 +464,20 @@ const savePassword = () => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #8b949e;
-  background: rgba(110, 118, 129, 0.1);
+  color: var(--text-secondary);
+  background: rgba(110, 118, 129, 0.1); /* This rgba value represents a subtle background, might need adjustment */
   padding: 2px 8px;
   border-radius: 12px;
   width: fit-content;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
 }
 
 .badge-dot {
   width: 6px;
   height: 6px;
-  background-color: #238636;
+  background-color: var(--success-color);
   border-radius: 50%;
-  box-shadow: 0 0 5px rgba(35, 134, 54, 0.4);
+  box-shadow: 0 0 5px rgba(35, 134, 54, 0.4); /* Shadow might need adjustment */
 }
 
 .menu-list {
@@ -453,7 +486,7 @@ const savePassword = () => {
 
 .menu-label {
   font-size: 12px;
-  color: #6e7681;
+  color: var(--text-secondary);
   margin: 0 0 8px 8px;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -471,7 +504,7 @@ const savePassword = () => {
 }
 
 .menu-item:hover {
-  background-color: rgba(64, 158, 255, 0.1);
+  background-color: var(--bg-hover);
   transform: translateX(4px);
 }
 
@@ -479,26 +512,26 @@ const savePassword = () => {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background-color: #21262d;
+  background-color: var(--bg-hover);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #8b949e;
+  color: var(--text-secondary);
   transition: all 0.2s;
 }
 
 .menu-item:hover .item-icon-bg {
-  background-color: #409eff;
-  color: #fff;
+  background-color: var(--accent-color);
+  color: var(--text-inverse);
 }
 
 .item-icon-bg.danger {
-  color: #f85149;
+  color: var(--danger-color);
 }
 
 .menu-item.logout-item:hover .item-icon-bg.danger {
-  background-color: #f85149;
-  color: #fff;
+  background-color: var(--danger-color);
+  color: var(--text-inverse);
 }
 
 .item-content {
@@ -510,33 +543,33 @@ const savePassword = () => {
 .item-title {
   font-size: 14px;
   font-weight: 500;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .menu-item:hover .item-title {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .item-desc {
   font-size: 12px;
-  color: #6e7681;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
 .arrow-right {
   font-size: 14px;
-  color: #484f58;
+  color: var(--text-secondary);
   transition: transform 0.2s;
 }
 
 .menu-item:hover .arrow-right {
-  color: #8b949e;
+  color: var(--text-secondary);
   transform: translateX(2px);
 }
 
 .menu-divider {
   height: 1px;
-  background: #30363d;
+  background: var(--border-color);
   margin: 8px 0;
 }
 
@@ -552,26 +585,26 @@ const savePassword = () => {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #409eff, #2563eb);
+  background: linear-gradient(135deg, var(--accent-color), #2563eb); /* Hardcoded gradient for now */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  color: var(--text-inverse);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3); /* Shadow might need adjustment */
 }
 
 .header-text h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .header-text p {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 /* Dialog Footer Buttons */
@@ -584,13 +617,13 @@ const savePassword = () => {
 
 .cancel-btn {
   background: transparent !important;
-  border: 1px solid #30363d !important;
-  color: #c9d1d9 !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 
 .cancel-btn:hover {
-  border-color: #8b949e !important;
-  color: #fff !important;
+  border-color: var(--border-hover) !important;
+  color: var(--text-inverse) !important;
 }
 
 .save-btn {
@@ -615,11 +648,11 @@ const savePassword = () => {
 
 /* 1. User Menu Popover - The "No White Border" Fix */
 .el-popover.user-menu-popover {
-  background: #161b22 !important;
-  border: 1px solid #30363d !important;
+  background: var(--bg-popover) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
   padding: 0 !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 16px 48px var(--bg-overlay) !important;
   overflow: visible !important; /* Allow decoration to overlap if needed */
 }
 
@@ -629,13 +662,13 @@ const savePassword = () => {
 
 /* 2. Custom Change Password Dialog */
 .tech-dialog-custom {
-  background: #161b22 !important;
-  border: 1px solid #30363d !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 16px !important;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 24px 48px var(--bg-overlay) !important;
   overflow: hidden !important;
   padding: 0 !important; /* Remove default element padding */
-  --el-dialog-bg-color: #161b22;
+  --el-dialog-bg-color: var(--bg-secondary);
 }
 
 .tech-dialog-custom .el-dialog__header {
@@ -644,13 +677,13 @@ const savePassword = () => {
 
 .tech-dialog-custom .el-dialog__body {
   padding: 0 !important; /* Reset body padding */
-  color: #c9d1d9 !important;
+  color: var(--text-primary) !important;
 }
 
 /* Internal Layout for Dialog */
 .dialog-content-wrapper {
   padding: 32px;
-  background: #161b22;
+  background: var(--bg-secondary);
 }
 
 /* Custom Header inside Dialog */
@@ -666,28 +699,28 @@ const savePassword = () => {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(64, 158, 255, 0.2), rgba(64, 158, 255, 0.05));
-  border: 1px solid rgba(64, 158, 255, 0.2);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #409eff;
+  color: var(--accent-color);
   font-size: 28px;
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 8px 24px var(--bg-overlay);
 }
 
 .header-text h3 {
   margin: 0 0 6px 0;
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   letter-spacing: 0.5px;
 }
 
 .header-text p {
   margin: 0;
   font-size: 14px;
-  color: #8b949e;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -697,7 +730,7 @@ const savePassword = () => {
   right: -10px;
   background: transparent;
   border: none;
-  color: #484f58;
+  color: var(--text-secondary);
   font-size: 20px;
   cursor: pointer;
   padding: 8px;
@@ -706,20 +739,21 @@ const savePassword = () => {
 }
 
 .close-btn:hover {
-  background: rgba(248, 81, 73, 0.1);
-  color: #f85149;
+  background: var(--bg-tertiary);
+  color: var(--danger-color);
 }
+
 
 /* Form Styling */
 .tech-form .el-form-item__label {
-  color: #c9d1d9 !important;
+  color: var(--text-primary) !important;
   font-weight: 500 !important;
   padding-bottom: 8px !important;
 }
 
 .tech-form .el-input__wrapper {
-  background-color: #0d1117 !important;
-  box-shadow: 0 0 0 1px #30363d inset !important;
+  background-color: var(--bg-tertiary) !important;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
   border-radius: 8px !important;
   padding: 8px 12px !important;
   transition: all 0.2s;
@@ -727,11 +761,11 @@ const savePassword = () => {
 
 .tech-form .el-input__wrapper:hover, 
 .tech-form .el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 1px #409eff inset, 0 0 0 3px rgba(64, 158, 255, 0.1) inset !important;
+  box-shadow: 0 0 0 1px var(--accent-color) inset, 0 0 0 3px rgba(64, 158, 255, 0.1) inset !important; /* Keep shadow for now */
 }
 
 .tech-form .el-input__inner {
-  color: #fff !important;
+  color: var(--text-primary) !important;
   height: 24px !important;
 }
 
@@ -752,23 +786,24 @@ const savePassword = () => {
 
 .dialog-footer .cancel-btn {
   background: transparent !important;
-  border: 1px solid #30363d !important;
-  color: #c9d1d9 !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 
 .dialog-footer .cancel-btn:hover {
-  border-color: #8b949e !important;
-  background: rgba(255,255,255,0.03) !important;
+  border-color: var(--border-hover) !important;
+  background: var(--bg-tertiary) !important;
 }
 
 .dialog-footer .save-btn {
-  background: #238636 !important; /* GitHub Green for primary actions */
-  border: 1px solid #2ea043 !important;
-  color: #fff !important;
-  box-shadow: 0 4px 12px rgba(35, 134, 54, 0.2);
+  background: var(--success-color) !important;
+  border: 1px solid var(--success-color) !important;
+  color: var(--text-inverse) !important;
+  box-shadow: 0 4px 12px rgba(35, 134, 54, 0.2); /* Shadow might need adjustment */
 }
 
 .dialog-footer .save-btn:hover {
-  background: #2ea043 !important;
+  background: var(--success-color) !important;
+  opacity: 0.9;
 }
 </style>
