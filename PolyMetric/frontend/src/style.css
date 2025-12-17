@@ -1,11 +1,20 @@
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark; /* 声明深色模式 */
-  color: #c9d1d9;
-  background-color: #0d1117; /* 全局深色背景 */
+  color-scheme: dark;
+  --bg-color: #0d1117;
+  --bg-secondary: #161b22;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --accent-color: #409eff;
+  --accent-hover: #66b1ff;
+  --border-color: #30363d;
+  --card-bg: #161b22;
+  
+  color: var(--text-primary);
+  background-color: var(--bg-color);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,7 +26,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #0d1117;
+  background-color: var(--bg-color);
+  /* Optional: Very subtle noise or gradient if desired, but keeping it clean for now to match LoginView */
+  overflow-x: hidden;
 }
 
 #app {
@@ -25,77 +36,117 @@ body {
   height: 100%;
 }
 
-/* --- Element Plus 全局深色覆盖 --- */
+/* --- Global Layout Utilities --- */
 
-/* 1. 输入框 */
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Common Card Style - Matching LoginView */
+.tech-card {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* --- Element Plus Overrides --- */
+
+/* Input */
 .el-input__wrapper {
   background-color: #0d1117 !important;
   box-shadow: 0 0 0 1px #30363d inset !important;
+  transition: box-shadow 0.2s;
+}
+.el-input__wrapper:hover, .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #409eff inset !important;
 }
 .el-input__inner {
-  color: #c9d1d9 !important;
+  color: #fff !important;
 }
 
-/* 2. 按钮 */
+/* Button */
 .el-button--primary {
   --el-button-bg-color: #409eff;
   --el-button-border-color: #409eff;
   font-weight: 600;
+  background: #409eff;
+  border: 1px solid #409eff;
+  transition: all 0.2s;
+}
+.el-button--primary:hover {
+  background: #66b1ff;
+  border-color: #66b1ff;
 }
 
-/* 3. 卡片 */
-.el-card {
-  --el-card-bg-color: #161b22;
-  --el-card-border-color: #30363d;
-  color: #c9d1d9;
-}
-
-/* 4. 对话框 (Modal) */
+/* Dialog - Clean & Solid */
 .el-dialog {
   background-color: #161b22 !important;
-  border: 1px solid #30363d;
+  border: 1px solid #30363d !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6) !important;
 }
 .el-dialog__title {
-  color: #c9d1d9 !important;
+  color: #fff !important;
+  font-weight: 600;
 }
 .el-dialog__body {
-  color: #8b949e !important;
+  color: var(--text-primary) !important;
+  padding: 20px 24px 24px !important; /* Adjusted padding */
+}
+.el-dialog__headerbtn .el-dialog__close {
+  color: #8b949e;
+}
+.el-dialog__headerbtn:hover .el-dialog__close {
+  color: #409eff;
 }
 
-/* 5. 步骤条 */
-.el-step__title {
-  color: #8b949e !important;
-}
-.el-step__title.is-process {
-  color: #fff !important;
-}
-.el-step__title.is-success {
-  color: #67c23a !important;
-}
-
-/* 6. 表格 */
-.el-table {
-  --el-table-bg-color: #161b22;
-  --el-table-tr-bg-color: #161b22;
-  --el-table-header-bg-color: #0d1117;
-  --el-table-border-color: #30363d;
-  --el-table-text-color: #c9d1d9;
-  --el-table-header-text-color: #fff;
-  --el-table-row-hover-bg-color: #21262d;
+/* Popover - User Menu & Others */
+.el-popper {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 12px !important; /* Ensure outer border has radius */
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5) !important;
+  color: var(--text-primary) !important;
+  overflow: hidden !important; /* Hide any overflowing default white background */
 }
 
-/* 滚动条美化 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.el-popper.is-light {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: var(--text-primary) !important;
 }
-::-webkit-scrollbar-track {
-  background: #0d1117;
+
+/* Specific class for our user menu popover */
+.el-popover.user-menu-popover {
+  background: #161b22 !important;
+  border: none !important; /* Remove this border as it's handled by .el-popper */
+  padding: 0 !important;
+  border-radius: 12px !important; /* Ensure internal content container also has radius */
+  overflow: hidden !important; /* Essential to hide potential inner white borders */
 }
-::-webkit-scrollbar-thumb {
-  background: #30363d;
-  border-radius: 4px;
+
+.user-menu-popover .el-popper__arrow {
+  display: none !important;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #409eff;
+
+/* Ensure any internal content elements also adhere to dark background */
+.el-popover__content {
+  background: #161b22 !important;
+  color: var(--text-primary) !important;
+  padding: 0 !important; /* Let inner components control padding */
 }
+
+.el-popper__arrow::before {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+
+
+/* Form Labels */
+.el-form-item__label {
+  color: var(--text-primary) !important;
+}
+
