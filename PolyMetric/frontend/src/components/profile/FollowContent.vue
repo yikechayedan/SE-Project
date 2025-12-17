@@ -229,7 +229,7 @@ const router = useRouter()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 // 后端基础URL
-const API_BASE_URL = 'http://127.0.0.1:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:80'
 
 // 处理头像URL，确保是完整路径
 const getFullAvatarUrl = (avatar) => {

@@ -1,0 +1,22 @@
+{
+  "name": "John Doe",
+  "age": 30,
+  "email": "johndoe@example.com",
+  "isActive": true,
+  "address": {
+    "street": "123 Main St",
+    "city": "Somewhere",
+    "state": "CA",
+    "postalCode": "90210"
+  },
+  "phoneNumbers": [
+    {
+      "type": "home",
+      "number": "123-456-7890"
+    },
+    {
+      "type": "mobile",
+      "number": "987-654-3210"
+    }
+  ]
+}

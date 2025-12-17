@@ -106,10 +106,16 @@ WSGI_APPLICATION = 'PolyMetric.wsgi.application'
 # -----------------------------
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'polymetric',
+        'USER': 'postgres',
+        'PASSWORD': 'yhblsqt',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
+
 
 
 # -----------------------------
@@ -186,7 +192,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 # 默认主键类型
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 # =======================
 #  qq 邮箱 SMTP 配置
 # =======================
@@ -210,3 +215,17 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = '15777303630@163.com'
 EMAIL_HOST_PASSWORD = 'TMjmTBPDLNqVjfb2'  # 授权码
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# ============================
+# Celery 配置
+# ============================
+CELERY_BROKER_URL = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_RESULT_BACKEND = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Static files collection directory
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

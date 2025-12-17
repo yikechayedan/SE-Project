@@ -6,9 +6,8 @@ from .views import (
     get_pending_items,
     get_item_detail,
 )
+from .views import run_benchmark_view
 
-# 我们不用 DefaultRouter，而是手动绑定所有 HTTP 方法到 ViewSet 的 action，
-# 这样可以完全控制 URL 形态，严格对齐 API 文档。
 
 evaluation_task_list = EvaluationTaskViewSet.as_view({
     "get": "list",      # GET /evaluation-tasks/
@@ -36,5 +35,8 @@ urlpatterns = [
     # 10 请求条目详情
     path("get-item-detail", get_item_detail, name="get-item-detail"),
 
-    path("run-task", run_task),
+   #path("run-task", run_task),
+   path("run-task/", run_task, name="run-task"),
+
+    path("run-benchmark/", run_benchmark_view, name="run-benchmark"),
 ]

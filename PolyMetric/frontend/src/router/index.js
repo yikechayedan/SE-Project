@@ -65,7 +65,7 @@ async function tryRefreshToken() {
   if (!refresh) return false
   
   try {
-    const res = await axios.post('http://127.0.0.1:8000/api/users/token/refresh/', {
+    const res = await axios.post(import.meta.env.VITE_API_BASE_URL + '/api/users/token/refresh/', {
       refresh: refresh
     })
     localStorage.setItem('token', res.data.access)
