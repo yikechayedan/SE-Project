@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     #数据集模块
-    "apps.datasets", 
+    "apps.datasets",
     "django_filters",  # 筛选插件
 
     #评测任务模块
@@ -51,6 +51,12 @@ INSTALLED_APPS = [
 
     #数据集模块
     "apps.models",
+
+    # 系统动态模块
+    "apps.system.apps.SystemConfig",
+    
+    # 模型排名模块
+    "apps.rankings.apps.RankingsConfig",
 
     # 项目应用
     'apps.users',
