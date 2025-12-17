@@ -252,7 +252,7 @@ onUnmounted(() => {
 
 <style scoped>
 .username-link {
-  color: #409eff;
+  color: var(--accent-color);
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
@@ -262,23 +262,23 @@ onUnmounted(() => {
 }
 
 .username-link:hover {
-  color: #66b1ff;
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
 .username-link.is-self {
-  color: #3fb950;
+  color: var(--success-color);
 }
 
 .username-link.is-self:hover {
-  color: #56d364;
+  color: var(--success-color);
 }
 
 .user-popover {
   padding: 5px;
   position: relative;
   /* Ensure parent inherits dark theme */
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 /* 关闭按钮 */
@@ -287,7 +287,7 @@ onUnmounted(() => {
   top: 0;
   right: 0;
   font-size: 16px;
-  color: #8b949e;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
@@ -295,7 +295,7 @@ onUnmounted(() => {
 }
 
 .close-btn:hover {
-  color: #f85149;
+  color: var(--danger-color);
   background: rgba(248, 81, 73, 0.1);
 }
 
@@ -310,7 +310,7 @@ onUnmounted(() => {
 
 .user-avatar {
   flex-shrink: 0;
-  border: 2px solid #30363d;
+  border: 2px solid var(--border-color);
 }
 
 .user-basic {
@@ -321,7 +321,7 @@ onUnmounted(() => {
 .user-name {
   margin: 0 0 6px;
   font-size: 16px;
-  color: #c9d1d9;
+  color: var(--text-primary);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -338,7 +338,7 @@ onUnmounted(() => {
 .user-email {
   margin: 0;
   font-size: 12px;
-  color: #8b949e;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -347,8 +347,8 @@ onUnmounted(() => {
 /* 个人简介 */
 .user-bio {
   padding: 10px 12px;
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--bg-body);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 12px;
 }
@@ -356,7 +356,7 @@ onUnmounted(() => {
 .user-bio p {
   margin: 0;
   font-size: 13px;
-  color: #8b949e;
+  color: var(--text-secondary);
   line-height: 1.5;
   word-break: break-word;
 }
@@ -365,8 +365,8 @@ onUnmounted(() => {
 .user-permissions {
   margin-bottom: 15px;
   padding: 10px 0;
-  border-top: 1px solid #30363d;
-  border-bottom: 1px solid #30363d;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .permission-item {
@@ -377,7 +377,7 @@ onUnmounted(() => {
   border-radius: 6px;
   margin-bottom: 4px;
   transition: all 0.2s;
-  background: #0d1117;
+  background: var(--bg-body);
   border: 1px solid transparent;
 }
 
@@ -392,17 +392,17 @@ onUnmounted(() => {
 
 .permission-icon {
   font-size: 14px;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .permission-item.is-public .permission-icon {
-  color: #3fb950;
+  color: var(--success-color);
 }
 
 .permission-text {
   flex: 1;
   font-size: 13px;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .status-icon {
@@ -410,11 +410,11 @@ onUnmounted(() => {
 }
 
 .status-icon.lock {
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .status-icon.unlock {
-  color: #3fb950;
+  color: var(--success-color);
 }
 
 /* 操作按钮 */

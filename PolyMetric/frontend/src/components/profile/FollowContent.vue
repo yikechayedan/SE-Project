@@ -499,7 +499,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 60px 0;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .loading-container .el-icon {
@@ -516,19 +516,19 @@ onMounted(() => {
 .follow-card {
   transition: all 0.3s ease;
   border-radius: 12px;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .follow-card:hover {
   transform: translateY(-2px);
-  border-color: #58a6ff;
+  border-color: var(--accent-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .follow-card :deep(.el-card__body) {
   padding: 16px;
-  background: #161b22;
+  background: var(--bg-secondary);
 }
 
 .card-content {
@@ -556,31 +556,31 @@ onMounted(() => {
 }
 
 .model-icon {
-  background: linear-gradient(135deg, #1f6bff 0%, #161b22 100%);
-  border: 1px solid #30363d;
+  background: linear-gradient(135deg, #1f6bff 0%, var(--bg-secondary) 100%);
+  border: 1px solid var(--border-color);
   color: #58a6ff;
 }
 
 .dataset-icon {
-  background: linear-gradient(135deg, #238636 0%, #161b22 100%);
-  border: 1px solid #30363d;
+  background: linear-gradient(135deg, #238636 0%, var(--bg-secondary) 100%);
+  border: 1px solid var(--border-color);
   color: #3fb950;
 }
 
 .item-name {
   font-size: 18px;
   font-weight: 600;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .item-name.clickable {
   cursor: pointer;
-  color: #58a6ff;
+  color: var(--accent-color);
 }
 
 .item-name.clickable:hover {
   text-decoration: underline;
-  color: #79c0ff;
+  color: var(--accent-hover);
 }
 
 .user-info {
@@ -591,7 +591,7 @@ onMounted(() => {
 
 .user-bio {
   font-size: 13px;
-  color: #8b949e;
+  color: var(--text-secondary);
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -615,9 +615,9 @@ onMounted(() => {
   gap: 4px;
   padding: 6px 12px;
   font-size: 13px;
-  background-color: #0d1117;
-  border-color: #30363d;
-  color: #8b949e;
+  background-color: var(--bg-body);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
 }
 
 /* Specific Tag Colors if needed, or let Element handle variants with opacity */
@@ -642,7 +642,7 @@ onMounted(() => {
 .card-meta {
   display: flex;
   gap: 20px;
-  color: #8b949e;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -654,7 +654,7 @@ onMounted(() => {
 
 :deep(.el-empty) {
   padding: 40px 0;
-  --el-empty-description-color: #8b949e;
+  --el-empty-description-color: var(--text-secondary);
 }
 
 .user-card .card-header {

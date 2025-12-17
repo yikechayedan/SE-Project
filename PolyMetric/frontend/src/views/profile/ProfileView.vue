@@ -442,8 +442,8 @@ const savePrivacy = async () => {
 .user-info {
   position: relative;
   overflow: hidden;
-  border: 1px solid #30363d;
-  background: #161b22;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
   border-radius: 16px;
   box-shadow: none;
   padding: 26px 22px;
@@ -498,17 +498,17 @@ const savePrivacy = async () => {
 .user-info h2 {
   margin: 0;
   font-size: 22px;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .subtitle {
   margin: 8px 0 0;
-  color: #8b949e;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 :deep(.el-divider) {
-  border-color: #30363d;
+  border-color: var(--border-color);
 }
 
 .info-grid {
@@ -522,19 +522,19 @@ const savePrivacy = async () => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: #0d1117;
+  background: var(--bg-body);
   border-radius: 12px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   transition: border-color 0.2s;
 }
 
 .info-item:hover {
-  border-color: #58a6ff;
+  border-color: var(--accent-color);
 }
 
 .info-item .el-icon {
   font-size: 18px;
-  color: #58a6ff;
+  color: var(--accent-color);
 }
 
 .info-text {
@@ -543,12 +543,12 @@ const savePrivacy = async () => {
 }
 
 .label {
-  color: #8b949e;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
 .value {
-  color: #c9d1d9;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -567,23 +567,23 @@ const savePrivacy = async () => {
 }
 
 .el-tabs {
-  background: #161b22;
+  background: var(--bg-secondary);
   border-radius: 14px;
   padding: 16px 20px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   box-shadow: none;
 }
 
 :deep(.el-tabs__item) {
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 :deep(.el-tabs__item.is-active) {
-  color: #58a6ff;
+  color: var(--accent-color);
 }
 
 :deep(.el-tabs__nav-wrap::after) {
-  background-color: #30363d;
+  background-color: var(--border-color);
 }
 
 .avatar-upload {
@@ -594,7 +594,7 @@ const savePrivacy = async () => {
 
 .tip {
   font-size: 12px;
-  color: #8b949e;
+  color: var(--text-secondary);
   margin-top: 5px;
 }
 
@@ -604,7 +604,7 @@ const savePrivacy = async () => {
 }
 
 .privacy-desc {
-  color: #8b949e;
+  color: var(--text-secondary);
   font-size: 14px;
   margin-bottom: 20px;
 }
@@ -614,9 +614,9 @@ const savePrivacy = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background: #0d1117;
+  background: var(--bg-body);
   border-radius: 8px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
   margin-bottom: 12px;
 }
 
@@ -625,41 +625,41 @@ const savePrivacy = async () => {
   align-items: center;
   gap: 10px;
   font-size: 15px;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .privacy-label .el-icon {
   font-size: 18px;
-  color: #58a6ff;
+  color: var(--accent-color);
 }
 
 /* Dialog Dark Overrides */
 :deep(.el-dialog) {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
 }
 
 :deep(.el-dialog__title) {
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 :deep(.el-form-item__label) {
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 :deep(.el-input__wrapper) {
-  background-color: #0d1117;
-  box-shadow: 0 0 0 1px #30363d inset;
+  background-color: var(--bg-body);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 
 :deep(.el-textarea__inner) {
-  background-color: #0d1117;
-  box-shadow: 0 0 0 1px #30363d inset;
-  color: #c9d1d9;
+  background-color: var(--bg-body);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+  color: var(--text-primary);
 }
 
 :deep(.el-input__inner) {
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 </style>
 

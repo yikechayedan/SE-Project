@@ -696,8 +696,8 @@ onMounted(() => {
 }
 
 .dataset-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
   transition: all 0.3s;
@@ -708,22 +708,22 @@ onMounted(() => {
 .dataset-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  border-color: #58a6ff;
+  border-color: var(--accent-color);
 }
 
 .card-header {
   padding: 15px;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #0d1117;
+  background: var(--bg-body);
 }
 
 .card-header h3 {
   margin: 0;
   font-size: 16px;
-  color: #c9d1d9;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -735,7 +735,7 @@ onMounted(() => {
 }
 
 .desc {
-  color: #8b949e;
+  color: var(--text-secondary);
   font-size: 13px;
   margin-bottom: 15px;
   height: 40px;
@@ -752,16 +752,16 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 8px;
   font-size: 13px;
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 .card-actions {
   padding: 10px 15px;
-  border-top: 1px solid #30363d;
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  background: #0d1117;
+  background: var(--bg-body);
 }
 
 .upload-area {
@@ -769,22 +769,22 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px dashed #30363d;
+  border: 1px dashed var(--border-color);
   border-radius: 8px;
   padding: 20px;
   cursor: pointer;
-  background: #0d1117;
+  background: var(--bg-body);
   transition: all 0.3s;
 }
 
 .upload-area:hover {
-  border-color: #58a6ff;
-  background: #161b22;
+  border-color: var(--accent-color);
+  background: var(--bg-secondary);
 }
 
 .upload-tip {
   margin-top: 10px;
-  color: #8b949e;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -802,49 +802,58 @@ onMounted(() => {
 .empty-state {
   padding: 40px;
   text-align: center;
-  color: #8b949e;
+  color: var(--text-secondary);
   grid-column: 1 / -1;
-  background: #161b22;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border-color);
 }
 
 /* Dialog Dark Overrides */
 :deep(.el-dialog) {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
 }
 
 :deep(.el-dialog__title) {
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 :deep(.el-form-item__label) {
-  color: #8b949e;
+  color: var(--text-secondary);
 }
 
 :deep(.el-input__wrapper) {
-  background-color: #0d1117;
-  box-shadow: 0 0 0 1px #30363d inset;
+  background-color: var(--bg-body);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 
 :deep(.el-textarea__inner) {
-  background-color: #0d1117;
-  box-shadow: 0 0 0 1px #30363d inset;
-  color: #c9d1d9;
+  background-color: var(--bg-body);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+  color: var(--text-primary);
 }
 
 :deep(.el-input__inner) {
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 :deep(.el-upload-dragger) {
-  background-color: #0d1117;
-  border-color: #30363d;
+  background-color: var(--bg-body);
+  border-color: var(--border-color);
 }
 
 :deep(.el-upload-dragger:hover) {
-  border-color: #58a6ff;
-  background-color: #161b22;
+  border-color: var(--accent-color);
+  background-color: var(--bg-secondary);
 }
 </style>
+:deep(.el-upload__text) {
+  color: var(--text-primary);
+}
+:deep(.el-upload__text em) {
+  color: var(--accent-color);
+}
+:deep(.el-upload__tip) {
+  color: var(--text-secondary);
+}
