@@ -145,7 +145,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 40px 0;
-  color: #909399;
+  color: #8b949e;
 }
 
 .loading-container .el-icon {
@@ -157,11 +157,14 @@ onMounted(() => {
   margin-bottom: 15px;
   cursor: pointer;
   transition: all 0.3s;
+  background: #161b22;
+  border: 1px solid #30363d;
 }
 
 .dataset-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-color: #58a6ff;
 }
 
 .dataset-card :deep(.el-card__body) {
@@ -169,17 +172,19 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 15px;
+  background: #161b22;
 }
 
 .card-icon {
   width: 50px;
   height: 50px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1f6bff 0%, #161b22 100%);
+  border: 1px solid #30363d;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #58a6ff;
   flex-shrink: 0;
 }
 
@@ -190,7 +195,7 @@ onMounted(() => {
 
 .card-name {
   font-weight: 600;
-  color: #303133;
+  color: #c9d1d9;
   margin-bottom: 6px;
   white-space: nowrap;
   overflow: hidden;
@@ -205,11 +210,27 @@ onMounted(() => {
 
 .item-count {
   font-size: 12px;
-  color: #909399;
+  color: #8b949e;
 }
 
 .view-more {
   text-align: center;
   margin-top: 10px;
+}
+
+/* Dark Theme Overrides for Dialog/Descriptions */
+:deep(.el-descriptions__label) {
+  background-color: #161b22 !important;
+  color: #8b949e !important;
+}
+:deep(.el-descriptions__content) {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+:deep(.el-descriptions__cell) {
+  border-color: #30363d !important;
+}
+:deep(.el-dialog__body) {
+  padding-top: 10px;
 }
 </style>

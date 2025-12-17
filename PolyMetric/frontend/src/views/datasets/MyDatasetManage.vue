@@ -683,131 +683,177 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.my-dataset-manage {
+.my-datasets-container {
   padding: 20px;
-  background: white;
+  background: transparent;
+  min-height: 100%;
+}
+
+.dataset-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.dataset-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  min-height: calc(100vh - 140px);
-}
-
-.page-header {
-  margin-bottom: 25px;
-}
-
-.page-header h2 {
+  overflow: hidden;
+  transition: all 0.3s;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  color: #303133;
+  flex-direction: column;
 }
 
-.page-header .subtitle {
-  color: #909399;
-  font-size: 14px;
-  margin-top: 8px;
+.dataset-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: var(--accent-color);
+}
+
+.card-header {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-body);
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-content {
+  padding: 15px;
+  flex: 1;
+}
+
+.desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 15px;
+  height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.card-actions {
+  padding: 10px 15px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--bg-body);
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  background: var(--bg-body);
+  transition: all 0.3s;
+}
+
+.upload-area:hover {
+  border-color: var(--accent-color);
+  background: var(--bg-secondary);
+}
+
+.upload-tip {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .action-bar {
   margin-bottom: 20px;
   display: flex;
-  gap: 10px;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 0;
-  color: #909399;
-}
-
-.dataset-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #409eff;
-  font-weight: 500;
-}
-
-.status-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-}
-
-.action-buttons .el-button {
-  padding: 4px 8px;
-  margin: 0;
-}
-
-.action-buttons .el-button .el-icon {
-  margin-right: 2px;
-}
-
-.tip {
-  margin-left: 10px;
-  color: #909399;
-  font-size: 12px;
-}
-
-.dataset-uploader {
-  width: 100%;
-}
-
-.dataset-uploader :deep(.el-upload) {
-  width: 100%;
-}
-
-.dataset-uploader :deep(.el-upload-dragger) {
-  width: 100%;
-}
-
-.preview-info {
-  margin-bottom: 15px;
-  color: #606266;
-  display: flex;
-  gap: 20px;
-  font-size: 14px;
-}
-
-.preview-pagination {
-  margin-top: 15px;
-  display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
-.goto-container {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  color: #606266;
+.search-input {
+  width: 300px;
 }
 
-.cell-content {
-  word-break: break-all;
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+  grid-column: 1 / -1;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
-:deep(.el-table th) {
-  background: #f5f7fa;
-  color: #303133;
-  font-weight: 600;
+/* Dialog Dark Overrides */
+:deep(.el-dialog) {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
 }
 
-:deep(.el-table .cell) {
-  padding: 8px;
+:deep(.el-dialog__title) {
+  color: var(--text-primary);
+}
+
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-input__wrapper) {
+  background-color: var(--bg-body);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+:deep(.el-textarea__inner) {
+  background-color: var(--bg-body);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+  color: var(--text-primary);
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+}
+
+:deep(.el-upload-dragger) {
+  background-color: var(--bg-body);
+  border-color: var(--border-color);
+}
+
+:deep(.el-upload-dragger:hover) {
+  border-color: var(--accent-color);
+  background-color: var(--bg-secondary);
 }
 </style>
+:deep(.el-upload__text) {
+  color: var(--text-primary);
+}
+:deep(.el-upload__text em) {
+  color: var(--accent-color);
+}
+:deep(.el-upload__tip) {
+  color: var(--text-secondary);
+}
