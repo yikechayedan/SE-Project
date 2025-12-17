@@ -69,6 +69,18 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
             "time_used",
         ]
 
+    def validate(self, data):
+        method = data.get('method', self.instance.method if self.instance else None)
+        my_model = data.get('myModel')
+
+        # 如果是客观评测或主观评测，myModel 必须存在
+        if method in ['objective', 'subjective'] and not my_model:
+            raise serializers.ValidationError({"myModel": "客观评测和主观评测任务必须选择一个评测模型。"})
+
+        # 如果是对抗评测，则 myModel 允许为空。
+
+        return data
+
     def create(self, validated_data):
         # 保险起见，从 context 中再写一次 creator
         request = self.context.get("request")
