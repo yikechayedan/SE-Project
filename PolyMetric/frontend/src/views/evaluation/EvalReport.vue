@@ -97,7 +97,7 @@ const pageSize = 10
 //接收任务中的路由ID
 const props = defineProps({
     taskId: {
-        type: String, // ID 可能是字符串或数字
+        type: Number,
         required: true
     }
 })
@@ -171,18 +171,34 @@ const getAccuracyColor = (rate) => {
 }
 
 const fetchReportData = async () => {
-  loading.value = true;
-  errorMessage.value = null;
-  try{
-    const response = await getEvaluationTaskDetail(props.taskId);
-    if (response.data?.code === 200) {
-        reportData.value = response.data;
-    } else {
-        errorMessage.value = '获取评测报告失败';
-    }
-  }catch(error){
-    errorMessage.value = '获取评测报告时发生错误';
-    console.error('获取评测报告错误:', error);
+ loading.value = true;
+ errorMessage.value = null;
+ try{
+   const response = await getEvaluationTaskDetail(props.taskId);
+
+   // 🚨 核心修改点：后端直接返回数据对象，因此不再检查 response.data.code
+   if (response.data && response.data.id) {
+      reportData.value = response.data;
+
+      // 额外检查：如果任务未完成（不是 completed 或 error），也视为未找到报告
+      // 这一步是为了与前端模板中 v-if="reportData && reportData.id" 配合显示空状态
+      const status = reportData.value.status;
+      if (status !== 'completed' && status !== 'error') {
+         errorMessage.value = `评测任务状态为 ${status}，尚未完成。`;
+         reportData.value.id = null; // 清空 id，触发 <el-empty>
+      }
+   } else {
+      errorMessage.value = '获取评测报告失败：返回数据为空或无效。';
+   }
+
+ }catch(error){
+   errorMessage.value = '获取评测报告时发生网络或服务器错误';
+   console.error('获取评测报告错误:', error);
+   // 确保在网络错误时也清空数据，显示空状态
+   reportData.value.id = null; 
+ } finally {
+    // 无论成功或失败，都结束加载状态
+    loading.value = false;
   }
 }
 

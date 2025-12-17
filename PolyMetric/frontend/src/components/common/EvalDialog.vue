@@ -7,11 +7,33 @@
       <el-form-item label="任务描述">
         <el-input v-model="form.description" placeholder="输入任务描述" />
       </el-form-item>
-      <el-form-item label="模型选择" v-if="form.type !== 'adversarial'">
+      <el-form-item label="模型选择">
         <div style="display: flex; width: 100%;">
           
           <el-select v-model="form.selectedModelName" 
                      placeholder="选择模型" 
+                     :loading="modelLoading"
+                     style="flex: 1;"> <el-option
+              v-for="model in filteredModelsList"
+              :key="model.id"
+              :label="model.name"
+              :value="model.name"
+            />
+          </el-select>
+
+          <el-input 
+            v-model="modelSearchQuery" 
+            placeholder="搜索模型" 
+            prefix-icon="Search" 
+            style="width: 150px; margin-left: 10px;"
+            />
+        </div>
+      </el-form-item>
+      <el-form-item label="模型二选择" v-if="form.type === 'adversarial'">
+        <div style="display: flex; width: 100%;">
+          
+          <el-select v-model="form.selectedModelName2" 
+                     placeholder="选择模型二" 
                      :loading="modelLoading"
                      style="flex: 1;"> <el-option
               v-for="model in filteredModelsList"
@@ -69,7 +91,7 @@
 <script setup>
 import { ref, defineProps, defineEmits, computed, onMounted} from 'vue'
 import { ElMessage } from 'element-plus'
-import { createEvaluationTask } from '@/api/tasks.js'
+import { createEvaluationTask, runEvaluationTask } from '@/api/tasks.js'
 import { getAllDatasets } from '@/api/datasets.js'
 import { getAllModels } from '@/api/models.js' 
 
@@ -197,16 +219,23 @@ const submitEval = async() => {
       return;
     }
 
+    const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
+    if (form.value.type === 'adversarial' && !selectedModel2) {
+      ElMessage.error('模型二信息缺失，请重新选择');
+      return;
+    }
+
     // 模拟提交成功
     const requestBody = {
       "name": form.value.taskName,
       "description": form.value.description,
       "method": form.value.type,
       "dataset": selectedDataset.id,
-      // 只有在评测方式不是 'adversarial' 时，才包含 model 字段
-      ...(form.value.type !== 'adversarial' ? { "myModel": selectedModel.id } : {})
+      "myModel": selectedModel ? selectedModel.id : null,
+      "myModel2": selectedModel2 ? selectedModel2.id : null,
+
     };
-    if (form.value.type !== 'adversarial' && !selectedModel.id) {
+    if (form.value.type == 'adversarial' && !selectedModel2.id) {
         ElMessage.warning('请选择模型')
         return
     }
@@ -219,10 +248,18 @@ const submitEval = async() => {
         
         ElMessage.success(`任务 [${result.name}] 创建成功!`);
         
-        // 通知父组件任务创建成功，可能需要刷新列表
-        emit('task-submitted', result); 
+        // *** 1. 尝试开始评测任务 ***
+        try {
+            await runEvaluationTask(result.id); // 使用返回的任务 ID
+            ElMessage.success(`任务 [${result.name}] 已开始评测!`);
+        } catch (runError) {
+            console.error('开始评测任务失败:', runError);
+            // 任务创建成功但运行失败，仍然给用户提示
+            ElMessage.warning(`任务 [${result.name}] 创建成功，但自动开始失败。`);
+        }
         
-        // 提交成功后关闭弹窗
+        // *** 2. 通知父组件并关闭弹窗 ***
+        emit('task-submitted', result); 
         handleClose();
         
       } else {

@@ -24,3 +24,12 @@ export function deleteEvaluationTask(id) {
 export function updateEvaluationTask(id, data) {
     return request.put(`/api/tasks/evaluation-tasks/${id}/`, data)
 }
+
+//发起评测
+export function runEvaluationTask(taskId) {
+  return request({
+    url: '/api/tasks/run-task/',
+    method: 'post',
+    data: { task_id: taskId } // 请求体格式
+  });
+}
