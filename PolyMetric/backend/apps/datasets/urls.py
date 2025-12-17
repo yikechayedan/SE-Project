@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import DatasetViewSet
 
 router = DefaultRouter()
-router.register(r"datasets", DatasetViewSet)  # 数据集接口前缀：/api/datasets/
+router.register(r"datasets", DatasetViewSet, basename="dataset")
 
 urlpatterns = [
     path("", include(router.urls)),

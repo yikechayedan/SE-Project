@@ -41,3 +41,30 @@ PolyMetric/backend/apps/*/migrations/
 ### Node modules ###
 node_modules/
 **/node_modules/
+# Django uploaded files
+PolyMetric/backend/media/
+start.sh
+
+### Frontend Build ###
+dist/
+.cache/
+*.tsbuildinfo
+
+### Deployment ###
+# ⚠️ 重要：部署配置包含密码和密钥，绝对不能提交
+deploy/.env
+deploy/docker/volumes/
+deploy/docker/*.log
+
+# Docker 本地覆盖配置
+docker-compose.override.yml
+
+### Logs ###
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Deploy TXT Files (备份文件，不提交) ###
+deploy/txt/

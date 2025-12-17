@@ -9,7 +9,20 @@ urlpatterns = [
     # 用户模块
     path("api/users/", include("apps.users.urls")),
 
-    path("api/", include("datasets.urls")),     # 数据集模块
+    path("api/", include("apps.datasets.urls")),     # 数据集模块
+
+    path("api/tasks/", include("apps.tasks.urls")),  # 评测任务
+
+    # 大模型模块（核心）
+    path("api/", include("apps.models.urls")),
+
+    # 系统动态模块
+    path("api/system/", include("apps.system.urls")),
+    
+    # 模型排名模块
+    path("api/rankings/", include("apps.rankings.urls")),
+
+    path('api/users/', include('apps.users.urls')),
 ]
 
 if settings.DEBUG:
