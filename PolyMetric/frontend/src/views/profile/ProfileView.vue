@@ -435,19 +435,17 @@ const savePrivacy = async () => {
 <style scoped>
 .profile-view {
   padding: 24px;
-  background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 45%, #f9fbff 100%);
-  border-radius: 14px;
-  box-shadow: 0 6px 28px rgba(31, 41, 61, 0.08);
+  background: transparent;
   min-height: 100%;
 }
 
 .user-info {
   position: relative;
   overflow: hidden;
-  border: none;
-  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+  border: 1px solid #30363d;
+  background: #161b22;
   border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(18, 38, 63, 0.06);
+  box-shadow: none;
   padding: 26px 22px;
 }
 
@@ -458,8 +456,9 @@ const savePrivacy = async () => {
   top: -80px;
   width: 180px;
   height: 180px;
-  background: radial-gradient(circle at 30% 30%, rgba(96, 130, 255, 0.18), rgba(96, 130, 255, 0));
+  background: radial-gradient(circle at 30% 30%, rgba(96, 130, 255, 0.15), transparent);
   transform: rotate(-12deg);
+  pointer-events: none;
 }
 
 .card-hero {
@@ -499,13 +498,17 @@ const savePrivacy = async () => {
 .user-info h2 {
   margin: 0;
   font-size: 22px;
-  color: #1f2d3d;
+  color: #ffffff;
 }
 
 .subtitle {
   margin: 8px 0 0;
-  color: #5b667a;
+  color: #8b949e;
   font-size: 14px;
+}
+
+:deep(.el-divider) {
+  border-color: #30363d;
 }
 
 .info-grid {
@@ -519,14 +522,19 @@ const savePrivacy = async () => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: #f6f8fb;
+  background: #0d1117;
   border-radius: 12px;
-  border: 1px solid #eef2f9;
+  border: 1px solid #30363d;
+  transition: border-color 0.2s;
+}
+
+.info-item:hover {
+  border-color: #58a6ff;
 }
 
 .info-item .el-icon {
   font-size: 18px;
-  color: #5f8bff;
+  color: #58a6ff;
 }
 
 .info-text {
@@ -535,12 +543,12 @@ const savePrivacy = async () => {
 }
 
 .label {
-  color: #7a869a;
+  color: #8b949e;
   font-size: 13px;
 }
 
 .value {
-  color: #1f2d3d;
+  color: #c9d1d9;
   font-weight: 600;
 }
 
@@ -559,10 +567,23 @@ const savePrivacy = async () => {
 }
 
 .el-tabs {
-  background: #ffffff;
+  background: #161b22;
   border-radius: 14px;
   padding: 16px 20px;
-  box-shadow: 0 10px 30px rgba(18, 38, 63, 0.06);
+  border: 1px solid #30363d;
+  box-shadow: none;
+}
+
+:deep(.el-tabs__item) {
+  color: #8b949e;
+}
+
+:deep(.el-tabs__item.is-active) {
+  color: #58a6ff;
+}
+
+:deep(.el-tabs__nav-wrap::after) {
+  background-color: #30363d;
 }
 
 .avatar-upload {
@@ -573,7 +594,7 @@ const savePrivacy = async () => {
 
 .tip {
   font-size: 12px;
-  color: #999;
+  color: #8b949e;
   margin-top: 5px;
 }
 
@@ -583,7 +604,7 @@ const savePrivacy = async () => {
 }
 
 .privacy-desc {
-  color: #666;
+  color: #8b949e;
   font-size: 14px;
   margin-bottom: 20px;
 }
@@ -593,8 +614,9 @@ const savePrivacy = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background: #f5f7fa;
+  background: #0d1117;
   border-radius: 8px;
+  border: 1px solid #30363d;
   margin-bottom: 12px;
 }
 
@@ -603,12 +625,41 @@ const savePrivacy = async () => {
   align-items: center;
   gap: 10px;
   font-size: 15px;
-  color: #303133;
+  color: #c9d1d9;
 }
 
 .privacy-label .el-icon {
   font-size: 18px;
-  color: #409eff;
+  color: #58a6ff;
+}
+
+/* Dialog Dark Overrides */
+:deep(.el-dialog) {
+  background: #161b22;
+  border: 1px solid #30363d;
+}
+
+:deep(.el-dialog__title) {
+  color: #c9d1d9;
+}
+
+:deep(.el-form-item__label) {
+  color: #8b949e;
+}
+
+:deep(.el-input__wrapper) {
+  background-color: #0d1117;
+  box-shadow: 0 0 0 1px #30363d inset;
+}
+
+:deep(.el-textarea__inner) {
+  background-color: #0d1117;
+  box-shadow: 0 0 0 1px #30363d inset;
+  color: #c9d1d9;
+}
+
+:deep(.el-input__inner) {
+  color: #c9d1d9;
 }
 </style>
 

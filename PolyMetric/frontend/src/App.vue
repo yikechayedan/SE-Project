@@ -92,6 +92,7 @@ const isPublicPage = computed(() => ['UnloggedHome', 'Login', 'Register', 'Forge
   min-height: calc(100vh - var(--header-height));
   position: relative;
   z-index: 5;
+  background-color: var(--bg-secondary); /* Ensure content area is dark */
 }
 
 .app-header {

@@ -683,131 +683,168 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.my-dataset-manage {
+.my-datasets-container {
   padding: 20px;
-  background: white;
+  background: transparent;
+  min-height: 100%;
+}
+
+.dataset-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.dataset-card {
+  background: #161b22;
+  border: 1px solid #30363d;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  min-height: calc(100vh - 140px);
-}
-
-.page-header {
-  margin-bottom: 25px;
-}
-
-.page-header h2 {
+  overflow: hidden;
+  transition: all 0.3s;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  color: #303133;
+  flex-direction: column;
 }
 
-.page-header .subtitle {
-  color: #909399;
-  font-size: 14px;
-  margin-top: 8px;
+.dataset-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: #58a6ff;
+}
+
+.card-header {
+  padding: 15px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0d1117;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #c9d1d9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-content {
+  padding: 15px;
+  flex: 1;
+}
+
+.desc {
+  color: #8b949e;
+  font-size: 13px;
+  margin-bottom: 15px;
+  height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #8b949e;
+}
+
+.card-actions {
+  padding: 10px 15px;
+  border-top: 1px solid #30363d;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #0d1117;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  background: #0d1117;
+  transition: all 0.3s;
+}
+
+.upload-area:hover {
+  border-color: #58a6ff;
+  background: #161b22;
+}
+
+.upload-tip {
+  margin-top: 10px;
+  color: #8b949e;
+  font-size: 12px;
 }
 
 .action-bar {
   margin-bottom: 20px;
   display: flex;
-  gap: 10px;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 0;
-  color: #909399;
-}
-
-.dataset-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #409eff;
-  font-weight: 500;
-}
-
-.status-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
-}
-
-.action-buttons .el-button {
-  padding: 4px 8px;
-  margin: 0;
-}
-
-.action-buttons .el-button .el-icon {
-  margin-right: 2px;
-}
-
-.tip {
-  margin-left: 10px;
-  color: #909399;
-  font-size: 12px;
-}
-
-.dataset-uploader {
-  width: 100%;
-}
-
-.dataset-uploader :deep(.el-upload) {
-  width: 100%;
-}
-
-.dataset-uploader :deep(.el-upload-dragger) {
-  width: 100%;
-}
-
-.preview-info {
-  margin-bottom: 15px;
-  color: #606266;
-  display: flex;
-  gap: 20px;
-  font-size: 14px;
-}
-
-.preview-pagination {
-  margin-top: 15px;
-  display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
-.goto-container {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  color: #606266;
+.search-input {
+  width: 300px;
 }
 
-.cell-content {
-  word-break: break-all;
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #8b949e;
+  grid-column: 1 / -1;
+  background: #161b22;
+  border-radius: 8px;
+  border: 1px solid #30363d;
 }
 
-:deep(.el-table th) {
-  background: #f5f7fa;
-  color: #303133;
-  font-weight: 600;
+/* Dialog Dark Overrides */
+:deep(.el-dialog) {
+  background: #161b22;
+  border: 1px solid #30363d;
 }
 
-:deep(.el-table .cell) {
-  padding: 8px;
+:deep(.el-dialog__title) {
+  color: #c9d1d9;
+}
+
+:deep(.el-form-item__label) {
+  color: #8b949e;
+}
+
+:deep(.el-input__wrapper) {
+  background-color: #0d1117;
+  box-shadow: 0 0 0 1px #30363d inset;
+}
+
+:deep(.el-textarea__inner) {
+  background-color: #0d1117;
+  box-shadow: 0 0 0 1px #30363d inset;
+  color: #c9d1d9;
+}
+
+:deep(.el-input__inner) {
+  color: #c9d1d9;
+}
+
+:deep(.el-upload-dragger) {
+  background-color: #0d1117;
+  border-color: #30363d;
+}
+
+:deep(.el-upload-dragger:hover) {
+  border-color: #58a6ff;
+  background-color: #161b22;
 }
 </style>
