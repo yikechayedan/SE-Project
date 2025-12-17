@@ -11,6 +11,8 @@ from .serializers import (
     EvaluationTaskSerializer,
     EvaluationTaskDetailSerializer,
 )
+from .benchmark import run_benchmark
+
 
 User = get_user_model()
 
@@ -261,7 +263,7 @@ def get_item_detail(request):
             "item_content": {
                 "input_query": item.content,
                 "myModel1_response": item.predicted_answer,  # 对齐文档中的 myModel1_response
-                "myModel2_response": None,  # 对抗评测下启用，可后续扩展
+                "myModel2_response": item.predicted_answer_2,  # 对抗评测下启用，可后续扩展
             },
         }
     )
@@ -282,3 +284,31 @@ def run_task(request):
 
     result = run_evaluation(task_id)
     return Response({"msg": "task executed", "data": result})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def run_benchmark_view(request):
+    """
+    POST /api/tasks/run-benchmark/
+    {
+        "dataset": 1,
+        "models": [1,2,3],
+        "max_workers": 3   # 可选
+    }
+    """
+    dataset_id = request.data.get("dataset")
+    model_ids = request.data.get("models")
+    max_workers = request.data.get("max_workers", 3)
+
+    if not dataset_id or not model_ids:
+        return Response({"error": "dataset and models are required"}, status=400)
+
+    results = run_benchmark(
+        creator=request.user,
+        dataset_id=dataset_id,
+        model_ids=model_ids,
+        max_workers=max_workers,
+    )
+
+    return Response(results, status=200)

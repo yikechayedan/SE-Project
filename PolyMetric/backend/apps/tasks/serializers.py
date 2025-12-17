@@ -15,6 +15,7 @@ class EvaluationItemSerializer(serializers.ModelSerializer):
             "content",
             "correct_answer",
             "predicted_answer",
+            "predicted_answer_2", 
             "is_correct",
             "score",
             "preference",
@@ -31,6 +32,11 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
     # ⭐ 对齐 API 文档：myModel_name
     myModel_name = serializers.CharField(source="myModel.name", read_only=True)
 
+    # ⭐ Model B（对抗评测）
+    myModel_2_name = serializers.CharField(
+        source="myModel_2.name", read_only=True
+    )
+
     class Meta:
         model = EvaluationTask
         fields = [
@@ -44,6 +50,8 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
             "method",
             "myModel",        # 前端传入 myModel = My_Model 的 ID
             "myModel_name",
+            "myModel_2",        
+            "myModel_2_name",   
             "status",
             "accuracy",
             "score",

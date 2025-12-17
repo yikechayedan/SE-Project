@@ -1,15 +1,13 @@
-# apps/tasks/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 from apps.datasets.models import Dataset
-from apps.models.models import My_Model  # 使用大模型模块中的 My_Model
-
+from apps.models.models import My_Model  # 大模型表
 User = get_user_model()
 
 
-# -----------------------------
+# =============================
 # 评测任务 Task
-# -----------------------------
+# =============================
 class EvaluationTask(models.Model):
     METHOD_CHOICES = (
         ("objective", "客观评测"),
@@ -20,7 +18,6 @@ class EvaluationTask(models.Model):
     name = models.CharField(max_length=255, verbose_name="任务名称")
     description = models.TextField(null=True, blank=True, verbose_name="任务描述")
 
-    # 创建者
     creator = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -28,7 +25,6 @@ class EvaluationTask(models.Model):
         verbose_name="创建者",
     )
 
-    # 关联数据集
     dataset = models.ForeignKey(
         Dataset,
         on_delete=models.CASCADE,
@@ -36,29 +32,46 @@ class EvaluationTask(models.Model):
         verbose_name="数据集",
     )
 
-    # 评测方式：客观 / 主观 / 对抗
     method = models.CharField(
-        max_length=20, choices=METHOD_CHOICES, verbose_name="评测方式"
+        max_length=20,
+        choices=METHOD_CHOICES,
+        verbose_name="评测方式",
     )
 
-    # ⭐ 对齐 API 文档字段：myModel（ForeignKey 到 My_Model）
+    # =============================
+    # Model A（所有评测都用）
+    # =============================
     myModel = models.ForeignKey(
         My_Model,
         on_delete=models.CASCADE,
-        related_name="evaluation_tasks",
-        verbose_name="评测模型",
+        related_name="evaluation_tasks_as_model_a",
+        verbose_name="评测模型 A",
     )
 
-    # 任务状态：pending / running / completed
-    status = models.CharField(max_length=20, default="pending", verbose_name="任务状态")
+    # =============================
+    # ⭐ Model B（仅对抗评测使用）
+    # =============================
+    myModel_2 = models.ForeignKey(
+        My_Model,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="evaluation_tasks_as_model_b",
+        verbose_name="评测模型 B（对抗）",
+    )
 
-    # 客观评测 accuracy
+    status = models.CharField(
+        max_length=20,
+        default="pending",
+        verbose_name="任务状态",
+    )
+
+    # 客观评测
     accuracy = models.FloatField(null=True, blank=True, verbose_name="准确率")
 
-    # 主观评测最终得分（平均分）
+    # 主观评测
     score = models.FloatField(null=True, blank=True, verbose_name="评分")
 
-    # 评测总用时
     time_used = models.DurationField(null=True, blank=True, verbose_name="用时")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
@@ -73,9 +86,9 @@ class EvaluationTask(models.Model):
         return self.name
 
 
-# -----------------------------
-# 评测条目（数据集中的每一条数据）
-# -----------------------------
+# =============================
+# 评测条目 Item
+# =============================
 class EvaluationItem(models.Model):
     task = models.ForeignKey(
         EvaluationTask,
@@ -84,27 +97,56 @@ class EvaluationItem(models.Model):
         verbose_name="所属任务",
     )
 
-    # 原始内容（例如题目 / 输入）
     content = models.TextField(verbose_name="内容")
 
-    # 标准答案（客观评测用）
-    correct_answer = models.TextField(null=True, blank=True, verbose_name="标准答案")
+    correct_answer = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="标准答案",
+    )
 
-    # 模型预测答案
+    # ===== Model A 回答 =====
     predicted_answer = models.TextField(
-        null=True, blank=True, verbose_name="模型预测答案"
+        null=True,
+        blank=True,
+        verbose_name="模型 A 回答",
     )
 
-    # 客观评测是否正确（1/0）
-    is_correct = models.IntegerField(null=True, blank=True, verbose_name="是否正确")
+    # ===== Model B 回答（对抗）=====
+    predicted_answer_2 = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="模型 B 回答",
+    )
 
-    # 主观评测得分（1-10）
-    score = models.IntegerField(null=True, blank=True, verbose_name="主观评分")
+    # 客观评测
+    is_correct = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="是否正确",
+    )
 
-    # 对抗评测结果：left/right
+    # 主观评测
+    score = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="主观评分",
+    )
+
+    # 对抗评测（人类裁判）
     preference = models.CharField(
-        max_length=10, null=True, blank=True, verbose_name="偏好"
+        max_length=10,
+        choices=(
+            ("left", "Model A"),
+            ("right", "Model B"),
+            ("tie", "Tie"),
+        ),
+        null=True,
+        blank=True,
+        verbose_name="偏好",
     )
+
+    
 
     class Meta:
         verbose_name = "评测条目"
@@ -112,3 +154,38 @@ class EvaluationItem(models.Model):
 
     def __str__(self):
         return f"Item {self.id} for Task {self.task_id}"
+
+
+# =============================
+# 评测结果汇总 Summary
+# =============================
+class EvaluationSummary(models.Model):
+    task = models.OneToOneField(
+        EvaluationTask,
+        on_delete=models.CASCADE,
+        related_name="summary",
+        verbose_name="评测任务",
+    )
+
+    model_name = models.CharField(max_length=200, verbose_name="模型信息")
+
+    total = models.IntegerField(null=True, blank=True, verbose_name="总数")
+
+    # 客观 / 对抗：语义化使用
+    correct = models.IntegerField(null=True, blank=True, verbose_name="胜场 / 正确数")
+
+    accuracy = models.FloatField(null=True, blank=True, verbose_name="准确率 / 胜率")
+
+    # 主观评测
+    avg_score = models.FloatField(null=True, blank=True, verbose_name="平均分")
+
+    summary = models.TextField(null=True, blank=True, verbose_name="文本总结")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "评测结果汇总"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"Task {self.task_id} - {self.model_name}"
