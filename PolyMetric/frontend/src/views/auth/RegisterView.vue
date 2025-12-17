@@ -1,84 +1,90 @@
 <template>
   <div class="register-container">
-    <div class="register-wrapper">
-      <h1 class="main-title">欢迎加入 PolyMetric</h1>
-      <p class="sub-title">创建您的账号，开始探索数据世界</p>
-      <el-form 
-        :model="registerForm" 
-        :rules="registerRules" 
-        ref="registerFormRef" 
-        class="register-form"
-        label-position="top"
-      >
-        <el-form-item label="用户名" prop="username">
-          <el-input
-            v-model="registerForm.username"
-            placeholder="请输入用户名（字母、数字组合）"
-            size="large"
-            clearable
-            prefix-icon="User"
-          />
-        </el-form-item>
-        <el-form-item label="邮箱地址" prop="email">
-          <el-input
-            v-model="registerForm.email"
-            placeholder="请输入有效的邮箱地址"
-            size="large"
-            clearable
-            prefix-icon="Message"
-          />
-        </el-form-item>
-        <el-form-item label="手机号" prop="phone">
-          <el-input
-            v-model="registerForm.phone"
-            placeholder="请输入11位手机号"
-            size="large"
-            clearable
-            prefix-icon="Phone"
-            maxlength="11"
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="registerForm.password"
-            type="password"
-            placeholder="请输入至少8位密码"
-            size="large"
-            show-password
-            clearable
-            prefix-icon="Lock"
-          />
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input
-            v-model="registerForm.confirmPassword"
-            type="password"
-            placeholder="请再次输入密码"
-            size="large"
-            show-password
-            clearable
-            prefix-icon="Lock"
-          />
-        </el-form-item>
-        <el-form-item class="agreement-item">
-          <el-checkbox v-model="registerForm.agree">我同意 PolyMetric 的服务条款和隐私政策</el-checkbox>
-        </el-form-item>
-        <el-form-item>
-          <el-button 
-            type="primary" 
-            size="large" 
-            class="submit-btn" 
-            :disabled="!registerForm.agree"
-            @click="handleRegister"
-          >
-            立即注册
-          </el-button>
-        </el-form-item>
-      </el-form>
-      <div class="footer-links">
-        <span>已有账号？</span>
-        <el-link type="primary" @click="$router.push('/login')">立即登录</el-link>
-      </div>
+    <ParticleBackground />
+
+    <div class="register-content">
+      <el-card class="register-card" shadow="always">
+        <div class="card-header">
+          <h2 class="title">加入 PolyMetric</h2>
+          <p class="desc">创建您的账号，开启 AI 评测之旅</p>
+        </div>
+
+        <el-form 
+          :model="registerForm" 
+          :rules="registerRules" 
+          ref="registerFormRef" 
+          size="large"
+          class="register-form"
+        >
+          <el-form-item prop="username">
+            <el-input
+              v-model="registerForm.username"
+              placeholder="用户名 (字母、数字)"
+              prefix-icon="User"
+              class="tech-input"
+            />
+          </el-form-item>
+          <el-form-item prop="email">
+            <el-input
+              v-model="registerForm.email"
+              placeholder="电子邮箱"
+              prefix-icon="Message"
+              class="tech-input"
+            />
+          </el-form-item>
+          <el-form-item prop="phone">
+            <el-input
+              v-model="registerForm.phone"
+              placeholder="手机号 (11位)"
+              prefix-icon="Phone"
+              maxlength="11"
+              class="tech-input"
+            />
+          </el-form-item>
+          <el-form-item prop="password">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              placeholder="设置密码 (至少8位)"
+              prefix-icon="Lock"
+              show-password
+              class="tech-input"
+            />
+          </el-form-item>
+          <el-form-item prop="confirmPassword">
+            <el-input
+              v-model="registerForm.confirmPassword"
+              type="password"
+              placeholder="确认密码"
+              prefix-icon="Lock"
+              show-password
+              class="tech-input"
+            />
+          </el-form-item>
+          
+          <el-form-item class="agreement-item">
+            <el-checkbox v-model="registerForm.agree" class="tech-checkbox">
+              我同意 <span class="highlight">服务条款</span> 和 <span class="highlight">隐私政策</span>
+            </el-checkbox>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button 
+              type="success" 
+              class="submit-btn" 
+              :loading="loading"
+              :disabled="!registerForm.agree"
+              @click="handleRegister"
+            >
+              立即注册
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="card-footer">
+          已有账号？ <span class="login-link" @click="$router.push('/login')">直接登录</span>
+        </div>
+      </el-card>
     </div>
   </div>
 </template>
@@ -87,10 +93,14 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { register } from '@/api/users'  
+import { User, Message, Phone, Lock } from '@element-plus/icons-vue'
+import { register } from '@/api/users' 
+// 引入新创建的粒子组件 
+import ParticleBackground from '@/components/common/ParticleBackground.vue'
 
 const router = useRouter()
 const registerFormRef = ref(null)
+const loading = ref(false)
 
 const registerForm = reactive({
   username: '',
@@ -135,8 +145,8 @@ const registerRules = {
 const handleRegister = () => {
   registerFormRef.value.validate(async (valid) => {
     if (valid && registerForm.agree) {
+      loading.value = true
       try {
-        // ✅ 改用 axios 封装的 API
         const res = await register({
           username: registerForm.username,
           password: registerForm.password,
@@ -151,11 +161,12 @@ const handleRegister = () => {
           ElMessage.error('注册失败：' + (data.msg || '未知错误'))
         }
       } catch (error) {
-        // ✅ 更好的错误处理
         ElMessage.error('注册失败：' + (error.response?.data?.msg || '网络错误'))
+      } finally {
+        loading.value = false
       }
     } else {
-      ElMessage.error('请检查表单信息或同意协议')
+      ElMessage.warning('请检查表单信息或同意协议')
     }
   })
 }
@@ -163,49 +174,50 @@ const handleRegister = () => {
 
 <style scoped>
 .register-container {
-  height: 100vh;
-  background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+  min-height: 100vh;
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+  background-color: #0d1117;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
   padding: 20px;
 }
-.register-wrapper {
-  width: 100%;
-  max-width: 480px;
-  background: white;
+
+/* 同样移除原有的 .tech-bg 等背景样式 */
+
+.register-content { position: relative; z-index: 10; width: 100%; max-width: 480px; animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+.register-card {
+  background: rgba(22, 27, 34, 0.75) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(103, 194, 58, 0.2) !important;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6) !important;
   border-radius: 16px;
-  padding: 40px 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  text-align: center;
+  padding: 10px 20px;
 }
-.main-title {
-  font-size: 32px;
-  color: #333;
-  margin-bottom: 8px;
-}
-.sub-title {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 32px;
-}
-.register-form {
-  text-align: left;
-}
-.agreement-item {
-  margin-bottom: 24px;
-}
+
+.card-header { text-align: center; margin-bottom: 25px; }
+.title { color: #fff; font-size: 24px; margin: 0 0 8px 0; }
+.desc { color: #8b949e; font-size: 14px; margin: 0; }
+
+:deep(.tech-input .el-input__wrapper) { background-color: #0d1117; box-shadow: 0 0 0 1px #30363d inset; transition: all 0.3s; }
+:deep(.tech-input .el-input__wrapper:hover), :deep(.tech-input .el-input__wrapper.is-focus) { box-shadow: 0 0 0 1px #67c23a inset !important; background-color: #0d1117; }
+:deep(.tech-input .el-input__inner) { color: #fff; }
+:deep(.tech-checkbox .el-checkbox__label) { color: #8b949e; }
+.highlight { color: #67c23a; cursor: pointer; }
+
 .submit-btn {
-  width: 100%;
-  font-size: 18px;
-  border-radius: 8px;
+  width: 100%; height: 44px; font-size: 16px; font-weight: 600;
+  background: linear-gradient(90deg, #67c23a, #529b2e); border: none;
+  box-shadow: 0 4px 15px rgba(103, 194, 58, 0.3); transition: all 0.3s;
 }
-.footer-links {
-  margin-top: 16px;
-  font-size: 14px;
-  color: #666;
-}
-.footer-links .el-link {
-  margin-left: 8px;
-}
+.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(103, 194, 58, 0.4); }
+
+.card-footer { text-align: center; margin-top: 15px; color: #8b949e; font-size: 14px; }
+.login-link { color: #67c23a; cursor: pointer; font-weight: 600; }
+.login-link:hover { text-decoration: underline; }
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 </style>
