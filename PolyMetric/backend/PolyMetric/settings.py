@@ -104,14 +104,20 @@ WSGI_APPLICATION = 'PolyMetric.wsgi.application'
 # -----------------------------
 # 数据库配置
 # -----------------------------
+import os  # 确保文件最上面有这一行
+
+# ... 其他代码 ...
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'polymetric',
-        'USER': 'postgres',
-        'PASSWORD': 'yhblsqt',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        # 使用 os.environ.get('变量名', '默认值')
+        # 这样既能在 Docker 里跑（读取环境变量），也能在本地跑（使用默认值）
+        'NAME': os.environ.get('DB_NAME', 'polymetric'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'yhblsqt'), # 你的本地密码
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),        # ✅ 关键修改
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
