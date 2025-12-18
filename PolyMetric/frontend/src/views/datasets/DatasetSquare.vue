@@ -28,6 +28,21 @@
             <div class="value">{{ followedCount }}</div>
             <div class="hint">你的关注</div>
           </div>
+          <div class="stat-card type-image">
+            <div class="label">图像</div>
+            <div class="value">{{ imageDatasetCount }}</div>
+            <div class="hint">Image</div>
+          </div>
+          <div class="stat-card type-text">
+            <div class="label">文本</div>
+            <div class="value">{{ textDatasetCount }}</div>
+            <div class="hint">Text</div>
+          </div>
+          <div class="stat-card type-multi">
+            <div class="label">多模态</div>
+            <div class="value">{{ multimodalDatasetCount }}</div>
+            <div class="hint">Multi</div>
+          </div>
         </div>
       </div>
       <div class="hero-right">
@@ -371,7 +386,7 @@ const entriesCurrentPage = ref(1)
 const entriesPageSize = ref(10)
 const entriesTotal = ref(0)
 
-// 本地筛选后的数据集
+// 本地筛选后的数据集（并排序：关注 > 热度 > 上传时间）
 const filteredDatasets = computed(() => {
   let result = allDatasets.value
   if (searchQuery.value.trim()) {
@@ -384,20 +399,52 @@ const filteredDatasets = computed(() => {
   if (onlyFollowed.value) {
     result = result.filter(item => item.is_followed)
   }
-  return result
+  
+  // 排序：关注 > 热度 > 上传时间
+  return result.sort((a, b) => {
+    // 1. Followed (is_followed) - true first
+    if (a.is_followed !== b.is_followed) {
+      return a.is_followed ? -1 : 1
+    }
+    // 2. Heat (star_count) - desc
+    const starA = a.star_count || 0
+    const starB = b.star_count || 0
+    if (starA !== starB) return starB - starA
+
+    // 3. Upload Time (created_at) - desc (newer first)
+    const dateA = new Date(a.created_at || 0).getTime()
+    const dateB = new Date(b.created_at || 0).getTime()
+    return dateB - dateA
+  })
 })
 
 // 榜单派生数据
 const verifiedCount = computed(() => filteredDatasets.value.filter(item => item.is_verified).length)
 const followedCount = computed(() => allDatasets.value.filter(item => item.is_followed).length)
 const totalStars = computed(() => allDatasets.value.reduce((acc, m) => acc + (m.star_count || 0), 0))
+
+// 各类型数量统计
+const imageDatasetCount = computed(() => allDatasets.value.filter(d => d.category === 'image').length)
+const textDatasetCount = computed(() => allDatasets.value.filter(d => d.category === 'text').length)
+const multimodalDatasetCount = computed(() => allDatasets.value.filter(d => d.category === 'multimodal').length)
+
 const rankedDatasets = computed(() => filteredDatasets.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
 const paginatedRankedDatasets = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return rankedDatasets.value.slice(start, end)
 })
-const rankedTop3 = computed(() => rankedDatasets.value.slice(0, 3))
+
+// Top 3 逻辑：按 热度 (star_count) 排序
+const rankedTop3 = computed(() => {
+  const sorted = [...allDatasets.value].sort((a, b) => {
+    // Heat (star_count) - desc
+    const starA = a.star_count || 0
+    const starB = b.star_count || 0
+    return starB - starA
+  })
+  return sorted.slice(0, 3).map((item, idx) => ({ ...item, _rank: idx + 1 }))
+})
 
 // 监听筛选条件变化，重置到第一页
 watch([searchQuery, categoryFilter, onlyFollowed], () => {
@@ -891,6 +938,24 @@ onMounted(() => {
 
 .stat-card.type-star:hover { border-color: #f56c6c; background: rgba(245, 108, 108, 0.05); }
 .stat-card.type-star .value { color: #f56c6c; }
+
+.stat-card.type-image {
+  border-left: 3px solid var(--el-color-primary);
+}
+.stat-card.type-text {
+  border-left: 3px solid var(--el-color-success);
+}
+.stat-card.type-multi {
+  border-left: 3px solid var(--el-color-warning);
+}
+
+.stat-card.type-image:hover { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
+.stat-card.type-text:hover { border-color: var(--el-color-success); background: var(--el-color-success-light-9); }
+.stat-card.type-multi:hover { border-color: var(--el-color-warning); background: var(--el-color-warning-light-9); }
+
+.stat-card.type-image .value { color: var(--el-color-primary); }
+.stat-card.type-text .value { color: var(--el-color-success); }
+.stat-card.type-multi .value { color: var(--el-color-warning); }
 
 .mini-star {
   font-size: 12px;
