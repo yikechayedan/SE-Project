@@ -264,6 +264,7 @@ onMounted(() => {
   transition: all 0.3s ease; 
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); 
 }
+
 .summary-card:hover {
     transform: translateY(-5px); 
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -272,6 +273,7 @@ onMounted(() => {
     padding: 30px; 
     transition: background-color 0.3s;
 }
+
 .summary-value {
   font-size: 48px; 
   font-weight: 800;
@@ -305,6 +307,26 @@ onMounted(() => {
 .pagination-container {
   margin-top: 25px;
   text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+:deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+  background-color: #1f6bff;
+  color: #ffffff;
+}
+
+:deep(.el-pagination.is-background .el-pager li) {
+  background-color: #161b22;
+  color: #8b949e;
+  border: 1px solid #30363d;
+}
+
+:deep(.el-pagination.is-background .btn-prev),
+:deep(.el-pagination.is-background .btn-next) {
+  background-color: #161b22;
+  color: #8b949e;
+  border: 1px solid #30363d;
 }
 
 /* ======================== 结果图标 (保持不变) ======================== */
@@ -313,9 +335,28 @@ onMounted(() => {
   font-weight: bold;
 }
 .correct-icon {
-  color: #4CAF50; 
+  color: #67c23a;
 }
 .incorrect-icon {
-  color: #E53935; 
+  color: #f56c6c;
+}
+
+/* Descriptions Dark Mode Override */
+:deep(.el-descriptions__label) {
+  background-color: #161b22 !important;
+  color: #8b949e !important;
+}
+
+:deep(.el-descriptions__content) {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+
+:deep(.el-descriptions__cell) {
+  border-color: #30363d !important;
+}
+
+:deep(.el-divider) {
+  border-color: #30363d;
 }
 </style>

@@ -470,6 +470,7 @@ onMounted(() => {
 <style scoped>
 .my-tasks-container {
   padding: 20px;
+  background: transparent;
 }
 .action-bar { 
   display: flex;
@@ -512,5 +513,62 @@ onMounted(() => {
   justify-content: center;
   margin-top: 20px;
   padding: 15px 0;
+
+/* Table Dark Theme Overrides */
+:deep(.el-table) {
+  --el-table-bg-color: #161b22;
+  --el-table-tr-bg-color: #161b22;
+  --el-table-header-bg-color: #0d1117;
+  --el-table-border-color: #30363d;
+  --el-table-text-color: #c9d1d9;
+  --el-table-header-text-color: #8b949e;
+  --el-table-row-hover-bg-color: #1f2428;
+}
+
+:deep(.el-table__inner-wrapper::before) {
+  background-color: #30363d;
+}
+
+:deep(.el-table th) {
+  background-color: #0d1117 !important;
+  color: #8b949e !important;
+  border-bottom: 1px solid #30363d !important;
+}
+
+:deep(.el-table td) {
+  border-bottom: 1px solid #30363d !important;
+}
+
+/* Pagination if present */
+:deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+  background-color: #1f6bff;
+  color: #ffffff;
+}
+:deep(.el-pagination.is-background .el-pager li) {
+  background-color: #161b22;
+  color: #8b949e;
+  border: 1px solid #30363d;
+}
+
+/* Dialog & Form Overrides */
+:deep(.el-dialog) {
+  background: #161b22;
+  border: 1px solid #30363d;
+}
+:deep(.el-dialog__title) {
+  color: #c9d1d9;
+}
+:deep(.el-form-item__label) {
+  color: #8b949e;
+}
+:deep(.el-input__wrapper),
+:deep(.el-textarea__inner),
+:deep(.el-select__wrapper) {
+  background-color: #0d1117;
+  box-shadow: 0 0 0 1px #30363d inset;
+  color: #c9d1d9;
+}
+:deep(.el-input__inner) {
+  color: #c9d1d9;
 }
 </style>
