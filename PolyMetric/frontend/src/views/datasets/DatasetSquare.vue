@@ -74,6 +74,13 @@
           <el-option label="文本" value="text" />
           <el-option label="多模态" value="multimodal" />
         </el-select>
+        <el-checkbox 
+          v-model="onlyFollowed" 
+          label="仅看已关注" 
+          border 
+          @change="handleLocalFilter"
+          class="filter-checkbox" 
+        />
         <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
       </div>
     </div>
@@ -314,6 +321,7 @@ const loading = ref(false)
 const allDatasets = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const onlyFollowed = ref(false)
 
 // 分页状态
 const currentPage = ref(1)
@@ -346,6 +354,9 @@ const filteredDatasets = computed(() => {
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
+  if (onlyFollowed.value) {
+    result = result.filter(item => item.is_followed)
+  }
   return result
 })
 
@@ -362,7 +373,7 @@ const paginatedRankedDatasets = computed(() => {
 const rankedTop3 = computed(() => rankedDatasets.value.slice(0, 3))
 
 // 监听筛选条件变化，重置到第一页
-watch([searchQuery, categoryFilter], () => {
+watch([searchQuery, categoryFilter, onlyFollowed], () => {
   currentPage.value = 1
 })
 
@@ -473,6 +484,7 @@ const handleLocalFilter = () => {
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  onlyFollowed.value = false
   currentPage.value = 1
   fetchAllDatasets()
 }
@@ -1009,7 +1021,7 @@ onMounted(() => {
 
 .board-row {
   display: grid;
-  grid-template-columns: 80px 1.3fr 1fr 260px;
+  grid-template-columns: 80px 1.3fr 1fr 340px;
   gap: 16px;
   align-items: center;
   background: var(--bg-secondary);
