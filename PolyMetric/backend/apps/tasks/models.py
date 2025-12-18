@@ -46,6 +46,7 @@ class EvaluationTask(models.Model):
         on_delete=models.CASCADE,
         related_name="evaluation_tasks_as_model_a",
         verbose_name="评测模型 A",
+        default=1,
     )
 
     # =============================

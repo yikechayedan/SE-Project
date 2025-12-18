@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     #数据集模块
-    "apps.datasets", 
+    "apps.datasets",
     "django_filters",  # 筛选插件
 
     #评测任务模块
@@ -51,6 +51,12 @@ INSTALLED_APPS = [
 
     #数据集模块
     "apps.models",
+
+    # 系统动态模块
+    "apps.system.apps.SystemConfig",
+    
+    # 模型排名模块
+    "apps.rankings.apps.RankingsConfig",
 
     # 项目应用
     'apps.users',
@@ -225,8 +231,8 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # ============================
 # Celery 配置
 # ============================
-CELERY_BROKER_URL = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
-CELERY_RESULT_BACKEND = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

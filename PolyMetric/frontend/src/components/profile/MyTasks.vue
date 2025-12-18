@@ -17,15 +17,25 @@
       style="width: 100%;" 
       v-loading="loading"
     >
-      <el-table-column prop="id" label="ID" width="60" />
+      <el-table-column prop="id" label="ID" width="60" show-overflow-tooltip/>
       <el-table-column prop="name" label="任务名称" show-overflow-tooltip />
       
-      <el-table-column prop="model" label="模型" width="140" show-overflow-tooltip>
-        <template #default="scope">
-          {{ scope.row.method === 'adversarial' ? '' : scope.row.model }}
-        </template>
+      <el-table-column prop="model" label="模型" show-overflow-tooltip>
+        <template #default="{ row }">
+              <div class="model-name overflow-container">
+                <el-icon><Box /></el-icon>
+                <span>{{ row.myModel_name }}</span>
+              </div>
+            </template>
       </el-table-column>
-      <el-table-column prop="dataset" label="使用数据集" width="120" show-overflow-tooltip />
+      <el-table-column prop="dataset" label="使用数据集" show-overflow-tooltip>
+        <template #default="{ row }">
+              <div class="dataset-name overflow-container">
+                <el-icon><Folder /></el-icon>
+                <span>{{ row.dataset_name }}</span>
+              </div>
+            </template>
+      </el-table-column>
       
       <el-table-column prop="method" label="评测方法" width="100">
         <template #default="scope">
@@ -45,7 +55,7 @@
       
       <el-table-column prop="time" label="更新时间" width="120" />
       
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="scope">
           <el-button 
             size="small" 
@@ -57,7 +67,6 @@
           </el-button>
           
           <el-button 
-            v-if="scope.row.status !== 'completed'"
             size="small" 
             type="danger" 
             round
@@ -77,6 +86,19 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[5, 10, 20, 50]"
+            :total="myTasks.length"
+            :background="true"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
+    </div>
   </div>
 
   <el-dialog
@@ -157,7 +179,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { View, Edit, Delete } from '@element-plus/icons-vue';
 import EvalDialog from '../common/EvalDialog.vue';
 import { getEvaluationTasks, deleteEvaluationTask, updateEvaluationTask } from '@/api/tasks.js';
@@ -171,6 +193,7 @@ const router = useRouter();
 // ------------------------------------
 const loading = ref(true);
 const tasks = ref([]); // 存放所有任务数据
+const myTasks = ref([]); // 存放我的任务数据
 const modelsList = ref([]);
 const datasetsList = ref([]);
 const searchQuery = ref(''); // 搜索框输入
@@ -180,6 +203,8 @@ const modelSearchQuery = ref('');
 const datasetSearchQuery = ref('');
 const showEvalDialog = ref(false);
 const showEditDialog = ref(false);
+const currentPage = ref(1);
+const pageSize = ref(5);
 
 // 编辑表单
 const form = reactive({
@@ -260,12 +285,17 @@ const filteredDatasetsList = computed(() => {
 const filteredTasks = computed(() => {
   const query = searchQuery.value.toLowerCase();
   if (!query) {
-    return tasks.value;
+    return myTasks.value;
   }
-  return tasks.value.filter(task => 
+  const firstFilteredTasks = myTasks.value.filter(task => 
     task.name.toLowerCase().includes(query) ||
     task.myModel_name.toLowerCase().includes(query) ||
     task.dataset_name.toLowerCase().includes(query)
+  );
+
+  return firstFilteredTasks.slice(
+    (currentPage.value - 1) * pageSize.value,
+    currentPage.value * pageSize.value
   );
 });
 
@@ -306,7 +336,7 @@ const getMethodTag = (method) => {
 
 const formatStatus = (status) => {
   const map = {
-    pending: '待运行',
+    pending: '待测评',
     running: '进行中',
     completed: '已完成',
     failed: '失败',
@@ -328,6 +358,17 @@ const getStatusTag = (status) => {
 // ------------------------------------
 // 动作处理函数
 // ------------------------------------
+
+// 处理每页条数变化
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1  // 切换每页条数时回到第一页
+}
+
+// 处理页码变化
+const handlePageChange = (val) => {
+  currentPage.value = val
+}
 
 // 新建任务处理，应该打开弹窗
 const handleSubmit = () => {
@@ -376,12 +417,26 @@ const saveEditTask = async () => {
 // 删除任务
 const handleDeleteTask = async (task) => {
     try{
+        await ElMessageBox.confirm(
+            `确认删除任务 "${task.name}" 吗？删除后数据不可恢复。`,
+            '警告',
+            {
+                confirmButtonText: '确定删除',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        );
         await deleteEvaluationTask(task.id);
         ElMessage.success('任务删除成功');
         fetchTasks(); 
     } catch (error) {
-        console.error('删除任务失败:', error);
-        ElMessage.error(`删除任务失败: ${error.message}`);
+        if (error !== 'cancel') {
+            console.error('删除任务失败:', error);
+            ElMessage.error(`删除任务失败: ${error.message}`);
+        } else {
+             // 用户点击取消，不做任何操作
+             ElMessage.info('已取消删除操作');
+        }
     }
 };
 
@@ -395,6 +450,7 @@ const fetchTasks = async () => {
         //  格式化所有任务并赋值给 evaluations
         const formattedTasks = data.map(formatTaskDisplay);
         tasks.value = formattedTasks;
+        myTasks.value = formattedTasks.filter(task => task.initiator === localStorage.getItem('username'));
         
     } catch (error) {
         console.error('加载评测任务失败:', error);
@@ -421,6 +477,42 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 20px; 
 }
+.dataset-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.model-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+.overflow-container {
+  display: flex;
+  align-items: center;
+  gap: 8px; 
+  overflow: hidden; 
+}
+
+.ellipsis-content {
+  white-space: nowrap; 
+  overflow: hidden;    
+  text-overflow: ellipsis; 
+  flex: 1; 
+  display: block; 
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 15px 0;
 
 /* Table Dark Theme Overrides */
 :deep(.el-table) {

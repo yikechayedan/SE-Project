@@ -16,6 +16,12 @@ urlpatterns = [
     # 大模型模块（核心）
     path("api/", include("apps.models.urls")),
 
+    # 系统动态模块
+    path("api/system/", include("apps.system.urls")),
+    
+    # 模型排名模块
+    path("api/rankings/", include("apps.rankings.urls")),
+
     path('api/users/', include('apps.users.urls')),
 ]
 
