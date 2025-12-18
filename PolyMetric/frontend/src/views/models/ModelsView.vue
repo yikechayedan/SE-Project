@@ -90,6 +90,22 @@
           <el-option label="多模态" value="multimodal" />
           <el-option label="代码生成" value="code" />
         </el-select>
+        <el-select
+          v-model="companyFilter"
+          placeholder="选择机构"
+          clearable
+          filterable
+          @change="handleLocalFilter"
+          class="filter-select"
+        >
+          <el-option label="全部机构" value="" />
+          <el-option 
+            v-for="comp in availableCompanies" 
+            :key="comp" 
+            :label="comp" 
+            :value="comp" 
+          />
+        </el-select>
         <el-checkbox v-model="onlyFollowed" label="仅看已关注" border />
         <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
       </div>
@@ -265,6 +281,7 @@ const loading = ref(false)
 const allModels = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const companyFilter = ref('')
 const onlyFollowed = ref(false)
 
 // 分页状态
@@ -289,6 +306,12 @@ const handleShowComments = (row) => {
   showCommentDialog.value = true
 }
 
+// 提取所有公司
+const availableCompanies = computed(() => {
+  const companies = new Set(allModels.value.map(m => m.company).filter(Boolean))
+  return Array.from(companies).sort()
+})
+
 // 本地筛选后的模型
 const filteredModels = computed(() => {
   let result = allModels.value
@@ -301,6 +324,9 @@ const filteredModels = computed(() => {
   }
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
+  }
+  if (companyFilter.value) {
+    result = result.filter(item => item.company === companyFilter.value)
   }
   if (onlyFollowed.value) {
     result = result.filter(item => item.is_followed)
@@ -324,10 +350,15 @@ const paginatedRankedModels = computed(() => {
   const end = start + pageSize.value
   return rankedModels.value.slice(start, end)
 })
-const rankedTop3 = computed(() => rankedModels.value.slice(0, 3))
+
+// Top 3 逻辑：按点赞量降序取前三
+const rankedTop3 = computed(() => {
+  const sortedByStars = [...allModels.value].sort((a, b) => (b.star_count || 0) - (a.star_count || 0))
+  return sortedByStars.slice(0, 3).map((item, idx) => ({ ...item, _rank: idx + 1 }))
+})
 
 // 监听筛选条件变化，重置到第一页
-watch([searchQuery, categoryFilter, onlyFollowed], () => {
+watch([searchQuery, categoryFilter, companyFilter, onlyFollowed], () => {
   currentPage.value = 1
 })
 
@@ -420,22 +451,30 @@ const fetchAllModels = async () => {
 
     // 默认排序：
     // 1. 关注的模型在前
-    // 2. 参数量大的模型在前
-    // 3. 更新时间较早的原则 (Ascending date)
+    // 2. 点赞量高的在前
+    // 3. 参数量大的模型在前
+    // 4. 更新时间较早的原则 (Ascending date)
     models.sort((a, b) => {
       // 1. Followed
       if (a.is_followed !== b.is_followed) {
         return a.is_followed ? -1 : 1
       }
       
-      // 2. Parameters (Large first)
+      // 2. Star Count (High to Low)
+      const starsA = a.star_count || 0
+      const starsB = b.star_count || 0
+      if (starsA !== starsB) {
+        return starsB - starsA
+      }
+      
+      // 3. Parameters (Large first)
       const paramA = parseParamValue(a.parameter_size)
       const paramB = parseParamValue(b.parameter_size)
       if (Math.abs(paramA - paramB) > 1e3) { // Use a small epsilon or just check inequality
          return paramB - paramA
       }
       
-      // 3. Updated At (Earlier first -> Ascending)
+      // 4. Updated At (Earlier first -> Ascending)
       // "较早" means older date (smaller timestamp)
       const dateA = new Date(a.updated_at || 0).getTime()
       const dateB = new Date(b.updated_at || 0).getTime()
@@ -461,6 +500,7 @@ const handleLocalFilter = () => {
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  companyFilter.value = ''
   onlyFollowed.value = false
   currentPage.value = 1
   fetchAllModels()
