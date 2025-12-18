@@ -17,7 +17,7 @@ User = get_user_model()
 # ---------------------------------------------------------
 # 工具：单模型评测（带重试 + 超时）
 # ---------------------------------------------------------
-def evaluate_single_model(creator, dataset, model, max_retry=2):
+def evaluate_single_model(creator, dataset, method="objective", max_retry=2):
     """
     针对单个模型执行评测，带：失败自动重试
     """
@@ -30,7 +30,7 @@ def evaluate_single_model(creator, dataset, model, max_retry=2):
                 name=f"Benchmark - {dataset.name} - {model.name}",
                 creator=creator,
                 dataset=dataset,
-                method="objective",
+                method=method,
                 myModel=model,
                 status="pending",
             )
@@ -41,12 +41,23 @@ def evaluate_single_model(creator, dataset, model, max_retry=2):
             # 3️⃣ 转为结构化 summary（失败会抛异常）
             summary = EvaluationSummary.objects.get(task=task)
 
+            # ✅ 统一一个 metric_value，榜单就不需要关心是哪种评测
+            if method == "subjective":
+                metric_value = summary.avg_score or 0
+            elif method == "adversarial":
+                metric_value = summary.accuracy or 0   # 你们对抗 summary 里用 accuracy 存 win_rate_a（见 run_logic）
+            else:
+                metric_value = summary.accuracy or 0
+
             return {
                 "task_id": task.id,
+                "method": method,
                 "model": summary.model_name,
                 "total": summary.total,
                 "correct": summary.correct,
                 "accuracy": summary.accuracy,
+                "avg_score": getattr(summary, "avg_score", None),
+                "metric_value": metric_value,   # ⭐榜单排序/展示用
             }
 
         except Exception as e:
@@ -63,7 +74,7 @@ def evaluate_single_model(creator, dataset, model, max_retry=2):
 # ---------------------------------------------------------
 # Step 3-A + 3-B + 3-C：Benchmark 主逻辑（支持并发）
 # ---------------------------------------------------------
-def run_benchmark(creator, dataset_id, model_ids, max_workers=3):
+def run_benchmark(creator, dataset_id, model_ids, method="objective", max_workers=3):
     """
     用多个模型对同一 dataset 进行评测
     支持：
@@ -83,7 +94,7 @@ def run_benchmark(creator, dataset_id, model_ids, max_workers=3):
     # -------- 并发执行 --------
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_model = {
-            executor.submit(evaluate_single_model, creator, dataset, m): m
+            executor.submit(evaluate_single_model, creator, dataset, m, method): m
             for m in models
         }
 
@@ -102,6 +113,6 @@ def run_benchmark(creator, dataset_id, model_ids, max_workers=3):
             results.append(res)
 
     # -------- 排序 + 返回结果 --------
-    results.sort(key=lambda x: x.get("accuracy", 0) or 0, reverse=True)
+    results.sort(key=lambda x: x.get("metric_value", 0) or 0, reverse=True)
 
     return results

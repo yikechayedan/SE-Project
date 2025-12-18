@@ -61,6 +61,16 @@ class EvaluationTask(models.Model):
         verbose_name="评测模型 B（对抗）",
     )
 
+    # ⭐ 新增：对抗评测裁判模型（第三方）
+    judge_model = models.ForeignKey(
+        My_Model,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="judged_tasks",
+        verbose_name="裁判模型（对抗评测）",
+    )
+
     status = models.CharField(
         max_length=20,
         default="pending",
@@ -77,6 +87,18 @@ class EvaluationTask(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    JUDGE_TYPE_CHOICES = (
+        ("human", "人类裁判"),
+        ("model", "模型裁判"),
+    )
+
+    judge_type = models.CharField(
+        max_length=10,
+        choices=JUDGE_TYPE_CHOICES,
+        default="human",
+        verbose_name="对抗评测裁判类型",
+    )
 
     class Meta:
         ordering = ["-created_at"]

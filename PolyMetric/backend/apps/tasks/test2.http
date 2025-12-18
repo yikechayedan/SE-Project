@@ -1,13 +1,7 @@
 POST http://127.0.0.1:8000/api/tasks/run-task/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY1OTQyOTAxLCJpYXQiOjE3NjU5MzkzMDEsImp0aSI6IjkyODUyYTdiN2MwNjQwMjdhNWM0MDFkMzBlYjNiNDA1IiwidXNlcl9pZCI6IjEifQ.nQwZHfCAFldq3OH1b-kQk_WcnTqAarfYSo5Bl-aiG-4
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY2MDU1MzQwLCJpYXQiOjE3NjYwNTE3NDAsImp0aSI6IjNhNWRkZjhlMGViNzQwMDQ5Y2IxNTViN2MyOWM5NTUyIiwidXNlcl9pZCI6IjEifQ.K0Q5xGRNwR-1JFnNkHAdkptXzPnCTy0__hRPkd2LQaI
 Content-Type: application/json
 
 {
-  "msg": "task executed",
-  "data": {
-    "task_id": 21,
-    "method": "subjective",
-    "model": "Qwen3-30B-A3B-Instruct-2507",
-    "avg_score": 7.8
-  }
+  "task_id": 57
 }

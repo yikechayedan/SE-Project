@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     # 模型排名模块
     "apps.rankings.apps.RankingsConfig",
 
+
     # 项目应用
     'apps.users',
 ]
