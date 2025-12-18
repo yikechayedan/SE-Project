@@ -24,7 +24,15 @@ class RegisterView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            # 获取第一个错误信息
+            first_error = next(iter(serializer.errors.values()))[0]
+            return Response({
+                "code": 400,
+                "msg": f"注册失败：{first_error}",
+                "data": None
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
         user = serializer.save()
         return Response({
             "code": 200,

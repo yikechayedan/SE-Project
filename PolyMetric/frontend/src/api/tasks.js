@@ -35,6 +35,31 @@ export function runEvaluationTask(taskId) {
 }
 
 //获取待测条目
-export function getPendingItems() {
-  
+export function getPendingItems(taskId, reviewerId) {
+  return request.get('/api/tasks/get-pending-items/', {
+    params: {
+      taskid: taskId,
+      reviewerid: reviewerId
+    }
+  });
+}
+
+// 获取单条条目详情
+export function getItemDetail(taskId, itemID) {
+  return request.get('/api/tasks/get-item-detail/', {
+    params: {
+      task: taskId,
+      itemID: itemID
+    }
+  });
+}
+
+// 提交主观评测分数
+export function submitSubjectiveScore(taskId, payload) {
+  return request.post(`/api/tasks/evaluation-tasks/${taskId}/submit_score/`, payload);
+}
+
+// 提交对抗评测偏好
+export function submitAdversarialPreference(taskId, payload) {
+  return request.post(`/api/tasks/evaluation-tasks/${taskId}/submit_score/`, payload);
 }

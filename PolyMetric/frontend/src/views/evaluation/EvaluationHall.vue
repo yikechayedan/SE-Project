@@ -497,6 +497,21 @@ onMounted(() => {
     display: block; 
 }
 
+.overflow-container {
+    overflow: hidden; 
+    display: flex; 
+    align-items: center;
+    gap: 8px; 
+}
+
+.ellipsis-content {
+    white-space: nowrap; 
+    overflow: hidden;    
+    text-overflow: ellipsis; 
+    flex: 1; 
+    display: block; 
+}
+
 .dataset-name {
   color: #409eff;
   font-weight: 500;
@@ -510,6 +525,31 @@ onMounted(() => {
 .my-tasks-container {
   padding: 20px;
 }
+
+.action-bar { 
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px; 
+}
+
+/* 新增：容器样式，控制溢出和图标对齐 */
+.overflow-container {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 图标和文本之间的间隔 */
+  overflow: hidden; /* 裁剪溢出内容 */
+}
+
+/* 新增：文本样式，实现省略号 */
+.ellipsis-content {
+  white-space: nowrap; 
+  overflow: hidden;    
+  text-overflow: ellipsis; 
+  flex: 1; /* 确保它占据所有剩余空间 */
+  display: block; 
+}
+
+.el-table th { background: #f5f7fa; color: #333; }
 
 .action-bar { 
   display: flex;
