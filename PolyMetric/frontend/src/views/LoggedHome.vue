@@ -93,7 +93,7 @@
           </template>
 
           <el-table 
-            :data="rankings" 
+            :data="paginatedRankings" 
             style="width: 100%;"
             :row-class-name="tableRowClassName"
             v-loading="rankingLoading"
@@ -101,10 +101,10 @@
             <el-table-column label="排名" width="80" align="center">
               <template #default="{ row, $index }">
                 <div class="rank-cell">
-                  <el-icon v-if="$index === 0" class="rank-icon gold"><Medal /></el-icon>
-                  <el-icon v-else-if="$index === 1" class="rank-icon silver"><Medal /></el-icon>
-                  <el-icon v-else-if="$index === 2" class="rank-icon bronze"><Medal /></el-icon>
-                  <span v-else class="rank-number">{{ $index + 1 }}</span>
+                  <el-icon v-if="row.rank === 1" class="rank-icon gold"><Medal /></el-icon>
+                  <el-icon v-else-if="row.rank === 2" class="rank-icon silver"><Medal /></el-icon>
+                  <el-icon v-else-if="row.rank === 3" class="rank-icon bronze"><Medal /></el-icon>
+                  <span v-else class="rank-number">{{ row.rank }}</span>
                 </div>
               </template>
             </el-table-column>
@@ -198,6 +198,19 @@
               </template>
             </el-table-column>
           </el-table>
+
+          <div class="leaderboard-pagination">
+            <el-pagination
+              v-model:current-page="rankingPage"
+              v-model:page-size="rankingPageSize"
+              :total="rankings.length"
+              :page-sizes="[10, 20, 50]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleRankingSizeChange"
+              @current-change="handleRankingPageChange"
+              background
+            />
+          </div>
 
           <div class="leaderboard-footer">
             <el-text type="info" size="small">
@@ -367,7 +380,8 @@ import EvalDialog from '../components/common/EvalDialog.vue'
 import { getAllDatasets } from '@/api/datasets'
 import { getAllModels } from '@/api/models'
 import { getEvaluationTasks } from '@/api/tasks'
-// import { getDashboardStats } from '@/api/system' // Removed as per instruction to not change backend
+import { getUserStats } from '@/api/users'
+import { getLeaderboard } from '@/api/rankings'
 
 const router = useRouter()
 
@@ -378,12 +392,16 @@ const showEvalDialog = ref(false)
 const selectedDataset = ref('comprehensive')
 const rankingLoading = ref(false)
 
+// 排行榜分页状态
+const rankingPage = ref(1)
+const rankingPageSize = ref(10)
+
 // 统计数据
 const stats = ref({
   modelCount: 0,
   datasetCount: 0,
   taskCount: 0,
-  userCount: '-', // Placeholder until backend API is available
+  userCount: 0,
   onlineUserCount: 0
 })
 
@@ -396,49 +414,41 @@ const goToEvaluation = () => {
 const fetchStats = async () => {
   try {
     // 并行获取所有统计数据
-    const [modelsRes, datasetsRes, tasksRes] = await Promise.all([
+    const [modelsRes, datasetsRes, tasksRes, usersRes] = await Promise.all([
       getAllModels().catch(() => null),
       getAllDatasets().catch(() => null),
-      getEvaluationTasks().catch(() => null)
+      getEvaluationTasks().catch(() => null),
+      getUserStats().catch(() => null)
     ])
     
-    // 处理模型数量
-    if (modelsRes) {
-      let models = []
-      if (modelsRes.data?.code === 200 && Array.isArray(modelsRes.data.data)) {
-        models = modelsRes.data.data
-      } else if (Array.isArray(modelsRes.data)) {
-        models = modelsRes.data
+    // 提取总数的辅助函数
+    const getCount = (res) => {
+      if (!res || !res.data) return 0
+      const d = res.data
+      // 优先级：1. 包装在 code/data 里的 count; 2. 顶层的 count; 3. 结果数组的长度
+      if (d.code === 200 && d.data) {
+        if (typeof d.data.total === 'number') return d.data.total
+        if (typeof d.data.count === 'number') return d.data.count
+        if (Array.isArray(d.data)) return d.data.length
       }
-      stats.value.modelCount = models.length
+      if (typeof d.count === 'number') return d.count
+      if (typeof d.total === 'number') return d.total
+      if (Array.isArray(d.results)) return d.count || d.results.length
+      if (Array.isArray(d)) return d.length
+      return 0
     }
+
+    stats.value.modelCount = getCount(modelsRes)
+    stats.value.datasetCount = getCount(datasetsRes)
+    stats.value.taskCount = getCount(tasksRes)
     
-    // 处理数据集数量
-    if (datasetsRes) {
-      let datasets = []
-      if (datasetsRes.data?.code === 200 && Array.isArray(datasetsRes.data.data)) {
-        datasets = datasetsRes.data.data
-      } else if (Array.isArray(datasetsRes.data)) {
-        datasets = datasetsRes.data
-      }
-      stats.value.datasetCount = datasets.length
+    // 处理用户统计数据 (专门的 API)
+    if (usersRes && usersRes.data) {
+      const resData = usersRes.data
+      const data = (resData.code === 200 && resData.data) ? resData.data : resData
+      if (data.total_users !== undefined) stats.value.userCount = data.total_users
+      if (data.online_users !== undefined) stats.value.onlineUserCount = data.online_users
     }
-    
-    // 处理任务数量
-    if (tasksRes) {
-      let tasks = []
-      if (tasksRes.data?.code === 200 && Array.isArray(tasksRes.data.data)) {
-        tasks = tasksRes.data.data
-      } else if (Array.isArray(tasksRes.data)) {
-        tasks = tasksRes.data
-      } else if (tasksRes.data?.results && Array.isArray(tasksRes.data.results)) {
-        tasks = tasksRes.data.results
-      }
-      stats.value.taskCount = tasks.length
-    }
-    
-    // Note: User count and online user count require new backend APIs.
-    // Keeping placeholders for now.
     
   } catch (error) {
     console.error('获取统计数据失败:', error)
@@ -561,32 +571,35 @@ const formatTime = (dateStr) => {
 // 排行榜数据
 const rankings = ref([])
 
-// 获取排行榜数据（使用真实模型）
+// 计算当前页显示的排行榜数据
+const paginatedRankings = computed(() => {
+  const start = (rankingPage.value - 1) * rankingPageSize.value
+  const end = start + rankingPageSize.value
+  return rankings.value.slice(start, end)
+})
+
+// 获取排行榜数据（使用真实数据）
 const fetchRankings = async () => {
   rankingLoading.value = true
   try {
-    const res = await getAllModels()
-    if (res.data?.code === 200 || Array.isArray(res.data)) {
-      let models = Array.isArray(res.data) ? res.data : res.data.data
+    const res = await getLeaderboard()
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      const leaderboardData = res.data.data
       
-      // 默认按点赞数排序
-      models.sort((a, b) => (b.star_count || 0) - (a.star_count || 0))
-      
-      // 映射为排行榜格式
-      // 注意：由于后端暂无评分API，此处根据ID生成确定性的演示分数，确保UI不崩
-      rankings.value = models.slice(0, 10).map((model, index) => {
-        const baseScore = 80 + (model.id % 15) // 80-95分
+      // 映射为排行榜显示格式
+      rankings.value = leaderboardData.map((item) => {
+        const trendMap = { 'up': 1, 'down': -1, 'stable': 0 }
         return {
-          id: model.id,
-          name: model.name,
-          company: model.company || 'Unknown',
-          color: getModelColor(model.category), // 根据分类分配颜色
-          // 模拟分数 (待后端 /api/rankings/ 接口就绪后替换)
-          overallScore: Math.min(99.9, baseScore + (model.star_count || 0) * 0.1),
-          languageScore: Math.min(99, baseScore + (model.id % 5)),
-          reasoningScore: Math.min(99, baseScore - (model.id % 3)),
-          codeScore: Math.min(99, baseScore + (model.id % 4) - 2),
-          trend: (model.id % 3) - 1 // 随机趋势: -1, 0, 1
+          rank: item.rank,
+          id: item.model_id,
+          name: item.name,
+          company: item.company || 'Unknown',
+          color: getModelColor(item.category),
+          overallScore: item.scores.overall || 0,
+          languageScore: item.scores.language || 0,
+          reasoningScore: item.scores.math || 0,
+          codeScore: item.scores.code || 0,
+          trend: trendMap[item.trends.overall] || 0
         }
       })
     }
@@ -596,6 +609,16 @@ const fetchRankings = async () => {
   } finally {
     rankingLoading.value = false
   }
+}
+
+// 处理分页变化
+const handleRankingPageChange = (page) => {
+  rankingPage.value = page
+}
+
+const handleRankingSizeChange = (size) => {
+  rankingPageSize.value = size
+  rankingPage.value = 1
 }
 
 // 根据模型类型获取头像背景色
