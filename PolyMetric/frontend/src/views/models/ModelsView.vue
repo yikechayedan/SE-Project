@@ -8,20 +8,40 @@
         </div>
         <p class="subtitle">按综合能力、类型与关注度发现模型，像榜单一样浏览。</p>
         <div class="hero-stats">
-          <div class="stat-card">
+          <div class="stat-card type-total">
             <div class="label">已收录</div>
-            <div class="value">{{ filteredModels.length }}</div>
+            <div class="value">{{ allModels.length }}</div>
             <div class="hint">模型数量</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card type-star">
+            <div class="label">总点赞</div>
+            <div class="value">{{ totalStars }}</div>
+            <div class="hint">全站热度</div>
+          </div>
+          <div class="stat-card type-followed">
             <div class="label">已关注</div>
             <div class="value">{{ followedCount }}</div>
             <div class="hint">你的关注</div>
           </div>
-          <div class="stat-card">
-            <div class="label">类型覆盖</div>
-            <div class="value">{{ categoryCount }}</div>
-            <div class="hint">文本/多模态/代码等</div>
+          <div class="stat-card type-text">
+            <div class="label">文本生成</div>
+            <div class="value">{{ textModelCount }}</div>
+            <div class="hint">Text</div>
+          </div>
+          <div class="stat-card type-image">
+            <div class="label">图像生成</div>
+            <div class="value">{{ imageModelCount }}</div>
+            <div class="hint">Image</div>
+          </div>
+          <div class="stat-card type-multi">
+            <div class="label">多模态</div>
+            <div class="value">{{ multiModelCount }}</div>
+            <div class="hint">Multi</div>
+          </div>
+          <div class="stat-card type-code">
+            <div class="label">代码生成</div>
+            <div class="value">{{ codeModelCount }}</div>
+            <div class="hint">Code</div>
           </div>
         </div>
       </div>
@@ -37,6 +57,7 @@
                   {{ getCategoryLabel(item.category) }}
                 </el-tag>
                 <el-tag size="small" effect="plain">{{ item.parameter_size || '参数未知' }}</el-tag>
+                <span class="mini-star"><el-icon><StarFilled /></el-icon>{{ item.star_count }}</span>
               </div>
             </div>
             <el-button link type="primary" size="small" @click="showDetail(item)">详情</el-button>
@@ -69,6 +90,7 @@
           <el-option label="多模态" value="multimodal" />
           <el-option label="代码生成" value="code" />
         </el-select>
+        <el-checkbox v-model="onlyFollowed" label="仅看已关注" border />
         <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
       </div>
     </div>
@@ -105,8 +127,11 @@
           </div>
           <div class="metrics">
             <div class="metric">
-              <div class="metric-label">关注</div>
-              <div class="metric-value" :class="{ on: item.is_followed }">{{ item.is_followed ? '已关注' : '未关注' }}</div>
+              <div class="metric-label">点赞热度</div>
+              <div class="metric-value star-val">
+                <el-icon><StarFilled /></el-icon>
+                <span>{{ item.star_count }}</span>
+              </div>
             </div>
             <div class="metric">
               <div class="metric-label">最近更新</div>
@@ -116,9 +141,19 @@
           <div class="actions">
             <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
             <el-button
+              :type="item.is_starred ? 'danger' : 'default'"
+              size="small"
+              :icon="item.is_starred ? StarFilled : Star"
+              @click="handleToggleStar(item)"
+              :loading="item.starLoading"
+              class="star-btn"
+            >
+              {{ item.is_starred ? '已点赞' : '点赞' }}
+            </el-button>
+            <el-button
               :type="item.is_followed ? 'warning' : 'info'"
               size="small"
-              :icon="item.is_followed ? StarFilled : Star"
+              :icon="item.is_followed ? Opportunity : Star"
               @click="handleToggleFollow(item)"
               :loading="item.followLoading"
             >
@@ -157,6 +192,12 @@
       </div>
       
       <div class="detail-content" v-else-if="modelDetail">
+        <div class="detail-header-stats">
+           <div class="d-stat">
+              <span class="label">热度</span>
+              <span class="value"><el-icon><StarFilled /></el-icon> {{ modelDetail.star_count }}</span>
+           </div>
+        </div>
         <el-descriptions :column="2" border size="default">
           <el-descriptions-item label="模型名称">{{ modelDetail.name }}</el-descriptions-item>
           <el-descriptions-item label="公司/组织">{{ modelDetail.company || '未知' }}</el-descriptions-item>
@@ -179,8 +220,16 @@
       <template #footer>
         <el-button @click="showDetailDialog = false">关闭</el-button>
         <el-button 
+          :type="modelDetail?.is_starred ? 'danger' : 'default'" 
+          :icon="modelDetail?.is_starred ? StarFilled : Star"
+          @click="handleToggleStarInDialog"
+          :loading="dialogStarLoading"
+        >
+          {{ modelDetail?.is_starred ? '取消点赞' : '点赞' }}
+        </el-button>
+        <el-button 
           :type="modelDetail?.is_followed ? 'warning' : 'info'" 
-          :icon="modelDetail?.is_followed ? StarFilled : Star"
+          :icon="modelDetail?.is_followed ? Opportunity : Star"
           @click="handleToggleFollowInDialog"
           :loading="dialogFollowLoading"
         >
@@ -192,14 +241,15 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Box, Loading, Star, StarFilled } from '@element-plus/icons-vue'
-import { getAllModels, getModelDetail, followModel, unfollowModel } from '@/api/models'
+import { Search, Refresh, Box, Loading, Star, StarFilled, Opportunity } from '@element-plus/icons-vue'
+import { getAllModels, getModelDetail, followModel, unfollowModel, starModel, unstarModel } from '@/api/models'
 
 // 状态
 const loading = ref(false)
 const allModels = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const onlyFollowed = ref(false)
 
 // 分页状态
 const currentPage = ref(1)
@@ -209,6 +259,7 @@ const pageSize = ref(5)
 const showDetailDialog = ref(false)
 const detailLoading = ref(false)
 const dialogFollowLoading = ref(false)
+const dialogStarLoading = ref(false)
 const currentModel = ref(null)
 const modelDetail = ref(null)
 
@@ -225,15 +276,22 @@ const filteredModels = computed(() => {
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
+  if (onlyFollowed.value) {
+    result = result.filter(item => item.is_followed)
+  }
   return result
 })
 
 // 榜单派生数据
-const followedCount = computed(() => filteredModels.value.filter(item => item.is_followed).length)
-const categoryCount = computed(() => {
-  const set = new Set(filteredModels.value.map(item => item.category).filter(Boolean))
-  return set.size
-})
+const followedCount = computed(() => allModels.value.filter(item => item.is_followed).length)
+const totalStars = computed(() => allModels.value.reduce((acc, m) => acc + (m.star_count || 0), 0))
+
+// 各类型数量统计 (基于所有模型)
+const textModelCount = computed(() => allModels.value.filter(m => m.category === 'text').length)
+const imageModelCount = computed(() => allModels.value.filter(m => m.category === 'image').length)
+const multiModelCount = computed(() => allModels.value.filter(m => m.category === 'multimodal').length)
+const codeModelCount = computed(() => allModels.value.filter(m => m.category === 'code').length)
+
 const rankedModels = computed(() => filteredModels.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
 const paginatedRankedModels = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -243,7 +301,7 @@ const paginatedRankedModels = computed(() => {
 const rankedTop3 = computed(() => rankedModels.value.slice(0, 3))
 
 // 监听筛选条件变化，重置到第一页
-watch([searchQuery, categoryFilter], () => {
+watch([searchQuery, categoryFilter, onlyFollowed], () => {
   currentPage.value = 1
 })
 
@@ -286,6 +344,31 @@ const getCategoryType = (category) => {
   return types[category] || ''
 }
 
+// 参数量解析辅助函数
+const parseParamValue = (str) => {
+  if (!str) return 0
+  const s = str.toString().toUpperCase()
+  let mult = 1
+  if (s.includes('B')) mult = 1e9
+  else if (s.includes('M')) mult = 1e6
+  else if (s.includes('K')) mult = 1e3
+  
+  // 处理 8x7B 这种情况
+  if (s.includes('X')) {
+    const parts = s.split('X')
+    if (parts.length >= 2) {
+      const a = parseFloat(parts[0])
+      const b = parseFloat(parts[1])
+      if (!isNaN(a) && !isNaN(b)) {
+        return a * b * mult // 假设单位在最后
+      }
+    }
+  }
+  
+  const num = parseFloat(s)
+  return isNaN(num) ? 0 : num * mult
+}
+
 // 从后端获取所有模型（带关注状态）
 const fetchAllModels = async () => {
   loading.value = true
@@ -298,12 +381,42 @@ const fetchAllModels = async () => {
     } else if (Array.isArray(res.data)) {
       models = res.data
     }
-    // 为每个模型添加 followLoading 状态
-    allModels.value = models.map(item => ({
+    
+    // 预处理数据
+    models = models.map(item => ({
       ...item,
       is_followed: item.is_followed || false,
-      followLoading: false
+      is_starred: item.is_starred || false,
+      star_count: item.star_count || 0,
+      followLoading: false,
+      starLoading: false
     }))
+
+    // 默认排序：
+    // 1. 关注的模型在前
+    // 2. 参数量大的模型在前
+    // 3. 更新时间较早的原则 (Ascending date)
+    models.sort((a, b) => {
+      // 1. Followed
+      if (a.is_followed !== b.is_followed) {
+        return a.is_followed ? -1 : 1
+      }
+      
+      // 2. Parameters (Large first)
+      const paramA = parseParamValue(a.parameter_size)
+      const paramB = parseParamValue(b.parameter_size)
+      if (Math.abs(paramA - paramB) > 1e3) { // Use a small epsilon or just check inequality
+         return paramB - paramA
+      }
+      
+      // 3. Updated At (Earlier first -> Ascending)
+      // "较早" means older date (smaller timestamp)
+      const dateA = new Date(a.updated_at || 0).getTime()
+      const dateB = new Date(b.updated_at || 0).getTime()
+      return dateA - dateB
+    })
+
+    allModels.value = models
   } catch (error) {
     console.error('获取模型列表失败:', error)
     ElMessage.error('获取模型列表失败')
@@ -322,8 +435,77 @@ const handleLocalFilter = () => {
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  onlyFollowed.value = false
   currentPage.value = 1
   fetchAllModels()
+}
+
+// 切换点赞状态
+const handleToggleStar = async (row) => {
+  const originalItem = allModels.value.find(m => m.id === row.id)
+  if (!originalItem) return
+  
+  originalItem.starLoading = true
+  try {
+    if (originalItem.is_starred) {
+      const res = await unstarModel(originalItem.id)
+      if (res.data?.code === 200) {
+        originalItem.is_starred = false
+        // 后端应返回更新后的数量，如果没返回则前端估算
+        originalItem.star_count = res.data.data?.star_count ?? (originalItem.star_count - 1)
+        ElMessage.success('已取消点赞')
+      }
+    } else {
+      const res = await starModel(originalItem.id)
+      if (res.data?.code === 201 || res.data?.code === 200) {
+        originalItem.is_starred = true
+        originalItem.star_count = res.data.data?.star_count ?? (originalItem.star_count + 1)
+        ElMessage.success('感谢点赞！')
+      }
+    }
+  } catch (error) {
+    if (error.response?.status === 401) ElMessage.warning('请先登录')
+    else ElMessage.error('操作失败')
+  } finally {
+    originalItem.starLoading = false
+  }
+}
+
+const handleToggleStarInDialog = async () => {
+  if (!modelDetail.value) return
+  dialogStarLoading.value = true
+  try {
+    if (modelDetail.value.is_starred) {
+      const res = await unstarModel(modelDetail.value.id)
+      if (res.data?.code === 200) {
+        modelDetail.value.is_starred = false
+        modelDetail.value.star_count = res.data.data?.star_count ?? (modelDetail.value.star_count - 1)
+        const item = allModels.value.find(m => m.id === modelDetail.value.id)
+        if (item) {
+          item.is_starred = false
+          item.star_count = modelDetail.value.star_count
+        }
+        ElMessage.success('已取消点赞')
+      }
+    } else {
+      const res = await starModel(modelDetail.value.id)
+      if (res.data?.code === 201 || res.data?.code === 200) {
+        modelDetail.value.is_starred = true
+        modelDetail.value.star_count = res.data.data?.star_count ?? (modelDetail.value.star_count + 1)
+        const item = allModels.value.find(m => m.id === modelDetail.value.id)
+        if (item) {
+          item.is_starred = true
+          item.star_count = modelDetail.value.star_count
+        }
+        ElMessage.success('感谢点赞！')
+      }
+    }
+  } catch (error) {
+    if (error.response?.status === 401) ElMessage.warning('请先登录')
+    else ElMessage.error('操作失败')
+  } finally {
+    dialogStarLoading.value = false
+  }
 }
 
 // 切换关注状态（列表中）
@@ -419,7 +601,9 @@ const showDetail = async (row) => {
     if (res.data?.code === 200 && res.data.data) {
       modelDetail.value = {
         ...res.data.data,
-        is_followed: row.is_followed // 从列表中继承关注状态
+        is_followed: row.is_followed, // 从列表中继承关注状态
+        is_starred: row.is_starred,
+        star_count: row.star_count
       }
     } else {
       modelDetail.value = row
@@ -514,30 +698,129 @@ onMounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 10px 12px;
-  transition: border-color 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-card:hover {
-  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
+.stat-card.type-total {
+  border-left: 3px solid var(--text-primary);
+}
+.stat-card.type-star {
+  border-left: 3px solid #f56c6c; /* Danger/Red for stars */
+}
+.stat-card.type-followed {
+  border-left: 3px solid #ffc107; /* Gold/Yellow for favorites */
+}
+
+/* ... existing styles ... */
+
+.stat-card.type-star:hover { border-color: #f56c6c; background: rgba(245, 108, 108, 0.05); }
+
+/* ... existing styles ... */
+
+.stat-card.type-star .value { color: #f56c6c; }
+
+.mini-star {
+  font-size: 12px;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.star-val {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #f56c6c !important;
+}
+
+.star-btn:hover {
+  background-color: #f56c6c22 !important;
+}
+
+.detail-header-stats {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.d-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.d-stat .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.d-stat .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.stat-card.type-text {
+  border-left: 3px solid var(--el-color-primary);
+}
+.stat-card.type-image {
+  border-left: 3px solid var(--el-color-success);
+}
+.stat-card.type-multi {
+  border-left: 3px solid var(--el-color-warning);
+}
+.stat-card.type-code {
+  border-left: 3px solid var(--el-color-info);
+}
+
+/* Add subtle colored backgrounds on hover */
+.stat-card.type-total:hover { border-color: var(--text-primary); }
+.stat-card.type-followed:hover { border-color: #ffc107; background: rgba(255, 193, 7, 0.05); }
+.stat-card.type-text:hover { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
+.stat-card.type-image:hover { border-color: var(--el-color-success); background: var(--el-color-success-light-9); }
+.stat-card.type-multi:hover { border-color: var(--el-color-warning); background: var(--el-color-warning-light-9); }
+.stat-card.type-code:hover { border-color: var(--el-color-info); background: var(--el-color-info-light-9); }
 
 .stat-card .label {
   font-size: 12px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .stat-card .value {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 6px 0 2px;
+  font-size: 24px;
+  font-weight: 800;
+  margin: 4px 0 2px;
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
 }
 
+/* Colorize values based on type */
+.stat-card.type-followed .value { color: #ffc107; }
+.stat-card.type-text .value { color: var(--el-color-primary); }
+.stat-card.type-image .value { color: var(--el-color-success); }
+.stat-card.type-multi .value { color: var(--el-color-warning); }
+.stat-card.type-code .value { color: var(--el-color-info); }
+
 .stat-card .hint {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .hero-right {

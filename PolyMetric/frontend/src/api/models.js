@@ -44,3 +44,21 @@ export function unfollowModel(id) {
 export function getFollowedModels() {
   return request.get("/api/models/followed/")
 }
+
+// ==================== 模型点赞 (Star) ====================
+
+/**
+ * 点赞模型
+ * @param {number} id - 模型ID
+ */
+export function starModel(id) {
+  return request.post("/api/models/" + id + "/star/")
+}
+
+/**
+ * 取消点赞模型
+ * @param {number} id - 模型ID
+ */
+export function unstarModel(id) {
+  return request.delete("/api/models/" + id + "/star/")
+}

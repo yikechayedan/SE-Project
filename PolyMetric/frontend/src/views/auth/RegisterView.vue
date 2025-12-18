@@ -158,10 +158,13 @@ const handleRegister = () => {
           ElMessage.success('注册成功！请登录')
           router.push('/login')
         } else {
-          ElMessage.error('注册失败：' + (data.msg || '未知错误'))
+          // 优先显示后端返回的具体错误信息
+          ElMessage.error(data.msg || '注册失败，请稍后重试')
         }
       } catch (error) {
-        ElMessage.error('注册失败：' + (error.response?.data?.msg || '网络错误'))
+        // 处理 HTTP 400 等错误状态码
+        const errorMsg = error.response?.data?.msg || '网络连接错误，请检查网络设置'
+        ElMessage.error(errorMsg)
       } finally {
         loading.value = false
       }

@@ -8,17 +8,22 @@
         </div>
         <p class="subtitle">优先展示高质量、已审核、被关注的数据集，像榜单一样浏览。</p>
         <div class="hero-stats">
-          <div class="stat-card">
+          <div class="stat-card type-total">
             <div class="label">已收录</div>
             <div class="value">{{ filteredDatasets.length }}</div>
             <div class="hint">数据集数量</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card type-verified">
             <div class="label">已审核</div>
             <div class="value">{{ verifiedCount }}</div>
             <div class="hint">通过审核</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card type-star">
+            <div class="label">总点赞</div>
+            <div class="value">{{ totalStars }}</div>
+            <div class="hint">全站热度</div>
+          </div>
+          <div class="stat-card type-followed">
             <div class="label">已关注</div>
             <div class="value">{{ followedCount }}</div>
             <div class="hint">你的关注</div>
@@ -37,6 +42,7 @@
                   {{ getCategoryLabel(item.category) }}
                 </el-tag>
                 <el-tag size="small" effect="plain">{{ formatFileSize(item.file_size) }}</el-tag>
+                <span class="mini-star"><el-icon><StarFilled /></el-icon>{{ item.star_count }}</span>
               </div>
             </div>
             <el-button link type="primary" size="small" @click="showDetail(item)">详情</el-button>
@@ -107,21 +113,34 @@
           </div>
           <div class="metrics">
             <div class="metric">
-              <div class="metric-label">审核状态</div>
-              <div class="metric-value" :class="{ on: item.is_verified }">{{ item.is_verified ? '已审核' : '待审核' }}</div>
+              <div class="metric-label">点赞热度</div>
+              <div class="metric-value star-val">
+                <el-icon><StarFilled /></el-icon>
+                <span>{{ item.star_count }}</span>
+              </div>
             </div>
             <div class="metric">
-              <div class="metric-label">最近更新</div>
-              <div class="metric-value">{{ formatDate(item.updated_at) }}</div>
+              <div class="metric-label">审核状态</div>
+              <div class="metric-value" :class="{ on: item.is_verified }">{{ item.is_verified ? '已审核' : '待审核' }}</div>
             </div>
           </div>
           <div class="actions">
             <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
             <el-button type="success" size="small" :icon="Download" @click="handleDownload(item)">下载</el-button>
             <el-button
+              :type="item.is_starred ? 'danger' : 'default'"
+              size="small"
+              :icon="item.is_starred ? StarFilled : Star"
+              @click="handleToggleStar(item)"
+              :loading="item.starLoading"
+              class="star-btn"
+            >
+              {{ item.is_starred ? '已点赞' : '点赞' }}
+            </el-button>
+            <el-button
               :type="item.is_followed ? 'warning' : 'info'"
               size="small"
-              :icon="item.is_followed ? StarFilled : Star"
+              :icon="item.is_followed ? Opportunity : Star"
               @click="handleToggleFollow(item)"
               :loading="item.followLoading"
             >
@@ -159,6 +178,12 @@
       </div>
       
       <div class="detail-content" v-else-if="datasetDetail">
+        <div class="detail-header-stats">
+           <div class="d-stat">
+              <span class="label">热度</span>
+              <span class="value"><el-icon><StarFilled /></el-icon> {{ datasetDetail.star_count }}</span>
+           </div>
+        </div>
         <!-- 基本信息区域 -->
         <el-collapse v-model="activeCollapse">
           <el-collapse-item title="基本信息" name="info">
@@ -255,8 +280,16 @@
       <template #footer>
         <el-button @click="showDetailDialog = false">关闭</el-button>
         <el-button 
+          :type="datasetDetail?.is_starred ? 'danger' : 'default'" 
+          :icon="datasetDetail?.is_starred ? StarFilled : Star"
+          @click="handleToggleStarInDialog"
+          :loading="dialogStarLoading"
+        >
+          {{ datasetDetail?.is_starred ? '取消点赞' : '点赞' }}
+        </el-button>
+        <el-button 
           :type="datasetDetail?.is_followed ? 'warning' : 'info'" 
-          :icon="datasetDetail?.is_followed ? StarFilled : Star"
+          :icon="datasetDetail?.is_followed ? Opportunity : Star"
           @click="handleToggleFollowInDialog"
           :loading="dialogFollowLoading"
         >
@@ -272,9 +305,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Folder, Download, Loading, Star, StarFilled, Document, User } from '@element-plus/icons-vue'
+import { Search, Refresh, Folder, Download, Loading, Star, StarFilled, Document, User, Opportunity } from '@element-plus/icons-vue'
 import UserPopover from '@/components/common/UserPopover.vue'
-import { getAllDatasets, getDatasetDetail, downloadDataset, followDataset, unfollowDataset, getDatasetEntries } from '@/api/datasets'
+import { getAllDatasets, getDatasetDetail, downloadDataset, followDataset, unfollowDataset, getDatasetEntries, starDataset, unstarDataset } from '@/api/datasets'
 
 // 状态
 const loading = ref(false)
@@ -290,6 +323,7 @@ const pageSize = ref(5)
 const showDetailDialog = ref(false)
 const detailLoading = ref(false)
 const dialogFollowLoading = ref(false)
+const dialogStarLoading = ref(false)
 const currentDataset = ref(null)
 const datasetDetail = ref(null)
 const activeCollapse = ref(['info'])  // 默认展开基本信息
@@ -317,7 +351,8 @@ const filteredDatasets = computed(() => {
 
 // 榜单派生数据
 const verifiedCount = computed(() => filteredDatasets.value.filter(item => item.is_verified).length)
-const followedCount = computed(() => filteredDatasets.value.filter(item => item.is_followed).length)
+const followedCount = computed(() => allDatasets.value.filter(item => item.is_followed).length)
+const totalStars = computed(() => allDatasets.value.reduce((acc, m) => acc + (m.star_count || 0), 0))
 const rankedDatasets = computed(() => filteredDatasets.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
 const paginatedRankedDatasets = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -415,7 +450,10 @@ const fetchAllDatasets = async () => {
     allDatasets.value = datasets.map(item => ({
       ...item,
       is_followed: item.is_followed || false,
-      followLoading: false
+      is_starred: item.is_starred || false,
+      star_count: item.star_count || 0,
+      followLoading: false,
+      starLoading: false
     }))
   } catch (error) {
     console.error('获取数据集列表失败:', error)
@@ -437,6 +475,76 @@ const resetFilter = () => {
   categoryFilter.value = ''
   currentPage.value = 1
   fetchAllDatasets()
+}
+
+// 切换点赞状态
+const handleToggleStar = async (row) => {
+  const originalItem = allDatasets.value.find(d => d.id === row.id)
+  if (!originalItem) return
+  
+  originalItem.starLoading = true
+  try {
+    if (originalItem.is_starred) {
+      const res = await unstarDataset(originalItem.id)
+      if (res.data?.code === 200) {
+        originalItem.is_starred = false
+        originalItem.star_count = res.data.data?.star_count ?? (originalItem.star_count - 1)
+        ElMessage.success('已取消点赞')
+      }
+    } else {
+      const res = await starDataset(originalItem.id)
+      if (res.data?.code === 201 || res.data?.code === 200) {
+        originalItem.is_starred = true
+        originalItem.star_count = res.data.data?.star_count ?? (originalItem.star_count + 1)
+        ElMessage.success('感谢点赞！')
+      }
+    }
+  } catch (error) {
+    if (error.response?.status === 401) ElMessage.warning('请先登录')
+    else ElMessage.error('操作失败')
+  } finally {
+    originalItem.starLoading = false
+  }
+}
+
+// 切换点赞状态（弹窗中）
+const handleToggleStarInDialog = async () => {
+  if (!datasetDetail.value) return
+  dialogStarLoading.value = true
+  try {
+    if (datasetDetail.value.is_starred) {
+      const res = await unstarDataset(datasetDetail.value.id)
+      if (res.data?.code === 200) {
+        datasetDetail.value.is_starred = false
+        datasetDetail.value.star_count = res.data.data?.star_count ?? (datasetDetail.value.star_count - 1)
+        // 同步列表
+        const item = allDatasets.value.find(d => d.id === datasetDetail.value.id)
+        if (item) {
+          item.is_starred = false
+          item.star_count = datasetDetail.value.star_count
+        }
+        ElMessage.success('已取消点赞')
+      }
+    } else {
+      const res = await starDataset(datasetDetail.value.id)
+      if (res.data?.code === 201 || res.data?.code === 200) {
+        datasetDetail.value.is_starred = true
+        datasetDetail.value.star_count = res.data.data?.star_count ?? (datasetDetail.value.star_count + 1)
+        // 同步列表
+        const item = allDatasets.value.find(d => d.id === datasetDetail.value.id)
+        if (item) {
+          item.is_starred = true
+          item.star_count = datasetDetail.value.star_count
+        }
+        ElMessage.success('感谢点赞！')
+      }
+    }
+  } catch (error) {
+    if (error.response?.status === 401) ElMessage.warning('请先登录')
+    else ElMessage.error('操作失败')
+  } finally {
+    dialogStarLoading.value = false
+  }
 }
 
 // 切换关注状态（列表中）
@@ -585,7 +693,9 @@ const showDetail = async (row) => {
     if (res.data?.code === 200 && res.data.data) {
       datasetDetail.value = {
         ...res.data.data,
-        is_followed: row.is_followed // 从列表中继承关注状态
+        is_followed: row.is_followed, // 从列表中继承关注状态
+        is_starred: row.is_starred,
+        star_count: row.star_count
       }
     } else {
       datasetDetail.value = row
@@ -727,9 +837,72 @@ onMounted(() => {
   transition: border-color 0.2s;
 }
 
-.stat-card:hover {
-  border-color: var(--success-color);
+.stat-card.type-total {
+  border-left: 3px solid var(--text-primary);
 }
+.stat-card.type-verified {
+  border-left: 3px solid var(--success-color);
+}
+.stat-card.type-star {
+  border-left: 3px solid #f56c6c; /* Danger/Red for stars */
+}
+.stat-card.type-followed {
+  border-left: 3px solid #ffc107; /* Gold/Yellow for favorites */
+}
+
+.stat-card.type-star:hover { border-color: #f56c6c; background: rgba(245, 108, 108, 0.05); }
+.stat-card.type-star .value { color: #f56c6c; }
+
+.mini-star {
+  font-size: 12px;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.star-val {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #f56c6c !important;
+}
+
+.star-btn:hover {
+  background-color: #f56c6c22 !important;
+}
+
+.detail-header-stats {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.d-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.d-stat .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.d-stat .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 
 .stat-card .label {
   font-size: 12px;
