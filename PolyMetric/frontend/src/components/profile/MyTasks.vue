@@ -67,7 +67,6 @@
           </el-button>
           
           <el-button 
-            v-if="scope.row.status !== 'completed'"
             size="small" 
             type="danger" 
             round

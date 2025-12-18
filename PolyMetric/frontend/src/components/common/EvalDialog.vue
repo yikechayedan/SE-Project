@@ -225,14 +225,13 @@ const submitEval = async() => {
       return;
     }
 
-    // 模拟提交成功
     const requestBody = {
       "name": form.value.taskName,
       "description": form.value.description,
       "method": form.value.type,
       "dataset": selectedDataset.id,
       "myModel": selectedModel ? selectedModel.id : null,
-      "myModel2": selectedModel2 ? selectedModel2.id : null,
+      "myModel_2": selectedModel2 ? selectedModel2.id : null,
 
     };
     if (form.value.type == 'adversarial' && !selectedModel2.id) {
@@ -248,17 +247,6 @@ const submitEval = async() => {
         
         ElMessage.success(`任务 [${result.name}] 创建成功!`);
         
-        // *** 1. 尝试开始评测任务 ***
-        try {
-            await runEvaluationTask(result.id); // 使用返回的任务 ID
-            ElMessage.success(`任务 [${result.name}] 已开始评测!`);
-        } catch (runError) {
-            console.error('开始评测任务失败:', runError);
-            // 任务创建成功但运行失败，仍然给用户提示
-            ElMessage.warning(`任务 [${result.name}] 创建成功，但自动开始失败。`);
-        }
-        
-        // *** 2. 通知父组件并关闭弹窗 ***
         emit('task-submitted', result); 
         handleClose();
         

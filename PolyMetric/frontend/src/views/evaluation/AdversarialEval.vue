@@ -56,9 +56,8 @@
           <el-form-item label="综合倾向性判断">
             <el-radio-group v-model="form.preference" size="large">
               <el-radio-button label="左边更好" value="left" />
-              <el-radio-button label="平局" value="both" />
+              <el-radio-button label="平局" value="tie" />
               <el-radio-button label="右边更好" value="right" />
-              <el-radio-button label="两边均差" value="neither" />
             </el-radio-group>
           </el-form-item>
 

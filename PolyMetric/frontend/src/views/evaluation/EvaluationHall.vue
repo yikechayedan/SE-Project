@@ -93,15 +93,31 @@
           查看报告
         </el-button>
         <el-button 
-          v-else-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending'" 
+          v-if="scope.row.method === 'objective' && scope.row.status === 'pending'" 
+          type="success" 
+          link 
+          @click="handleRunEvaluation(scope.row)"
+        >
+          启动自动评测
+        </el-button>
+        <el-button 
+          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending'" 
           type="success" 
           link 
           @click="handleStartEvaluation(scope.row)"
         >
-          开始测评
+          人工测评
         </el-button>
         <el-button 
-          v-else-if="scope.row.status === 'completed'" 
+          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending'" 
+          type="success"
+          link 
+          @click="handleRunEvaluation(scope.row)"
+        >
+          启动自动评测
+        </el-button>
+        <el-button 
+          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'completed'" 
           type="info"
           link 
           @click="handleViewEvaluation(scope.row)"
@@ -109,7 +125,7 @@
           查看测评
         </el-button>
         <span 
-          v-else
+          v-if="scope.row.status === 'running'"
           style="color: #909399; font-size: 14px;">
           正在处理，请稍候 
         </span>
@@ -142,7 +158,8 @@ import EvalDialog from '../../components/common/EvalDialog.vue'
 import { ElMessage } from 'element-plus'
 import { Timer, Refresh } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router' 
-import { getEvaluationTasks } from '@/api/tasks.js'
+import { getEvaluationTasks, runEvaluationTask } from '@/api/tasks.js'
+import { el } from 'element-plus/es/locale/index.mjs'
 
 
 const searchQuery = ref('')
@@ -340,6 +357,13 @@ const handleViewEvaluation = (task) => {
       params: { taskId: task.id }
     })
   }
+}
+
+const handleRunEvaluation = async (task) => {
+  
+    const response = await runEvaluationTask(task.id);
+    ElMessage.success('启动自动评测成功');
+
 }
 
 const handleSubmit =() => {

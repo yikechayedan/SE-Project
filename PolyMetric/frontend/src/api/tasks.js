@@ -33,3 +33,8 @@ export function runEvaluationTask(taskId) {
     data: { task_id: taskId } // 请求体格式
   });
 }
+
+//获取待测条目
+export function getPendingItems() {
+  
+}
