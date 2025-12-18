@@ -100,6 +100,46 @@ def build_subjective_judge_prompt(item: EvaluationItem) -> str:
 请直接输出分数：
 """.strip()
 
+# =========================================================
+# 对抗评测：模型裁判 Prompt
+# =========================================================
+
+def build_adversarial_judge_prompt(item):
+    """
+    构造对抗评测的裁判 Prompt
+    输出必须是：left / right / tie
+    """
+    return f"""
+你是一个严格、公正的评测裁判。
+
+下面给出同一个问题的两个模型回答，请你判断哪一个更好。
+
+【评判标准】
+- 准确性
+- 完整性
+- 逻辑清晰度
+- 与问题的相关性
+
+【问题】
+{item.content}
+
+【模型 A 回答】
+{item.predicted_answer}
+
+【模型 B 回答】
+{item.predicted_answer_2}
+
+【输出要求（非常重要）】
+- 如果模型 A 更好，只输出：left
+- 如果模型 B 更好，只输出：right
+- 如果两者水平相当，只输出：tie
+- 不要解释
+- 不要输出任何多余字符
+
+请直接输出裁判结果：
+""".strip()
+
+
 
 
 def clean_choice_answer(raw_text: str) -> str:
@@ -271,12 +311,36 @@ def run_objective_evaluation(task: EvaluationTask):
 
 def run_subjective_evaluation(task: EvaluationTask):
     prepare_evaluation_items(task)
-
     items = task.items.all()
+
     if not items.exists():
         raise ValueError("No evaluation items found")
 
-    scorer_model = task.myModel.name  # 当前先用同一个模型打分
+    # ① 先统一生成模型回答（永远是 myModel）
+    answer_model = task.myModel.name
+
+    for item in items:
+        if not item.predicted_answer:
+            item.predicted_answer = call_llm_api(
+                prompt=build_subjective_answer_prompt(item),
+                model_name=answer_model,
+            )
+            item.save(update_fields=["predicted_answer"])
+
+    # ② 人类裁判：直接返回，等人工打分
+    if task.judge_type == "human":
+        task.status = "awaiting_human_judge"
+        task.save(update_fields=["status"])
+        return {
+            "task_id": task.id,
+            "method": "subjective",
+            "judge_type": "human",
+            "total": items.count(),
+            "status": "awaiting_human_judge",
+        }
+
+    # ③ 模型裁判（第三方 or 自评）
+    judge_model = task.judge_model.name if task.judge_model else answer_model
     scores = []
 
     for item in items:
@@ -284,23 +348,10 @@ def run_subjective_evaluation(task: EvaluationTask):
             scores.append(item.score)
             continue
 
-        # ① 先让模型回答
-        answer = call_llm_api(
-            prompt=item.content,
-            model_name=scorer_model
-        )
-        item.predicted_answer = answer
-
-        # ② 再让模型给自己打分（下一步可换裁判模型）
-        score_prompt = build_subjective_prompt(
-            question=item.content,
-            model_answer=answer,
-            reference=item.correct_answer,
-        )
-
+        prompt = build_subjective_judge_prompt(item)
         raw_score = call_llm_api(
-            prompt=score_prompt,
-            model_name=scorer_model
+            prompt=prompt,
+            model_name=judge_model,
         )
 
         try:
@@ -310,7 +361,7 @@ def run_subjective_evaluation(task: EvaluationTask):
             score = 1
 
         item.score = score
-        item.save()
+        item.save(update_fields=["score"])
         scores.append(score)
 
     avg_score = round(sum(scores) / len(scores), 4)
@@ -318,17 +369,14 @@ def run_subjective_evaluation(task: EvaluationTask):
     task.score = avg_score
     task.status = "completed"
     task.save(update_fields=["score", "status"])
-    
-    # 记录系统事件：评测完成
+
     log_task_complete(task, task.creator)
 
     EvaluationSummary.objects.update_or_create(
         task=task,
         defaults={
-            "model_name": scorer_model,
+            "model_name": f"{answer_model} (judge={judge_model})",
             "total": len(scores),
-            "correct": None,
-            "accuracy": None,
             "avg_score": avg_score,
         }
     )
@@ -336,9 +384,11 @@ def run_subjective_evaluation(task: EvaluationTask):
     return {
         "task_id": task.id,
         "method": "subjective",
-        "model": scorer_model,
+        "judge_type": "model",
+        "judge_model": judge_model,
         "avg_score": avg_score,
     }
+
 
 def run_adversarial_generation(task: EvaluationTask):
     prepare_evaluation_items(task)
@@ -437,7 +487,70 @@ def generate_adversarial_summary(task):
 
     return summary
 
+def run_adversarial_auto_judge(task: EvaluationTask):
+    """
+    使用 LLM 作为裁判，对对抗评测结果进行自动裁决
+    """
+    items = task.items.all()
+    if not items.exists():
+        raise ValueError("No evaluation items found")
 
+    # 裁判模型（可以和 A/B 不同）
+    if not task.judge_model:
+        raise ValueError("Model-judged adversarial task requires judge_model")
+
+    judge_model = task.judge_model.name
+
+    for item in items:
+        # 已有人工裁判结果的不覆盖
+        if item.preference is not None:
+            continue
+
+        # 防御：必须有双方回答
+        if not item.predicted_answer or not item.predicted_answer_2:
+            continue
+
+        prompt = build_adversarial_judge_prompt(item)
+
+        raw_judge = call_llm_api(
+            prompt=prompt,
+            model_name=judge_model,
+        )
+
+        if not raw_judge:
+            item.preference = "tie"
+        else:
+            result = raw_judge.strip().lower()
+            if "left" in result:
+                item.preference = "left"
+            elif "right" in result:
+                item.preference = "right"
+            elif "tie" in result:
+                item.preference = "tie"
+            else:
+                # 兜底：无法解析 → 平局
+                item.preference = "tie"
+
+        item.save()
+
+    return {
+        "task_id": task.id,
+        "method": "adversarial",
+        "judge_model": judge_model,
+        "total": items.count(),
+    }
+
+def parse_adversarial_judge(text: str) -> str:
+    if not text:
+        return "tie"
+    t = text.strip().lower()
+    if t == "left":
+        return "left"
+    if t == "right":
+        return "right"
+    if t == "tie":
+        return "tie"
+    return "tie"
 
 # =========================================================
 # 对外统一入口
@@ -461,9 +574,25 @@ def run_evaluation(task_id: int):
         return run_subjective_evaluation(task)
 
     elif task.method == "adversarial":
-        # 人类裁判对抗评测
-        return run_adversarial_generation(task)
+        run_adversarial_generation(task)
 
-    else:
-        return {"error": f"unknown task method: {task.method}"}
+        if task.judge_type == "model":
+            run_adversarial_auto_judge(task)
+
+        
+        summary = generate_adversarial_summary(task)
+
+        task.status = "completed"
+        task.save(update_fields=["status"])
+
+        return {
+            "task_id": task.id,
+            "method": "adversarial",
+            "judge_type": task.judge_type,
+            "model_a": task.myModel.name,
+            "model_b": task.myModel_2.name if task.myModel_2 else None,
+            "total": summary.total,
+            "win_a": summary.correct,
+            "win_rate_a": summary.accuracy,
+        }
 

@@ -137,3 +137,21 @@ export function getDatasetEntries(id, params = {}) {
     }
   })
 }
+
+// ========== 点赞功能 API (Star) ==========
+
+/**
+ * 14. 点赞数据集
+ * 接口: POST /api/datasets/{id}/star/
+ */
+export function starDataset(id) {
+  return request.post("/api/datasets/" + id + "/star/")
+}
+
+/**
+ * 15. 取消点赞数据集
+ * 接口: DELETE /api/datasets/{id}/star/
+ */
+export function unstarDataset(id) {
+  return request.delete("/api/datasets/" + id + "/star/")
+}
