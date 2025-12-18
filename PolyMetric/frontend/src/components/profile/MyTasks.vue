@@ -513,6 +513,12 @@ onMounted(() => {
   justify-content: center;
   margin-top: 20px;
   padding: 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #58a6ff;
+  font-weight: 500;
+}
 
 /* Table Dark Theme Overrides */
 :deep(.el-table) {
