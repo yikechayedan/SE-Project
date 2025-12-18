@@ -66,3 +66,60 @@ class RankingHistory(models.Model):
     
     def __str__(self):
         return f"{self.model.name} - {self.dataset.name} - 排名: {self.rank} - {self.recorded_at}"
+
+
+class ModelDimensionScore(models.Model):
+    """
+    模型维度得分表
+    存储模型在各个特定能力维度上的聚合分数
+    """
+    DIMENSION_CHOICES = [
+        ('overall', '综合能力'),
+        ('language', '语言理解'),
+        ('math', '数学推理'),
+        ('code', '代码能力'),
+        ('multimodal', '多模态'),
+    ]
+
+    model = models.ForeignKey(
+        'models.My_Model',
+        on_delete=models.CASCADE,
+        related_name='dimension_scores',
+        verbose_name='模型'
+    )
+    dimension = models.CharField(
+        max_length=20,
+        choices=DIMENSION_CHOICES,
+        db_index=True,
+        verbose_name="评测维度"
+    )
+    score = models.FloatField(default=0.0, verbose_name="得分")
+    
+    # 用于趋势计算：存储上一次更新时的分数或排名
+    previous_score = models.FloatField(default=0.0, verbose_name="上次得分")
+    
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        db_table = 'rankings_dimension_score'
+        verbose_name = '模型维度得分'
+        verbose_name_plural = '模型维度得分'
+        unique_together = ('model', 'dimension')  # 核心约束
+        indexes = [
+            models.Index(fields=['dimension', '-score']),  # 核心索引：加速"按维度查排行榜"
+        ]
+        ordering = ['dimension', '-score']
+    
+    def __str__(self):
+        return f"{self.model.name} - {self.get_dimension_display()} - {self.score}"
+    
+    def get_trend(self):
+        """获取趋势：up/down/stable"""
+        if self.previous_score == 0:
+            return 'stable'
+        if self.score > self.previous_score:
+            return 'up'
+        elif self.score < self.previous_score:
+            return 'down'
+        else:
+            return 'stable'

@@ -80,7 +80,7 @@
           @click="goToProfile"
           round
         >
-          {{ isSelf ? '我的主页' : '查看主页' }}
+          {{ isSelf ? '进入个人中心' : '查看主页' }}
         </el-button>
       </div>
     </div>
@@ -199,6 +199,11 @@ const handleShow = async () => {
 
 // 关注/取消关注用户
 const handleToggleFollow = async () => {
+  if (isSelf.value) {
+    ElMessage.warning('不能关注自己哦')
+    return
+  }
+  
   followLoading.value = true
   try {
     if (userInfo.value.is_followed) {
