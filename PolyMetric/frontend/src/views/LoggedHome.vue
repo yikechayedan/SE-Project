@@ -58,7 +58,12 @@
         </div>
         <div class="stat-info">
           <span class="stat-value">{{ stats.userCount }}</span>
-          <span class="stat-label">活跃用户</span>
+          <span class="stat-label">
+            用户总数
+            <el-tag size="small" type="success" effect="plain" class="online-tag">
+              {{ stats.onlineUserCount }} 在线
+            </el-tag>
+          </span>
         </div>
       </el-card>
     </div>
@@ -318,6 +323,7 @@ import EvalDialog from '../components/common/EvalDialog.vue'
 import { getAllDatasets } from '@/api/datasets'
 import { getAllModels } from '@/api/models'
 import { getEvaluationTasks } from '@/api/tasks'
+// import { getDashboardStats } from '@/api/system' // Removed as per instruction to not change backend
 
 const router = useRouter()
 
@@ -333,7 +339,8 @@ const stats = ref({
   modelCount: 0,
   datasetCount: 0,
   taskCount: 0,
-  userCount: 0
+  userCount: '-', // Placeholder until backend API is available
+  onlineUserCount: 0
 })
 
 // 导航到评测页面
@@ -386,14 +393,11 @@ const fetchStats = async () => {
       stats.value.taskCount = tasks.length
     }
     
-    // 活跃用户数暂时显示注册用户的估计值（后端暂无统计 API）
-    // 可以根据实际情况添加一个用户统计 API
-    stats.value.userCount = Math.max(10, stats.value.modelCount + stats.value.datasetCount)
+    // Note: User count and online user count require new backend APIs.
+    // Keeping placeholders for now.
     
   } catch (error) {
     console.error('获取统计数据失败:', error)
-    // 使用默认值
-    stats.value = { modelCount: 0, datasetCount: 0, taskCount: 0, userCount: 0 }
   }
 }
 
@@ -705,6 +709,19 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-secondary);
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.online-tag {
+  border-radius: 10px;
+  padding: 0 8px;
+  height: 18px;
+  line-height: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 /* 主内容区域 */
