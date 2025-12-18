@@ -74,6 +74,13 @@
           <el-option label="文本" value="text" />
           <el-option label="多模态" value="multimodal" />
         </el-select>
+        <el-checkbox 
+          v-model="onlyFollowed" 
+          label="仅看已关注" 
+          border 
+          @change="handleLocalFilter"
+          class="filter-checkbox" 
+        />
         <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
       </div>
     </div>
@@ -127,6 +134,15 @@
           <div class="actions">
             <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
             <el-button type="success" size="small" :icon="Download" @click="handleDownload(item)">下载</el-button>
+            <el-button
+              type="primary"
+              plain
+              size="small"
+              :icon="ChatDotRound"
+              @click="handleShowComments(item)"
+            >
+              评论
+            </el-button>
             <el-button
               :type="item.is_starred ? 'danger' : 'default'"
               size="small"
@@ -300,20 +316,29 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 评论组件 -->
+    <CommentSection
+      v-model="showCommentDialog"
+      target-type="dataset"
+      :target-id="currentCommentDatasetId"
+    />
   </div>
 </template>
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Folder, Download, Loading, Star, StarFilled, Document, User, Opportunity } from '@element-plus/icons-vue'
+import { Search, Refresh, Folder, Download, Loading, Star, StarFilled, Document, User, Opportunity, ChatDotRound } from '@element-plus/icons-vue'
 import UserPopover from '@/components/common/UserPopover.vue'
 import { getAllDatasets, getDatasetDetail, downloadDataset, followDataset, unfollowDataset, getDatasetEntries, starDataset, unstarDataset } from '@/api/datasets'
+import CommentSection from '@/components/common/CommentSection.vue'
 
 // 状态
 const loading = ref(false)
 const allDatasets = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const onlyFollowed = ref(false)
 
 // 分页状态
 const currentPage = ref(1)
@@ -327,6 +352,16 @@ const dialogStarLoading = ref(false)
 const currentDataset = ref(null)
 const datasetDetail = ref(null)
 const activeCollapse = ref(['info'])  // 默认展开基本信息
+
+// 评论弹窗
+const showCommentDialog = ref(false)
+const currentCommentDatasetId = ref(null)
+
+// 显示评论
+const handleShowComments = (row) => {
+  currentCommentDatasetId.value = row.id
+  showCommentDialog.value = true
+}
 
 // 数据条目相关状态
 const entriesLoading = ref(false)
@@ -346,6 +381,9 @@ const filteredDatasets = computed(() => {
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
+  if (onlyFollowed.value) {
+    result = result.filter(item => item.is_followed)
+  }
   return result
 })
 
@@ -362,7 +400,7 @@ const paginatedRankedDatasets = computed(() => {
 const rankedTop3 = computed(() => rankedDatasets.value.slice(0, 3))
 
 // 监听筛选条件变化，重置到第一页
-watch([searchQuery, categoryFilter], () => {
+watch([searchQuery, categoryFilter, onlyFollowed], () => {
   currentPage.value = 1
 })
 
@@ -473,6 +511,7 @@ const handleLocalFilter = () => {
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  onlyFollowed.value = false
   currentPage.value = 1
   fetchAllDatasets()
 }
@@ -1009,7 +1048,7 @@ onMounted(() => {
 
 .board-row {
   display: grid;
-  grid-template-columns: 80px 1.3fr 1fr 260px;
+  grid-template-columns: 80px 1.3fr 1fr 400px;
   gap: 16px;
   align-items: center;
   background: var(--bg-secondary);
