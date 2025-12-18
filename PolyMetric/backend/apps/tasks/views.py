@@ -300,7 +300,7 @@ def run_benchmark_view(request):
     dataset_id = request.data.get("dataset")
     model_ids = request.data.get("models")
     max_workers = request.data.get("max_workers", 3)
-
+    method = request.data.get("method", "objective")
     if not dataset_id or not model_ids:
         return Response({"error": "dataset and models are required"}, status=400)
 
@@ -308,6 +308,7 @@ def run_benchmark_view(request):
         creator=request.user,
         dataset_id=dataset_id,
         model_ids=model_ids,
+        method=method,
         max_workers=max_workers,
     )
 
