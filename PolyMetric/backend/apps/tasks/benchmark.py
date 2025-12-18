@@ -10,6 +10,7 @@ from apps.models.models import My_Model
 from apps.datasets.models import Dataset
 from .models import EvaluationTask, EvaluationSummary
 from .run_logic import run_evaluation
+from apps.tasks.models import EvaluationTask, EvaluationSummary
 
 User = get_user_model()
 
@@ -39,15 +40,35 @@ def evaluate_single_model(creator, dataset, method="objective", max_retry=2):
             result = run_evaluation(task.id)
 
             # 3️⃣ 转为结构化 summary（失败会抛异常）
-            summary = EvaluationSummary.objects.get(task=task)
-
+            try:
+                summary = EvaluationSummary.objects.get(task=task)
+            except EvaluationSummary.DoesNotExist:
+                # 👇 人类裁判还没完成，不参与榜单
+                return {
+                    "task_id": task.id,
+                    "model": task.myModel.name,
+                    "method": task.method,
+                    "status": task.status,   # awaiting_human_judge
+                    "metric_value": None,    # 榜单前端可显示 “等待人工评测”
+                }
+            if task.status != "completed":
+                return {
+                    "task_id": task.id,
+                    "model": model.name,
+                    "method": method,
+                    "status": task.status,
+                    "metric_value": None,
+                }
             # ✅ 统一一个 metric_value，榜单就不需要关心是哪种评测
-            if method == "subjective":
-                metric_value = summary.avg_score or 0
+            if method == "objective":
+                metric_value = summary.accuracy
+            elif method == "subjective":
+                metric_value = summary.avg_score
             elif method == "adversarial":
-                metric_value = summary.accuracy or 0   # 你们对抗 summary 里用 accuracy 存 win_rate_a（见 run_logic）
+                metric_value = summary.accuracy
             else:
-                metric_value = summary.accuracy or 0
+                metric_value = None
+
 
             return {
                 "task_id": task.id,
@@ -113,6 +134,7 @@ def run_benchmark(creator, dataset_id, model_ids, method="objective", max_worker
             results.append(res)
 
     # -------- 排序 + 返回结果 --------
-    results.sort(key=lambda x: x.get("metric_value", 0) or 0, reverse=True)
-
+    results = [r for r in results if r.get("metric_value") is not None]
+    results.sort(key=lambda x: x["metric_value"], reverse=True)
+    
     return results
