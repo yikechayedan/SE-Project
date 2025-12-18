@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
 
 class User(AbstractUser):
     # 覆盖 AbstractUser 的 email 字段，使其唯一
@@ -47,3 +50,38 @@ class UserFollow(models.Model):
 
     def __str__(self):
         return f"{self.follower.username} -> {self.followed.username}"
+
+
+class UserStar(models.Model):
+    """
+    通用用户点赞表
+    支持对任意模型（Model, Dataset, Article...）进行点赞
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='stars',
+        verbose_name='用户'
+    )
+    
+    # 通用外键配置
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='点赞时间')
+
+    class Meta:
+        verbose_name = '用户点赞'
+        verbose_name_plural = verbose_name
+        # 核心约束：一个用户对同一个对象只能点赞一次
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            # 优化查询：按对象类型和ID查找（用于统计总数）
+            models.Index(fields=["content_type", "object_id"]),
+            # 优化查询：按用户查找（用于"我的点赞"）
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} starred {self.content_type} {self.object_id}"
