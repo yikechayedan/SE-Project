@@ -1,0 +1,22 @@
+[
+  {
+    "input": "请简要解释什么是操作系统。",
+    "reference": "操作系统是管理计算机硬件与软件资源的系统软件。"
+  },
+  {
+    "input": "什么是机器学习？",
+    "reference": "机器学习是让计算机从数据中自动学习规律的方法。"
+  },
+  {
+    "input": "请解释 HTTP 与 HTTPS 的区别。",
+    "reference": "HTTPS 在 HTTP 基础上增加了 TLS 加密。"
+  },
+  {
+    "input": "什么是数据库事务？",
+    "reference": "事务是数据库中保证一致性的操作单元。"
+  },
+  {
+    "input": "请解释什么是 RESTful API。",
+    "reference": "REST 是一种基于资源的 Web API 设计风格。"
+  }
+]

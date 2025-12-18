@@ -5,7 +5,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from apps.users.models import UserFollow
+from django.contrib.contenttypes.models import ContentType
+from apps.users.models import UserFollow, UserStar
 
 User = get_user_model()
 import django.db.models as models  # 显式导入 models 避免混淆
@@ -88,6 +89,57 @@ class ModelViewSet(viewsets.ReadOnlyModelViewSet):
                     {'code': 404, 'msg': '未关注该模型', 'data': None},
                     status=status.HTTP_404_NOT_FOUND
                 )
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def star(self, request, pk=None):
+        """
+        点赞/取消点赞接口
+        POST   /api/models/{id}/star/ -> 点赞
+        DELETE /api/models/{id}/star/ -> 取消点赞
+        """
+        obj = self.get_object()  # 获取具体的模型实例
+        content_type = ContentType.objects.get_for_model(obj)
+        user = request.user
+
+        # ====== 1. 点赞逻辑 (POST) ======
+        if request.method == 'POST':
+            # get_or_create 自动处理去重
+            _, created = UserStar.objects.get_or_create(
+                user=user,
+                content_type=content_type,
+                object_id=obj.id
+            )
+            msg = "点赞成功" if created else "已点赞"
+            status_code = 201 if created else 200
+
+        # ====== 2. 取消点赞逻辑 (DELETE) ======
+        elif request.method == 'DELETE':
+            deleted_count, _ = UserStar.objects.filter(
+                user=user,
+                content_type=content_type,
+                object_id=obj.id
+            ).delete()
+            msg = "已取消点赞" if deleted_count > 0 else "未曾点赞"
+            status_code = 200
+
+        # ====== 3. 返回最新统计数据 ======
+        # 前端需要这两个字段来更新 UI
+        current_count = UserStar.objects.filter(
+            content_type=content_type,
+            object_id=obj.id
+        ).count()
+        
+        # 判断当前状态（POST肯定是True, DELETE肯定是False）
+        is_starred = True if request.method == 'POST' else False
+
+        return Response({
+            "code": status_code,
+            "msg": msg,
+            "data": {
+                "star_count": current_count,
+                "is_starred": is_starred
+            }
+        })
 
 class FollowedModelsListAPIView(generics.ListAPIView):
     """获取当前用户关注的模型列表：GET /api/models/followed/"""
