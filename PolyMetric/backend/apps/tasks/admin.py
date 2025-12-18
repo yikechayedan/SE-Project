@@ -13,7 +13,7 @@ class EvaluationTaskAdmin(admin.ModelAdmin):
         "method",
         "creator",
         "dataset",
-        "myModel",      # ⭐ 改成 myModel
+        "myModel",      
         "avg_score_display",
         "status",
         "created_at",

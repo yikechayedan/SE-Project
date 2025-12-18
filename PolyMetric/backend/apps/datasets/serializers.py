@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Dataset, DatasetFollow
+from django.contrib.contenttypes.models import ContentType
+from apps.users.models import UserStar
 import os
 
 
@@ -17,16 +19,20 @@ class DatasetSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField(read_only=True)
     has_file = serializers.SerializerMethodField(read_only=True)
     is_followed = serializers.SerializerMethodField(read_only=True)
+    # 1. 统计总数
+    star_count = serializers.SerializerMethodField()
+    # 2. 当前用户状态
+    is_starred = serializers.SerializerMethodField()
 
     class Meta:
         model = Dataset
         fields = [
             "id", "name", "description", "category", "file_format",
             "file_size", "sample_count", "creator", "creator_id", "creator_username",
-            "is_public", "is_verified", "is_followed", "has_file",
+            "is_public", "is_verified", "is_followed", "has_file", "star_count", "is_starred",
             "created_at", "updated_at", "file_url", "file_path"
         ]
-        read_only_fields = ["id", "creator", "file_size", "sample_count", "created_at", "updated_at", "is_verified"]
+        read_only_fields = ["id", "creator", "file_size", "sample_count", "created_at", "updated_at", "is_verified", "star_count", "is_starred"]
         extra_kwargs = {
             'file_path': {'write_only': True, 'required': False}
         }
@@ -48,6 +54,19 @@ class DatasetSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return obj.followers.filter(user=request.user).exists()
+
+    def get_star_count(self, obj):
+        """获取点赞总数"""
+        ct = ContentType.objects.get_for_model(obj)
+        return UserStar.objects.filter(content_type=ct, object_id=obj.id).count()
+
+    def get_is_starred(self, obj):
+        """判断当前用户是否已点赞"""
+        user = self.context.get('request').user
+        if not user.is_authenticated:
+            return False
+        ct = ContentType.objects.get_for_model(obj)
+        return UserStar.objects.filter(user=user, content_type=ct, object_id=obj.id).exists()
 
     def validate_file_path(self, file):
         """验证上传的文件"""

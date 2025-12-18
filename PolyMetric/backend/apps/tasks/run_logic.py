@@ -422,11 +422,6 @@ def run_adversarial_generation(task: EvaluationTask):
         item.predicted_answer_2 = answer_b
         item.save()
 
-    task.status = "completed"
-    task.save()
-    
-    # 记录系统事件：评测完成
-    log_task_complete(task, task.creator)
 
     return {
         "task_id": task.id,
@@ -574,25 +569,39 @@ def run_evaluation(task_id: int):
         return run_subjective_evaluation(task)
 
     elif task.method == "adversarial":
+        # ① 先生成 A / B 回答
         run_adversarial_generation(task)
 
+        # ② 模型裁判：直接判完 + 生成 summary
         if task.judge_type == "model":
             run_adversarial_auto_judge(task)
+            summary = generate_adversarial_summary(task)
 
-        
-        summary = generate_adversarial_summary(task)
+            task.status = "completed"
+            task.save(update_fields=["status"])
 
-        task.status = "completed"
-        task.save(update_fields=["status"])
+            return {
+                "task_id": task.id,
+                "method": "adversarial",
+                "judge_type": "model",
+                "model_a": task.myModel.name,
+                "model_b": task.myModel_2.name,
+                "total": summary.total,
+                "win_a": summary.correct,
+                "win_rate_a": summary.accuracy,
+            }
 
-        return {
-            "task_id": task.id,
-            "method": "adversarial",
-            "judge_type": task.judge_type,
-            "model_a": task.myModel.name,
-            "model_b": task.myModel_2.name if task.myModel_2 else None,
-            "total": summary.total,
-            "win_a": summary.correct,
-            "win_rate_a": summary.accuracy,
-        }
+        # ③ 人类裁判：只进入“等待人工打分”状态
+        else:
+            task.status = "awaiting_human_judge"
+            task.save(update_fields=["status"])
+
+            return {
+                "task_id": task.id,
+                "method": "adversarial",
+                "judge_type": "human",
+                "total": task.items.count(),
+                "status": "awaiting_human_judge",
+            }
+
 
