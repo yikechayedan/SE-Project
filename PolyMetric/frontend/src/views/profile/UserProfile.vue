@@ -298,6 +298,12 @@ const loadFollowedDatasets = async () => {
 
 // 关注/取消关注用户
 const handleToggleFollow = async () => {
+  const currentUserId = localStorage.getItem('userId')
+  if (currentUserId && currentUserId === userId.value) {
+    ElMessage.warning('不能关注自己哦')
+    return
+  }
+
   followLoading.value = true
   try {
     if (userInfo.value.is_followed) {

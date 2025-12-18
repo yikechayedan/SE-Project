@@ -116,7 +116,14 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="综合得分" width="120" align="center">
+            
+            <!-- 综合得分 -->
+            <el-table-column 
+              label="综合得分" 
+              width="120" 
+              align="center"
+              :class-name="selectedDataset === 'comprehensive' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
                 <el-progress 
                   :percentage="row.overallScore" 
@@ -126,21 +133,58 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column prop="languageScore" label="语言理解" width="90" align="center">
+
+            <!-- 语言理解 -->
+            <el-table-column 
+              prop="languageScore" 
+              label="语言理解" 
+              width="90" 
+              align="center"
+              :class-name="selectedDataset === 'language' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
-                <span :style="{ color: getScoreColor(row.languageScore) }">{{ row.languageScore.toFixed(1) }}</span>
+                <span :style="{ 
+                  color: getScoreColor(row.languageScore),
+                  fontWeight: selectedDataset === 'language' ? 'bold' : 'normal',
+                  fontSize: selectedDataset === 'language' ? '16px' : '14px'
+                }">{{ row.languageScore.toFixed(1) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="reasoningScore" label="推理能力" width="90" align="center">
+
+            <!-- 推理能力 -->
+            <el-table-column 
+              prop="reasoningScore" 
+              label="推理能力" 
+              width="90" 
+              align="center"
+              :class-name="selectedDataset === 'math' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
-                <span :style="{ color: getScoreColor(row.reasoningScore) }">{{ row.reasoningScore.toFixed(1) }}</span>
+                <span :style="{ 
+                  color: getScoreColor(row.reasoningScore),
+                  fontWeight: selectedDataset === 'math' ? 'bold' : 'normal',
+                  fontSize: selectedDataset === 'math' ? '16px' : '14px'
+                }">{{ row.reasoningScore.toFixed(1) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="codeScore" label="代码能力" width="90" align="center">
+
+            <!-- 代码能力 -->
+            <el-table-column 
+              prop="codeScore" 
+              label="代码能力" 
+              width="90" 
+              align="center"
+              :class-name="selectedDataset === 'code' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
-                <span :style="{ color: getScoreColor(row.codeScore) }">{{ row.codeScore.toFixed(1) }}</span>
+                <span :style="{ 
+                  color: getScoreColor(row.codeScore),
+                  fontWeight: selectedDataset === 'code' ? 'bold' : 'normal',
+                  fontSize: selectedDataset === 'code' ? '16px' : '14px'
+                }">{{ row.codeScore.toFixed(1) }}</span>
               </template>
             </el-table-column>
+
             <el-table-column label="趋势" width="80" align="center">
               <template #default="{ row }">
                 <el-icon v-if="row.trend > 0" class="trend-up"><Top /></el-icon>
@@ -510,41 +554,56 @@ const formatTime = (dateStr) => {
   return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
 }
 
-// 排行榜数据（模拟数据，等待后端 API 实现）
-const rankings = ref([
-  { 
-    name: 'GPT-4o', company: 'OpenAI', color: '#10a37f',
-    overallScore: 92.5, languageScore: 94.2, reasoningScore: 91.8, codeScore: 93.1, trend: 0
-  },
-  { 
-    name: 'Claude 3.5 Sonnet', company: 'Anthropic', color: '#d97757',
-    overallScore: 91.2, languageScore: 93.5, reasoningScore: 90.1, codeScore: 91.8, trend: 1
-  },
-  { 
-    name: 'Gemini 1.5 Pro', company: 'Google', color: '#4285f4',
-    overallScore: 89.8, languageScore: 91.2, reasoningScore: 88.5, codeScore: 90.2, trend: 1
-  },
-  { 
-    name: '文心一言 4.0', company: '百度', color: '#2932e1',
-    overallScore: 87.3, languageScore: 89.1, reasoningScore: 85.6, codeScore: 86.9, trend: 0
-  },
-  { 
-    name: '通义千问 2.5', company: '阿里云', color: '#ff6a00',
-    overallScore: 86.5, languageScore: 88.3, reasoningScore: 84.2, codeScore: 87.1, trend: -1
-  },
-  { 
-    name: 'GLM-4', company: '智谱AI', color: '#1e50a2',
-    overallScore: 85.2, languageScore: 87.1, reasoningScore: 83.5, codeScore: 85.8, trend: 1
-  },
-  { 
-    name: 'Llama 3.1 405B', company: 'Meta', color: '#0866ff',
-    overallScore: 84.8, languageScore: 86.5, reasoningScore: 82.9, codeScore: 85.2, trend: 0
-  },
-  { 
-    name: 'Mistral Large 2', company: 'Mistral AI', color: '#f54e42',
-    overallScore: 83.6, languageScore: 85.2, reasoningScore: 81.8, codeScore: 84.1, trend: -1
+// 排行榜数据
+const rankings = ref([])
+
+// 获取排行榜数据（使用真实模型）
+const fetchRankings = async () => {
+  rankingLoading.value = true
+  try {
+    const res = await getAllModels()
+    if (res.data?.code === 200 || Array.isArray(res.data)) {
+      let models = Array.isArray(res.data) ? res.data : res.data.data
+      
+      // 默认按点赞数排序
+      models.sort((a, b) => (b.star_count || 0) - (a.star_count || 0))
+      
+      // 映射为排行榜格式
+      // 注意：由于后端暂无评分API，此处根据ID生成确定性的演示分数，确保UI不崩
+      rankings.value = models.slice(0, 10).map((model, index) => {
+        const baseScore = 80 + (model.id % 15) // 80-95分
+        return {
+          id: model.id,
+          name: model.name,
+          company: model.company || 'Unknown',
+          color: getModelColor(model.category), // 根据分类分配颜色
+          // 模拟分数 (待后端 /api/rankings/ 接口就绪后替换)
+          overallScore: Math.min(99.9, baseScore + (model.star_count || 0) * 0.1),
+          languageScore: Math.min(99, baseScore + (model.id % 5)),
+          reasoningScore: Math.min(99, baseScore - (model.id % 3)),
+          codeScore: Math.min(99, baseScore + (model.id % 4) - 2),
+          trend: (model.id % 3) - 1 // 随机趋势: -1, 0, 1
+        }
+      })
+    }
+  } catch (error) {
+    console.error('获取排行榜失败:', error)
+    ElMessage.error('排行榜数据加载失败')
+  } finally {
+    rankingLoading.value = false
   }
-])
+}
+
+// 根据模型类型获取头像背景色
+const getModelColor = (category) => {
+  const colors = {
+    'text': '#409eff',
+    'image': '#e6a23c', 
+    'code': '#67c23a',
+    'multimodal': '#9b59b6'
+  }
+  return colors[category] || '#909399'
+}
 
 // 最近活动（动态获取）
 const recentActivities = ref([])
@@ -559,11 +618,8 @@ const lastUpdated = computed(() => {
 
 // 刷新排行榜
 const refreshRankings = () => {
-  rankingLoading.value = true
-  setTimeout(() => {
-    rankingLoading.value = false
-    ElMessage.success('排行榜已更新')
-  }, 800)
+  fetchRankings()
+  ElMessage.success('排行榜已更新')
 }
 
 // 表格行样式
@@ -582,6 +638,7 @@ const getScoreColor = (score) => {
 
 onMounted(() => {
   fetchStats()
+  fetchRankings() // 调用真实数据
   fetchRecentActivities()
 })
 </script>
@@ -832,6 +889,12 @@ onMounted(() => {
 
 :deep(.top-rank-row:hover) {
   background-color: rgba(64, 158, 255, 0.1) !important;
+}
+
+/* 高亮列样式 */
+:deep(.el-table .highlight-col) {
+  background-color: var(--el-color-primary-light-9) !important;
+  transition: background-color 0.3s ease;
 }
 
 .leaderboard-footer {
