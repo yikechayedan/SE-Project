@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     #数据集模块
-    "apps.datasets", 
+    "apps.datasets",
     "django_filters",  # 筛选插件
 
     #评测任务模块
@@ -51,6 +51,12 @@ INSTALLED_APPS = [
 
     #数据集模块
     "apps.models",
+
+    # 系统动态模块
+    "apps.system.apps.SystemConfig",
+    
+    # 模型排名模块
+    "apps.rankings.apps.RankingsConfig",
 
     # 项目应用
     'apps.users',
@@ -104,14 +110,20 @@ WSGI_APPLICATION = 'PolyMetric.wsgi.application'
 # -----------------------------
 # 数据库配置
 # -----------------------------
+import os  # 确保文件最上面有这一行
+
+# ... 其他代码 ...
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'polymetric',
-        'USER': 'postgres',
-        'PASSWORD': 'yhblsqt',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        # 使用 os.environ.get('变量名', '默认值')
+        # 这样既能在 Docker 里跑（读取环境变量），也能在本地跑（使用默认值）
+        'NAME': os.environ.get('DB_NAME', 'polymetric'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'yhblsqt'), # 你的本地密码
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),        # ✅ 关键修改
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -219,8 +231,8 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # ============================
 # Celery 配置
 # ============================
-CELERY_BROKER_URL = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
-CELERY_RESULT_BACKEND = f"redis://:{os.getenv('REDIS_PASSWORD', 'redis_pass')}@{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

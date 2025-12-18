@@ -1,60 +1,54 @@
 <template>
   <div class="report-detail">
     <div v-if="reportData && reportData.id" class="report-content">
+      
       <h2 class="report-title">
-        <el-icon><Document /></el-icon> 评测报告：{{ reportData.name }}
+        <el-icon><Document /></el-icon> 评测报告
       </h2>
 
-      <el-divider />
+      <el-divider class="title-divider" />
 
-      <el-card class="meta-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <span>基础信息</span>
-          </div>
-        </template>
-        <el-descriptions :column="3" border size="small">
-          <el-descriptions-item label="任务名称">{{ reportData.name }}</el-descriptions-item>
-          <el-descriptions-item label="评测 ID">{{ reportData.id }}</el-descriptions-item>
-          <el-descriptions-item label="模型">{{ reportData.model }}</el-descriptions-item>
-          <el-descriptions-item label="数据集">{{ reportData.dataset }}</el-descriptions-item>
-          <el-descriptions-item label="评测方法">{{ reportData.evaluation_method }}</el-descriptions-item>
-          <el-descriptions-item label="评测时间">{{ formatTime(reportData.evaluation_time) }}</el-descriptions-item>
-          <el-descriptions-item label="评测用时">{{ reportData.evaluation_duration }}</el-descriptions-item>
-        </el-descriptions>
-      </el-card>
+      <h3 class="section-title">📚 基础信息</h3>
+      <el-row :gutter="20" class="meta-row">
+        
+        <el-col :span="8">
+          <el-card shadow="hover" class="meta-item-card">
+            <div class="meta-label">评测 ID</div>
+            <div class="meta-value primary">{{ reportData.id }}</div>
+          </el-card>
+        </el-col>
 
-      <el-row :gutter="20" class="summary-row">
-        <el-col :span="6">
-          <el-card shadow="hover" class="summary-card">
-            <div class="summary-value">{{ reportData.summary.total_count }}</div>
-            <div class="summary-label">测试数量</div>
+        <el-col :span="8">
+          <el-card shadow="hover" class="meta-item-card">
+            <div class="meta-label">评测方法</div>
+            <div class="meta-value info">{{ reportData.method == 'objective' ? '客观评测' : reportData.method }}</div>
           </el-card>
         </el-col>
-        <el-col :span="6">
-          <el-card shadow="hover" class="summary-card">
-            <div class="summary-value">{{ reportData.summary.correct_count }}/{{ reportData.summary.total_count }}</div>
-            <div class="summary-label">正确个数</div>
+
+        <el-col :span="8">
+          <el-card shadow="hover" class="meta-item-card">
+            <div class="meta-label">任务状态</div>
+            <div class="meta-value status">
+                <el-tag :type="reportData.status === 'completed' ? 'success' : 'info'" size="large" effect="dark">{{ reportData.status }}</el-tag>
+            </div>
           </el-card>
         </el-col>
-        <el-col :span="6">
-          <el-card shadow="hover" class="summary-card" :body-style="{ background: getAccuracyColor(reportData.summary.accuracy_rate) }">
-            <div class="summary-value">{{ formatAccuracy(reportData.summary.accuracy_rate) }}</div>
-            <div class="summary-label">正确率</div>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card shadow="hover" class="summary-card">
-            <div class="summary-value score-value">{{ reportData.summary.score }}</div>
-            <div class="summary-label">得分</div>
+      </el-row>
+      
+      <el-divider class="meta-divider" /> <el-row :gutter="20" class="summary-row">
+        <el-col :span="12" :offset="6">
+          <el-card shadow="hover" class="summary-card" :style="{ backgroundColor: getAccuracyColor(reportData.accuracy) }">
+            <div class="summary-value">{{ formatAccuracy(reportData.accuracy) }}</div>
+            <div class="summary-label">整体正确率 (Accuracy)</div>
           </el-card>
         </el-col>
       </el-row>
 
-      <h3 class="section-title">详细评测条目</h3>
-      <el-table :data="paginatedItems" border stripe>
+      <h3 class="section-title">📊 详细评测条目</h3>
+      
+      <el-table :data="paginatedItems" border stripe class="detail-table">
         <el-table-column prop="id" label="条目 ID" width="100" />
-        <el-table-column prop="name" label="题目/条目名称" />
+        <el-table-column prop="content" label="题目/条目名称" />
         <el-table-column prop="correct_answer" label="正确答案" width="150" />
         <el-table-column prop="predicted_answer" label="预测答案" width="150" />
         
@@ -74,14 +68,14 @@
         <el-pagination
           background
           layout="prev, pager, next, total"
-          :total="fullItemList.length"
+          :total="reportData.data.length"
           :page-size="pageSize"
           v-model:current-page="currentPage"
         />
       </div>
     </div>
     
-    <el-empty v-else description="未找到评测报告" />
+    <el-empty v-else :description="errorMessage || '未找到评测报告'" />
 
   </div>
 </template>
@@ -94,56 +88,35 @@ import { getEvaluationTaskDetail } from '@/api/tasks.js'
 const currentPage = ref(1)
 const pageSize = 10
 
-//接收任务中的路由ID
 const props = defineProps({
     taskId: {
-        type: String, // ID 可能是字符串或数字
+        type: Number,
         required: true
     }
 })
 
-// ===================== 模拟数据定义 (静态数据) =====================
-
-
+// ===================== 响应式数据定义 (保持不变) =====================
 const reportData = ref({
-    // 任务基础信息
     id: null,
-    name: '',
-    description: '',
-    creator: null,
-    creator_username: '',
-    
-    // 关联信息
-    dataset: null,
-    dataset_name: '',
-    model: null,
-    model_name: '',
-
-    // 状态与结果
     method: '',
-    status: 'pending',
+    status: '', 
     accuracy: null,
-    score: null,
-    
-    // 时间信息
-    created_at: '',
-    updated_at: '',
-    time_used: null,
-
-    // 嵌套的评测条目列表（最重要，必须是空数组）
     data: [], 
 });
 
-const loading = ref(true); // 用于加载状态
-const errorMessage = ref(null); // 用于错误信息
+const loading = ref(true); 
+const errorMessage = ref(null); 
 
-const paginatedItems = computed(() => reportData.value.data.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
+const paginatedItems = computed(() => {
+    if (!reportData.value || !Array.isArray(reportData.value.data)) {
+        return [];
+    }
+    const start = (currentPage.value - 1) * pageSize;
+    const end = currentPage.value * pageSize;
+    return reportData.value.data.slice(start, end);
+});
 
-// ===================== 辅助函数 =====================
-
-/**
- * 格式化时间戳
- */
+// ===================== 辅助函数 (保持不变) =====================
 const formatTime = (time) => {
   if (!time) return 'N/A'
   return new Date(time).toLocaleString('zh-CN', { 
@@ -153,120 +126,237 @@ const formatTime = (time) => {
   })
 }
 
-/**
- * 格式化准确率 (0.82 -> 82.00%)
- */
 const formatAccuracy = (rate) => {
   if (rate === undefined || rate === null) return 'N/A'
   return `${(rate * 100).toFixed(2)}%`
 }
 
-/**
- * 根据准确率返回卡片背景颜色（仅用于演示）
- */
 const getAccuracyColor = (rate) => {
-    if (rate >= 0.9) return '#E6FAF5'; // 高分绿色
-    if (rate >= 0.7) return '#FFF9E6'; // 中分黄色
-    return '#FBEAEA'; // 低分红色
+    if (rate >= 0.9) return '#E8F5E9'; // 高分浅绿
+    if (rate >= 0.7) return '#FFFDE7'; // 中分浅黄
+    return '#FFEBEE'; // 低分浅红
 }
 
+// ===================== 数据获取逻辑 (保持不变) =====================
 const fetchReportData = async () => {
   loading.value = true;
   errorMessage.value = null;
   try{
     const response = await getEvaluationTaskDetail(props.taskId);
-    if (response.data?.code === 200) {
+
+    if (response.data && response.data.id) {
         reportData.value = response.data;
+
+        const status = reportData.value.status;
+        if (status !== 'completed' && status !== 'error') {
+          errorMessage.value = `评测任务状态为 ${status}，尚未完成。`;
+          reportData.value.id = null; 
+        }
     } else {
-        errorMessage.value = '获取评测报告失败';
+        errorMessage.value = '获取评测报告失败：返回数据为空或无效。';
+        reportData.value.id = null; 
     }
+
   }catch(error){
-    errorMessage.value = '获取评测报告时发生错误';
+    errorMessage.value = '获取评测报告时发生网络或服务器错误';
     console.error('获取评测报告错误:', error);
-  }
+    reportData.value.id = null; 
+  } finally {
+      loading.value = false;
+    }
 }
 
-onMounted
-{
+onMounted(() => {
     fetchReportData();
-}
+})
 </script>
 
 <style scoped>
+/* ======================== 报告容器和背景 ======================== */
 .report-detail {
-  padding: 30px;
-  background-color: #f0f2f5;
+  padding: 40px; 
+  background-color: #f7f9fc; 
   min-height: 100vh;
 }
 
+/* ======================== 标题和分割线 ======================== */
 .report-title {
   display: flex;
   align-items: center;
-  font-size: 24px;
-  color: #303133;
-  margin-bottom: 20px;
-}
-.report-title .el-icon {
-  margin-right: 10px;
-  font-size: 28px;
-  color: var(--el-color-primary);
-}
-
-.meta-card {
-  margin-bottom: 25px;
-}
-.summary-row {
-  margin-bottom: 30px;
-}
-
-/* 统计卡片样式 */
-.summary-card {
-  text-align: center;
-  border-radius: 8px;
-}
-.summary-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-.summary-value {
-  font-size: 28px;
-  font-weight: bold;
-  color: #303133;
+  font-size: 32px; 
+  font-weight: 600; 
+  color: #2c3e50; 
   margin-bottom: 5px;
 }
-.summary-label {
-  font-size: 14px;
-  color: #909399;
+.report-title .el-icon {
+  margin-right: 12px;
+  font-size: 36px;
+  color: var(--el-color-primary);
 }
-.score-value {
-    color: var(--el-color-warning); /* 强调得分 */
+.title-divider {
+    margin-top: 15px;
+    margin-bottom: 30px;
 }
-/* 正确率卡片的颜色区分 */
+
+/* ======================== 基础信息卡片 (新样式) ======================== */
+.meta-row {
+    margin-bottom: 20px;
+}
+.meta-item-card {
+    text-align: center;
+    border-radius: 10px;
+    height: 120px; /* 固定高度 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.3s ease;
+    cursor: default;
+    background-color: #ffffff;
+    border: 1px solid #e0e6ed;
+}
+.meta-item-card:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    border-color: var(--el-color-primary-light-3);
+}
+
+.meta-label {
+    font-size: 14px;
+    color: #8c939d;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.meta-value {
+    font-size: 28px; /* 增大数值字号 */
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.meta-value.primary {
+    color: var(--el-color-primary); /* ID使用主色调 */
+}
+
+.meta-value.info {
+    color: var(--el-color-info); /* 方法使用信息色调 */
+}
+
+.meta-value.status {
+    height: 35px; /* 确保 Tag 居中 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.meta-divider {
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
+
+/* ======================== 统计概览卡片 (保持不变) ======================== */
+.summary-row {
+  margin-bottom: 40px; 
+}
+.summary-card {
+  text-align: center;
+  border-radius: 12px;
+  transition: all 0.3s ease; 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); 
+}
+
+.summary-card:hover {
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
 .summary-card :deep(.el-card__body) {
-    padding: 20px;
+    padding: 30px; 
     transition: background-color 0.3s;
 }
 
-/* 详细条目 */
-.section-title {
-  font-size: 18px;
-  color: #606266;
-  margin-bottom: 15px;
+.summary-value {
+  font-size: 48px; 
+  font-weight: 800;
+  color: #1a2a3a;
+  margin-bottom: 8px;
+  line-height: 1;
 }
-.pagination-container {
-  margin-top: 20px;
-  text-align: center;
+.summary-label {
+  font-size: 16px;
+  color: #5f748c;
 }
 
-/* 表格结果列的图标 */
+/* ======================== 详细条目表格和分页 (保持不变) ======================== */
+.section-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #34495e;
+  margin-bottom: 20px;
+  padding-left: 5px;
+}
+.detail-table {
+    border-radius: 8px;
+    overflow: hidden; 
+}
+.detail-table :deep(.el-table__header-wrapper th) {
+    background-color: #ecf0f1; 
+    color: #34495e;
+    font-weight: bold;
+}
+
+.pagination-container {
+  margin-top: 25px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+:deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+  background-color: #1f6bff;
+  color: #ffffff;
+}
+
+:deep(.el-pagination.is-background .el-pager li) {
+  background-color: #161b22;
+  color: #8b949e;
+  border: 1px solid #30363d;
+}
+
+:deep(.el-pagination.is-background .btn-prev),
+:deep(.el-pagination.is-background .btn-next) {
+  background-color: #161b22;
+  color: #8b949e;
+  border: 1px solid #30363d;
+}
+
+/* ======================== 结果图标 (保持不变) ======================== */
 .result-icon {
-  font-size: 18px;
+  font-size: 20px; 
   font-weight: bold;
 }
 .correct-icon {
-  color: var(--el-color-success); /* 绿色 */
+  color: #67c23a;
 }
 .incorrect-icon {
-  color: var(--el-color-danger); /* 红色 */
+  color: #f56c6c;
+}
+
+/* Descriptions Dark Mode Override */
+:deep(.el-descriptions__label) {
+  background-color: #161b22 !important;
+  color: #8b949e !important;
+}
+
+:deep(.el-descriptions__content) {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+
+:deep(.el-descriptions__cell) {
+  border-color: #30363d !important;
+}
+
+:deep(.el-divider) {
+  border-color: #30363d;
 }
 </style>

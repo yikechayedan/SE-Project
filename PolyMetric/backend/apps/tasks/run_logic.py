@@ -9,6 +9,7 @@ from .services import call_llm_api
 from .models import EvaluationTask, EvaluationItem
 from apps.datasets.models import Dataset
 from .models import EvaluationSummary
+from apps.system.services import log_task_complete
 
 # =========================================================
 # Step 3 核心：Prompt 工业级约束 + 输出清洗
@@ -243,6 +244,9 @@ def run_objective_evaluation(task: EvaluationTask):
     task.status = "completed"
     task.time_used = timezone.now() - task.created_at
     task.save()
+    
+    # 记录系统事件：评测完成
+    log_task_complete(task, task.creator)
 
     # ✅ 写入 / 更新 Summary（幂等）
     EvaluationSummary.objects.update_or_create(
@@ -314,6 +318,9 @@ def run_subjective_evaluation(task: EvaluationTask):
     task.score = avg_score
     task.status = "completed"
     task.save(update_fields=["score", "status"])
+    
+    # 记录系统事件：评测完成
+    log_task_complete(task, task.creator)
 
     EvaluationSummary.objects.update_or_create(
         task=task,
@@ -367,6 +374,9 @@ def run_adversarial_generation(task: EvaluationTask):
 
     task.status = "completed"
     task.save()
+    
+    # 记录系统事件：评测完成
+    log_task_complete(task, task.creator)
 
     return {
         "task_id": task.id,
