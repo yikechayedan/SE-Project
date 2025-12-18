@@ -8,20 +8,35 @@
         </div>
         <p class="subtitle">按综合能力、类型与关注度发现模型，像榜单一样浏览。</p>
         <div class="hero-stats">
-          <div class="stat-card">
+          <div class="stat-card type-total">
             <div class="label">已收录</div>
             <div class="value">{{ filteredModels.length }}</div>
             <div class="hint">模型数量</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card type-followed">
             <div class="label">已关注</div>
             <div class="value">{{ followedCount }}</div>
             <div class="hint">你的关注</div>
           </div>
-          <div class="stat-card">
-            <div class="label">类型覆盖</div>
-            <div class="value">{{ categoryCount }}</div>
-            <div class="hint">文本/多模态/代码等</div>
+          <div class="stat-card type-text">
+            <div class="label">文本生成</div>
+            <div class="value">{{ textModelCount }}</div>
+            <div class="hint">Text</div>
+          </div>
+          <div class="stat-card type-image">
+            <div class="label">图像生成</div>
+            <div class="value">{{ imageModelCount }}</div>
+            <div class="hint">Image</div>
+          </div>
+          <div class="stat-card type-multi">
+            <div class="label">多模态</div>
+            <div class="value">{{ multiModelCount }}</div>
+            <div class="hint">Multi</div>
+          </div>
+          <div class="stat-card type-code">
+            <div class="label">代码生成</div>
+            <div class="value">{{ codeModelCount }}</div>
+            <div class="hint">Code</div>
           </div>
         </div>
       </div>
@@ -69,6 +84,7 @@
           <el-option label="多模态" value="multimodal" />
           <el-option label="代码生成" value="code" />
         </el-select>
+        <el-checkbox v-model="onlyFollowed" label="仅看已关注" border />
         <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
       </div>
     </div>
@@ -200,6 +216,7 @@ const loading = ref(false)
 const allModels = ref([])
 const searchQuery = ref('')
 const categoryFilter = ref('')
+const onlyFollowed = ref(false)
 
 // 分页状态
 const currentPage = ref(1)
@@ -225,15 +242,21 @@ const filteredModels = computed(() => {
   if (categoryFilter.value) {
     result = result.filter(item => item.category === categoryFilter.value)
   }
+  if (onlyFollowed.value) {
+    result = result.filter(item => item.is_followed)
+  }
   return result
 })
 
 // 榜单派生数据
 const followedCount = computed(() => filteredModels.value.filter(item => item.is_followed).length)
-const categoryCount = computed(() => {
-  const set = new Set(filteredModels.value.map(item => item.category).filter(Boolean))
-  return set.size
-})
+
+// 各类型数量统计 (基于所有模型)
+const textModelCount = computed(() => allModels.value.filter(m => m.category === 'text').length)
+const imageModelCount = computed(() => allModels.value.filter(m => m.category === 'image').length)
+const multiModelCount = computed(() => allModels.value.filter(m => m.category === 'multimodal').length)
+const codeModelCount = computed(() => allModels.value.filter(m => m.category === 'code').length)
+
 const rankedModels = computed(() => filteredModels.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
 const paginatedRankedModels = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -243,7 +266,7 @@ const paginatedRankedModels = computed(() => {
 const rankedTop3 = computed(() => rankedModels.value.slice(0, 3))
 
 // 监听筛选条件变化，重置到第一页
-watch([searchQuery, categoryFilter], () => {
+watch([searchQuery, categoryFilter, onlyFollowed], () => {
   currentPage.value = 1
 })
 
@@ -286,6 +309,31 @@ const getCategoryType = (category) => {
   return types[category] || ''
 }
 
+// 参数量解析辅助函数
+const parseParamValue = (str) => {
+  if (!str) return 0
+  const s = str.toString().toUpperCase()
+  let mult = 1
+  if (s.includes('B')) mult = 1e9
+  else if (s.includes('M')) mult = 1e6
+  else if (s.includes('K')) mult = 1e3
+  
+  // 处理 8x7B 这种情况
+  if (s.includes('X')) {
+    const parts = s.split('X')
+    if (parts.length >= 2) {
+      const a = parseFloat(parts[0])
+      const b = parseFloat(parts[1])
+      if (!isNaN(a) && !isNaN(b)) {
+        return a * b * mult // 假设单位在最后
+      }
+    }
+  }
+  
+  const num = parseFloat(s)
+  return isNaN(num) ? 0 : num * mult
+}
+
 // 从后端获取所有模型（带关注状态）
 const fetchAllModels = async () => {
   loading.value = true
@@ -298,12 +346,39 @@ const fetchAllModels = async () => {
     } else if (Array.isArray(res.data)) {
       models = res.data
     }
-    // 为每个模型添加 followLoading 状态
-    allModels.value = models.map(item => ({
+    
+    // 预处理数据
+    models = models.map(item => ({
       ...item,
       is_followed: item.is_followed || false,
       followLoading: false
     }))
+
+    // 默认排序：
+    // 1. 关注的模型在前
+    // 2. 参数量大的模型在前
+    // 3. 更新时间较早的原则 (Ascending date)
+    models.sort((a, b) => {
+      // 1. Followed
+      if (a.is_followed !== b.is_followed) {
+        return a.is_followed ? -1 : 1
+      }
+      
+      // 2. Parameters (Large first)
+      const paramA = parseParamValue(a.parameter_size)
+      const paramB = parseParamValue(b.parameter_size)
+      if (Math.abs(paramA - paramB) > 1e3) { // Use a small epsilon or just check inequality
+         return paramB - paramA
+      }
+      
+      // 3. Updated At (Earlier first -> Ascending)
+      // "较早" means older date (smaller timestamp)
+      const dateA = new Date(a.updated_at || 0).getTime()
+      const dateB = new Date(b.updated_at || 0).getTime()
+      return dateA - dateB
+    })
+
+    allModels.value = models
   } catch (error) {
     console.error('获取模型列表失败:', error)
     ElMessage.error('获取模型列表失败')
@@ -322,6 +397,7 @@ const handleLocalFilter = () => {
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  onlyFollowed.value = false
   currentPage.value = 1
   fetchAllModels()
 }
@@ -514,30 +590,68 @@ onMounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 10px 12px;
-  transition: border-color 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-card:hover {
-  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
+.stat-card.type-total {
+  border-left: 3px solid var(--text-primary);
+}
+.stat-card.type-followed {
+  border-left: 3px solid #ffc107; /* Gold/Yellow for favorites */
+}
+.stat-card.type-text {
+  border-left: 3px solid var(--el-color-primary);
+}
+.stat-card.type-image {
+  border-left: 3px solid var(--el-color-success);
+}
+.stat-card.type-multi {
+  border-left: 3px solid var(--el-color-warning);
+}
+.stat-card.type-code {
+  border-left: 3px solid var(--el-color-info);
+}
+
+/* Add subtle colored backgrounds on hover */
+.stat-card.type-total:hover { border-color: var(--text-primary); }
+.stat-card.type-followed:hover { border-color: #ffc107; background: rgba(255, 193, 7, 0.05); }
+.stat-card.type-text:hover { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
+.stat-card.type-image:hover { border-color: var(--el-color-success); background: var(--el-color-success-light-9); }
+.stat-card.type-multi:hover { border-color: var(--el-color-warning); background: var(--el-color-warning-light-9); }
+.stat-card.type-code:hover { border-color: var(--el-color-info); background: var(--el-color-info-light-9); }
 
 .stat-card .label {
   font-size: 12px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .stat-card .value {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 6px 0 2px;
+  font-size: 24px;
+  font-weight: 800;
+  margin: 4px 0 2px;
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
 }
 
+/* Colorize values based on type */
+.stat-card.type-followed .value { color: #ffc107; }
+.stat-card.type-text .value { color: var(--el-color-primary); }
+.stat-card.type-image .value { color: var(--el-color-success); }
+.stat-card.type-multi .value { color: var(--el-color-warning); }
+.stat-card.type-code .value { color: var(--el-color-info); }
+
 .stat-card .hint {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .hero-right {
