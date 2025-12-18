@@ -21,6 +21,9 @@ urlpatterns = [
     
     # 模型排名模块
     path("api/rankings/", include("apps.rankings.urls")),
+    
+    # 评论系统模块
+    path("api/", include("apps.comments.urls")),
 
     path('api/users/', include('apps.users.urls')),
 ]
