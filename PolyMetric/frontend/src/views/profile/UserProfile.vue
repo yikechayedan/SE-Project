@@ -387,70 +387,18 @@ onMounted(async () => {
 
 .user-card {
   text-align: center;
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 16px;
   padding: 30px 20px;
 }
 
-.avatar-section {
-  margin-bottom: 15px;
-}
-
-.username {
-  margin: 0 0 10px;
-  font-size: 24px;
-  color: #303133;
-}
-
-.bio {
-  color: #606266;
-  font-size: 14px;
-  margin-bottom: 15px;
-  line-height: 1.6;
-}
-
-.email {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  color: #909399;
-  font-size: 13px;
-  margin-bottom: 20px;
-}
-
-.follow-btn {
-  margin-bottom: 20px;
-}
-
-.permission-status {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  padding-top: 15px;
-  border-top: 1px solid #ebeef5;
-}
-
-.permission-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  color: #909399;
-  padding: 8px 12px;
-  border-radius: 20px;
-  background: #f5f7fa;
-}
-
-.permission-item.active {
-  color: #67c23a;
-  background: #f0f9eb;
-}
+/* ... other styles ... */
 
 .content-card {
   height: 100%;
   min-height: 500px;
   border-radius: 16px;
+  background: var(--bg-secondary);
 }
 
 .locked-content {
@@ -459,17 +407,17 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 80px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .lock-big {
   margin-bottom: 20px;
-  color: #c0c4cc;
+  color: var(--border-color);
 }
 
 .locked-content h3 {
   margin: 0 0 10px;
-  color: #606266;
+  color: var(--text-primary);
 }
 
 .locked-content p {
@@ -524,13 +472,21 @@ onMounted(async () => {
 }
 
 .model-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--model-icon-gradient-dark);
+  color: var(--text-inverse);
+}
+html.light .model-icon {
+  background: var(--model-icon-gradient-light);
+  color: var(--text-inverse); /* still white for better contrast */
 }
 
 .dataset-icon {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
+  background: var(--dataset-icon-gradient-dark);
+  color: var(--text-inverse);
+}
+html.light .dataset-icon {
+  background: var(--dataset-icon-gradient-light);
+  color: var(--text-inverse); /* still white for better contrast */
 }
 
 .item-name {

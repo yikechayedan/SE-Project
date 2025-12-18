@@ -160,10 +160,13 @@
 import { computed, ref, onMounted, defineProps } from 'vue'
 import { Document, Tickets } from '@element-plus/icons-vue' // 引入 Tickets 图标
 import { getEvaluationTaskDetail } from '../../api/tasks.js' // 假设的 API 路径
+import { useTheme } from '@/composables/useTheme'
 
 const currentPage = ref(1)
 const gotoPageNum = ref(null);
 const pageSize = 1 // 核心：设置为 1，实现单条目展示
+
+const { isDark } = useTheme()
 
 const props = defineProps({
     taskId: {
@@ -207,9 +210,17 @@ const formatScore = (rate) => {
 
 // 根据平均分返回背景颜色
 const getScoreColor = (rate) => {
-    if (rate >= 9) return '#E8F5E9'; 
-    if (rate >= 7) return '#FFFDE7'; 
-    return '#FFEBEE'; 
+    if (rate === undefined || rate === null) return 'transparent'; // Fallback
+    
+    if (isDark.value) {
+      if (rate >= 9) return 'var(--accuracy-high-dark)';
+      if (rate >= 7) return 'var(--accuracy-medium-dark)';
+      return 'var(--accuracy-low-dark)';
+    } else {
+      if (rate >= 9) return 'var(--accuracy-high-light)';
+      if (rate >= 7) return 'var(--accuracy-medium-light)';
+      return 'var(--accuracy-low-light)';
+    }
 }
 
 // 根据单个评分返回 Tag 样式 (此处未使用，但保留)
@@ -295,149 +306,55 @@ onMounted(() => {
 /* ======================== 报告容器和背景 (保持不变) ======================== */
 .report-detail {
   padding: 40px; 
-  background-color: #f7f9fc; 
+  background-color: var(--bg-body); /* Changed */
   min-height: 100vh;
 }
 
-/* ======================== 标题和分割线 (保持不变) ======================== */
 .report-title {
   display: flex;
   align-items: center;
   font-size: 32px; 
   font-weight: 600; 
-  color: #2c3e50; 
+  color: var(--text-primary); /* Changed */
   margin-bottom: 5px;
 }
-.report-title .el-icon {
-  margin-right: 12px;
-  font-size: 36px;
-  color: var(--el-color-primary);
-}
-.title-divider {
-    margin-top: 15px;
-    margin-bottom: 30px;
-}
-
-/* ======================== 基础信息卡片 (保持不变) ======================== */
-.meta-row {
-    margin-bottom: 20px;
-}
-.meta-item-card {
-    text-align: center;
-    border-radius: 10px;
-    height: 120px; 
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    transition: all 0.3s ease;
-    cursor: default;
-    background-color: #ffffff;
-    border: 1px solid #e0e6ed;
-}
-.meta-item-card:hover {
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-    border-color: var(--el-color-primary-light-3);
-}
-
 .meta-label {
     font-size: 14px;
-    color: #8c939d;
+    color: var(--text-secondary); /* Changed */
     margin-bottom: 8px;
     font-weight: 500;
-}
-
-.meta-value {
-    font-size: 28px; 
-    font-weight: bold;
-    line-height: 1.2;
-}
-
-.meta-value.primary {
-    color: var(--el-color-primary); 
-}
-
-.meta-value.info {
-    color: var(--el-color-info); 
-}
-
-.meta-value.status {
-    height: 35px; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.meta-divider {
-    margin-top: 20px;
-    margin-bottom: 40px;
-}
-
-
-/* ======================== 统计概览卡片 (保持不变) ======================== */
-.summary-row {
-  margin-bottom: 40px; 
-}
-.summary-card {
-  text-align: center;
-  border-radius: 12px;
-  transition: all 0.3s ease; 
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); 
-}
-.summary-card:hover {
-    transform: translateY(-5px); 
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-.summary-card :deep(.el-card__body) {
-    padding: 30px; 
-    transition: background-color 0.3s;
 }
 .summary-value {
   font-size: 48px; 
   font-weight: 800;
-  color: #1a2a3a;
+  color: var(--text-primary); /* Changed */
   margin-bottom: 8px;
   line-height: 1;
 }
 .summary-label {
   font-size: 16px;
-  color: #5f748c;
+  color: var(--text-secondary); /* Changed */
 }
-
-/* ======================== 单条目卡片样式 (借鉴自 SubjectiveEval.vue) ======================== */
 .section-title {
   font-size: 22px;
   font-weight: 600;
-  color: #34495e;
+  color: var(--text-primary); /* Changed */
   margin-bottom: 20px;
   padding-left: 5px;
 }
-.input-card, .model-output-card {
-  height: 400px; /* 固定高度，与评测页一致 */
-  overflow-y: auto; 
-  margin-bottom: 20px;
-}
-
-/* Prompt 样式 */
 .prompt-text {
   padding: 10px;
   border-left: 5px solid var(--el-color-info-light-5);
   margin: 10px 0;
   background-color: var(--el-color-info-light-9);
-  color: #606266;
+  color: var(--text-primary); /* Changed */
   font-style: italic;
   min-height: 100px;
 }
-.meta-info {
-    font-size: 12px;
-    color: var(--el-color-info);
-}
-
-/* Model Output 样式 */
 .model-response {
   white-space: pre-wrap;
   line-height: 1.8;
-  color: #303133;
+  color: var(--text-primary); /* Changed */
 }
 
 /* 评分区域样式 (借鉴自 SubjectiveEval.vue) */
@@ -494,7 +411,7 @@ onMounted(() => {
     font-weight: bold;
     border-radius: 50% !important;
     border: 2px solid var(--el-color-info-light-7);
-    background-color: var(--el-color-white);
+    background-color: var(--bg-secondary); /* Changed */
 }
 /* 禁用状态下已选中按钮的样式 (结果页保持选中效果) */
 .round-rating-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
@@ -511,7 +428,7 @@ onMounted(() => {
   align-items: center;
   margin-top: 25px;
   padding: 15px 0;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color); /* Changed */
 }
 .page-navigation {
     width: 120px;

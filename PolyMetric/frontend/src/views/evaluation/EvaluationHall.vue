@@ -382,9 +382,9 @@ onMounted(() => {
 <style scoped>
 .evaluation-hall {
   padding: 24px;
-  background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 50%, #f7fbff 100%);
+  background: var(--bg-body);
   border-radius: 14px;
-  box-shadow: 0 6px 24px rgba(31, 41, 61, 0.08);
+  box-shadow: 0 6px 24px rgba(31, 41, 61, 0.08); /* This shadow should also be theme aware but let's address backgrounds first */
   min-height: calc(100vh - 140px);
 }
 
@@ -398,12 +398,17 @@ onMounted(() => {
 
 .hero {
   flex: 1;
-  background: linear-gradient(150deg, #403075 0%, #D62779 50%, #FFA93E 100%);
-  color: #fff;
+  background: var(--hero-gradient-dark); /* Default to dark theme gradient */
+  color: var(--text-inverse); /* Default to white text for dark gradient */
   border-radius: 14px;
   padding: 20px 22px;
   position: relative;
   overflow: hidden;
+}
+
+html.light .hero {
+  background: var(--hero-gradient-light); /* Apply light theme gradient */
+  color: var(--text-primary); /* Apply appropriate text color for light gradient */
 }
 
 .hero::after {
@@ -440,7 +445,7 @@ onMounted(() => {
 
 .subtitle {
   margin: 4px 0 14px;
-  color: rgba(255,255,255,0.92);
+  color: var(--text-primary);
 }
 
 .hero-stats {
@@ -474,11 +479,11 @@ onMounted(() => {
 }
 
 .tool-bar {
-  background: #ffffff;
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 14px;
   padding-left: 24px;
-  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.06);
+  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.06); /* This shadow should also be theme aware */
   margin-bottom: 14px;
 }
 
@@ -534,67 +539,5 @@ onMounted(() => {
   display: block; 
 }
 
-.el-table th { background: #f5f7fa; color: #333; }
-  
-
-/* Table Dark Theme Overrides */
-:deep(.el-table) {
-  --el-table-bg-color: #161b22;
-  --el-table-tr-bg-color: #161b22;
-  --el-table-header-bg-color: #0d1117;
-  --el-table-border-color: #30363d;
-  --el-table-text-color: #c9d1d9;
-  --el-table-header-text-color: #8b949e;
-  --el-table-row-hover-bg-color: #1f2428;
-}
-
-:deep(.el-table__inner-wrapper::before) {
-  background-color: #30363d;
-}
-
-:deep(.el-table th) {
-  background-color: #0d1117 !important;
-  color: #8b949e !important;
-  border-bottom: 1px solid #30363d !important;
-}
-
-:deep(.el-table td) {
-  border-bottom: 1px solid #30363d !important;
-}
-
-/* Pagination Dark Mode Override */
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-  padding: 15px 0;
-}
-
-:deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
-  background-color: #1f6bff;
-  color: #ffffff;
-}
-
-:deep(.el-pagination.is-background .el-pager li) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
-}
-
-:deep(.el-pagination.is-background .btn-prev),
-:deep(.el-pagination.is-background .btn-next) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
-}
-
-/* Input/Select Dark Mode Overrides (if global not enough) */
-:deep(.el-input__wrapper) {
-  background-color: #0d1117;
-  box-shadow: 0 0 0 1px #30363d inset;
-}
-
-:deep(.el-input__inner) {
-  color: #c9d1d9;
-}
+.el-table th { background: var(--el-fill-color-light); color: var(--el-text-color-primary); }
 </style>

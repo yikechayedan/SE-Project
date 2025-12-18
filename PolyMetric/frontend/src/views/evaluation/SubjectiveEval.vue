@@ -424,7 +424,7 @@ watch(currentPendingIndex, (newIndex) => {
 /* 保持原有样式不变 */
 .evaluation-page {
   padding: 20px;
-  background-color: #f0f2f5;
+  background-color: var(--bg-body);
   min-height: calc(100vh - 50px);
 }
 
@@ -440,7 +440,7 @@ watch(currentPendingIndex, (newIndex) => {
 }
 .title {
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 /* --- 内容区域 --- */
@@ -472,7 +472,7 @@ watch(currentPendingIndex, (newIndex) => {
 .model-response {
   white-space: pre-wrap;
   line-height: 1.8;
-  color: #303133;
+  color: var(--text-primary);
 }
 .model-response ol {
     padding-left: 20px;
@@ -484,7 +484,7 @@ watch(currentPendingIndex, (newIndex) => {
 .content-placeholder {
     padding: 20px;
     text-align: center;
-    color: #909399;
+    color: var(--text-secondary);
 }
 
 
@@ -550,7 +550,7 @@ watch(currentPendingIndex, (newIndex) => {
     font-weight: bold;
     border-radius: 50% !important;
     border: 2px solid var(--el-color-info-light-7);
-    background-color: var(--el-color-white);
+    background-color: var(--bg-secondary);
     transition: all 0.2s ease;
 }
 
@@ -573,7 +573,7 @@ watch(currentPendingIndex, (newIndex) => {
   align-items: center;
   margin-top: 25px;
   padding: 15px 0;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
 }
 .page-navigation {
     width: 120px;
@@ -602,7 +602,7 @@ watch(currentPendingIndex, (newIndex) => {
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     padding: 20px 10px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .item-id-button {

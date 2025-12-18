@@ -84,9 +84,12 @@
 import { computed, ref, onMounted, defineProps } from 'vue'
 import { Document, Check, Close } from '@element-plus/icons-vue'
 import { getEvaluationTaskDetail } from '@/api/tasks.js'
+import { useTheme } from '@/composables/useTheme'
 
 const currentPage = ref(1)
 const pageSize = 10
+
+const { isDark } = useTheme()
 
 const props = defineProps({
     taskId: {
@@ -116,7 +119,7 @@ const paginatedItems = computed(() => {
     return reportData.value.data.slice(start, end);
 });
 
-// ===================== 辅助函数 (保持不变) =====================
+// =====================辅助函数 (修改 getAccuracyColor) =====================
 const formatTime = (time) => {
   if (!time) return 'N/A'
   return new Date(time).toLocaleString('zh-CN', { 
@@ -132,9 +135,17 @@ const formatAccuracy = (rate) => {
 }
 
 const getAccuracyColor = (rate) => {
-    if (rate >= 0.9) return '#E8F5E9'; // 高分浅绿
-    if (rate >= 0.7) return '#FFFDE7'; // 中分浅黄
-    return '#FFEBEE'; // 低分浅红
+    if (rate === undefined || rate === null) return 'transparent'; // Fallback
+    
+    if (isDark.value) {
+      if (rate >= 0.9) return 'var(--accuracy-high-dark)';
+      if (rate >= 0.7) return 'var(--accuracy-medium-dark)';
+      return 'var(--accuracy-low-dark)';
+    } else {
+      if (rate >= 0.9) return 'var(--accuracy-high-light)';
+      if (rate >= 0.7) return 'var(--accuracy-medium-light)';
+      return 'var(--accuracy-low-light)';
+    }
 }
 
 // ===================== 数据获取逻辑 (保持不变) =====================
@@ -175,7 +186,7 @@ onMounted(() => {
 /* ======================== 报告容器和背景 ======================== */
 .report-detail {
   padding: 40px; 
-  background-color: #f7f9fc; 
+  background-color: var(--bg-body); 
   min-height: 100vh;
 }
 
@@ -185,7 +196,7 @@ onMounted(() => {
   align-items: center;
   font-size: 32px; 
   font-weight: 600; 
-  color: #2c3e50; 
+  color: var(--text-primary); 
   margin-bottom: 5px;
 }
 .report-title .el-icon {
@@ -211,18 +222,18 @@ onMounted(() => {
     justify-content: center;
     transition: all 0.3s ease;
     cursor: default;
-    background-color: #ffffff;
-    border: 1px solid #e0e6ed;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 .meta-item-card:hover {
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 15px var(--bg-overlay);
     transform: translateY(-2px);
     border-color: var(--el-color-primary-light-3);
 }
 
 .meta-label {
     font-size: 14px;
-    color: #8c939d;
+    color: var(--text-secondary);
     margin-bottom: 8px;
     font-weight: 500;
 }
@@ -277,20 +288,20 @@ onMounted(() => {
 .summary-value {
   font-size: 48px; 
   font-weight: 800;
-  color: #1a2a3a;
+  color: var(--text-primary);
   margin-bottom: 8px;
   line-height: 1;
 }
 .summary-label {
   font-size: 16px;
-  color: #5f748c;
+  color: var(--text-secondary);
 }
 
 /* ======================== 详细条目表格和分页 (保持不变) ======================== */
 .section-title {
   font-size: 22px;
   font-weight: 600;
-  color: #34495e;
+  color: var(--text-primary);
   margin-bottom: 20px;
   padding-left: 5px;
 }
@@ -299,8 +310,8 @@ onMounted(() => {
     overflow: hidden; 
 }
 .detail-table :deep(.el-table__header-wrapper th) {
-    background-color: #ecf0f1; 
-    color: #34495e;
+    background-color: var(--bg-tertiary); 
+    color: var(--text-primary);
     font-weight: bold;
 }
 
@@ -339,24 +350,5 @@ onMounted(() => {
 }
 .incorrect-icon {
   color: #f56c6c;
-}
-
-/* Descriptions Dark Mode Override */
-:deep(.el-descriptions__label) {
-  background-color: #161b22 !important;
-  color: #8b949e !important;
-}
-
-:deep(.el-descriptions__content) {
-  background-color: #0d1117 !important;
-  color: #c9d1d9 !important;
-}
-
-:deep(.el-descriptions__cell) {
-  border-color: #30363d !important;
-}
-
-:deep(.el-divider) {
-  border-color: #30363d;
 }
 </style>

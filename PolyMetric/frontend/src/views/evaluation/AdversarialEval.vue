@@ -393,7 +393,7 @@ watch(currentPendingIndex, (newIndex) => {
 <style scoped>
 .evaluation-page {
   padding: 20px;
-  background-color: #f0f2f5;
+  background-color: var(--bg-body);
   min-height: calc(100vh - 50px);
 }
 
@@ -409,59 +409,28 @@ watch(currentPendingIndex, (newIndex) => {
 }
 .title {
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
 }
-
-/* --- Prompt 区域 --- */
-.prompt-card {
-    margin-bottom: 20px;
-}
-.prompt-title {
-    color: var(--el-color-primary);
-}
+/* ... */
 .prompt-text {
   padding: 10px;
   border-left: 5px solid var(--el-color-info-light-5);
   margin: 10px 0;
   background-color: var(--el-color-info-light-9);
-  color: #606266;
+  color: var(--text-primary);
   font-style: italic;
   min-height: 100px;
 }
-.meta-info {
-    font-size: 12px;
-    color: var(--el-color-info);
-}
-
-/* --- 模型输出比较区域 --- */
-.model-comparison {
-    margin-bottom: 20px;
-}
-.model-output-card {
-  height: 450px; 
-  overflow-y: auto; 
-}
-
-.model-a-title {
-    color: var(--el-color-success);
-}
-.model-b-title {
-    color: var(--el-color-warning);
-}
-
+/* ... */
 .model-response {
   line-height: 1.6;
-  color: #303133;
-}
-.model-response ol {
-    padding-left: 20px;
+  color: var(--text-primary);
 }
 .content-placeholder {
     padding: 20px;
     text-align: center;
-    color: #909399;
+    color: var(--text-secondary);
 }
-
 /* --- 评判区域 --- */
 .rating-card {
   margin-top: 5px;
@@ -480,7 +449,7 @@ watch(currentPendingIndex, (newIndex) => {
   align-items: center;
   margin-top: 25px;
   padding: 15px 0;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
 }
 .page-navigation {
     width: 120px;
@@ -509,7 +478,7 @@ watch(currentPendingIndex, (newIndex) => {
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     padding: 20px 10px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .item-id-button {

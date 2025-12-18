@@ -513,7 +513,7 @@ onMounted(() => {
   justify-content: center;
   margin-top: 20px;
   padding: 15px 0;
-
+}
 /* Table Dark Theme Overrides */
 :deep(.el-table) {
   --el-table-bg-color: #161b22;

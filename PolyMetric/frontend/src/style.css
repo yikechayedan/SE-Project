@@ -15,6 +15,20 @@
   
   /* Gradients */
   --header-gradient: linear-gradient(180deg, rgba(31, 41, 55, 0.5) 0%, rgba(22, 27, 34, 0) 100%);
+  --hero-gradient-dark: linear-gradient(150deg, #403075 0%, #D62779 50%, #FFA93E 100%);
+  --hero-gradient-light: linear-gradient(150deg, #bbd6f5 0%, #f7d9e8 50%, #ffe9d1 100%);
+  --model-icon-gradient-dark: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --model-icon-gradient-light: linear-gradient(135deg, #a7bceb 0%, #c1aed4 100%);
+  --dataset-icon-gradient-dark: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --dataset-icon-gradient-light: linear-gradient(135deg, #fcd0f4 0%, #fab0b9 100%);
+
+  --accuracy-high-dark: #2a5a2e; /* Dark theme high accuracy */
+  --accuracy-medium-dark: #6a5923; /* Dark theme medium accuracy */
+  --accuracy-low-dark: #7a2a2a; /* Dark theme low accuracy */
+
+  --accuracy-high-light: #E8F5E9; /* Light theme high accuracy */
+  --accuracy-medium-light: #FFFDE7; /* Light theme medium accuracy */
+  --accuracy-low-light: #FFEBEE; /* Light theme low accuracy */
 
   /* Borders */
   --border-color: #30363d;
