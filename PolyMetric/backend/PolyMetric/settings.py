@@ -57,7 +57,9 @@ INSTALLED_APPS = [
     
     # 模型排名模块
     "apps.rankings.apps.RankingsConfig",
-
+    
+    # 评论系统模块
+    "apps.comments.apps.CommentsConfig",
 
     # 项目应用
     'apps.users',
