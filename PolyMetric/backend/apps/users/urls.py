@@ -7,7 +7,7 @@ from .views import (
     ForgotPasswordView, VerifyCodeView, ResetPasswordView,
     AvatarUploadView,
     UserPublicView, UserFollowView, FollowedUsersListView,
-    PrivacySettingView, CurrentUserView
+    PrivacySettingView, CurrentUserView, user_stats
 )
 
 urlpatterns = [
@@ -38,4 +38,5 @@ urlpatterns = [
     path('followed/', FollowedUsersListView.as_view(), name='user-followed-list'),  # 改为测试用例的名称
     path('privacy/', PrivacySettingView.as_view(), name='user-privacy-update'), 
     path("me/", CurrentUserView.as_view(), name="user-me"),
+    path("stats/", user_stats, name="user_stats"),
 ]
