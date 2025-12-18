@@ -47,11 +47,13 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
             "creator_username",
             "dataset",
             "dataset_name",
+            "judge_type",
             "method",
             "myModel",        # 前端传入 myModel = My_Model 的 ID
             "myModel_name",
             "myModel_2",        
-            "myModel_2_name",   
+            "myModel_2_name",  
+            "judge_model",  
             "status",
             "accuracy",
             "score",
@@ -70,16 +72,36 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
-        method = data.get('method', self.instance.method if self.instance else None)
-        my_model = data.get('myModel')
+        method = data.get("method", self.instance.method if self.instance else None)
+        judge_type = data.get(
+            "judge_type",
+            self.instance.judge_type if self.instance else "human"
+        )
 
-        # 如果是客观评测或主观评测，myModel 必须存在
-        if method in ['objective', 'subjective'] and not my_model:
-            raise serializers.ValidationError({"myModel": "客观评测和主观评测任务必须选择一个评测模型。"})
+        # 允许使用裁判的评测类型
+        if method not in ("subjective", "adversarial"):
+            if judge_type != "human":
+                raise serializers.ValidationError({
+                    "judge_type": "Only subjective/adversarial tasks can set judge_type"
+                })
 
-        # 如果是对抗评测，则 myModel 允许为空。
+        # judge_type 合法性
+        if method in ("subjective", "adversarial"):
+            if judge_type not in ("human", "model"):
+                raise serializers.ValidationError({
+                    "judge_type": "judge_type must be human or model"
+                })
+
+        # ⭐ 只有「模型裁判」才强制要求 judge_model
+        if judge_type == "model":
+            judge_model = data.get("judge_model") or getattr(self.instance, "judge_model", None)
+            if not judge_model:
+                raise serializers.ValidationError({
+                    "judge_model": "模型裁判模式下必须指定裁判模型"
+                })
 
         return data
+
 
     def create(self, validated_data):
         # 保险起见，从 context 中再写一次 creator
