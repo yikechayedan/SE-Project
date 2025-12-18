@@ -10,8 +10,13 @@
         <div class="hero-stats">
           <div class="stat-card type-total">
             <div class="label">已收录</div>
-            <div class="value">{{ filteredModels.length }}</div>
+            <div class="value">{{ allModels.length }}</div>
             <div class="hint">模型数量</div>
+          </div>
+          <div class="stat-card type-star">
+            <div class="label">总点赞</div>
+            <div class="value">{{ totalStars }}</div>
+            <div class="hint">全站热度</div>
           </div>
           <div class="stat-card type-followed">
             <div class="label">已关注</div>
@@ -52,6 +57,7 @@
                   {{ getCategoryLabel(item.category) }}
                 </el-tag>
                 <el-tag size="small" effect="plain">{{ item.parameter_size || '参数未知' }}</el-tag>
+                <span class="mini-star"><el-icon><StarFilled /></el-icon>{{ item.star_count }}</span>
               </div>
             </div>
             <el-button link type="primary" size="small" @click="showDetail(item)">详情</el-button>
@@ -121,8 +127,11 @@
           </div>
           <div class="metrics">
             <div class="metric">
-              <div class="metric-label">关注</div>
-              <div class="metric-value" :class="{ on: item.is_followed }">{{ item.is_followed ? '已关注' : '未关注' }}</div>
+              <div class="metric-label">点赞热度</div>
+              <div class="metric-value star-val">
+                <el-icon><StarFilled /></el-icon>
+                <span>{{ item.star_count }}</span>
+              </div>
             </div>
             <div class="metric">
               <div class="metric-label">最近更新</div>
@@ -132,9 +141,19 @@
           <div class="actions">
             <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
             <el-button
+              :type="item.is_starred ? 'danger' : 'default'"
+              size="small"
+              :icon="item.is_starred ? StarFilled : Star"
+              @click="handleToggleStar(item)"
+              :loading="item.starLoading"
+              class="star-btn"
+            >
+              {{ item.is_starred ? '已点赞' : '点赞' }}
+            </el-button>
+            <el-button
               :type="item.is_followed ? 'warning' : 'info'"
               size="small"
-              :icon="item.is_followed ? StarFilled : Star"
+              :icon="item.is_followed ? Opportunity : Star"
               @click="handleToggleFollow(item)"
               :loading="item.followLoading"
             >
@@ -173,6 +192,12 @@
       </div>
       
       <div class="detail-content" v-else-if="modelDetail">
+        <div class="detail-header-stats">
+           <div class="d-stat">
+              <span class="label">热度</span>
+              <span class="value"><el-icon><StarFilled /></el-icon> {{ modelDetail.star_count }}</span>
+           </div>
+        </div>
         <el-descriptions :column="2" border size="default">
           <el-descriptions-item label="模型名称">{{ modelDetail.name }}</el-descriptions-item>
           <el-descriptions-item label="公司/组织">{{ modelDetail.company || '未知' }}</el-descriptions-item>
@@ -195,8 +220,16 @@
       <template #footer>
         <el-button @click="showDetailDialog = false">关闭</el-button>
         <el-button 
+          :type="modelDetail?.is_starred ? 'danger' : 'default'" 
+          :icon="modelDetail?.is_starred ? StarFilled : Star"
+          @click="handleToggleStarInDialog"
+          :loading="dialogStarLoading"
+        >
+          {{ modelDetail?.is_starred ? '取消点赞' : '点赞' }}
+        </el-button>
+        <el-button 
           :type="modelDetail?.is_followed ? 'warning' : 'info'" 
-          :icon="modelDetail?.is_followed ? StarFilled : Star"
+          :icon="modelDetail?.is_followed ? Opportunity : Star"
           @click="handleToggleFollowInDialog"
           :loading="dialogFollowLoading"
         >
@@ -208,8 +241,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Box, Loading, Star, StarFilled } from '@element-plus/icons-vue'
-import { getAllModels, getModelDetail, followModel, unfollowModel } from '@/api/models'
+import { Search, Refresh, Box, Loading, Star, StarFilled, Opportunity } from '@element-plus/icons-vue'
+import { getAllModels, getModelDetail, followModel, unfollowModel, starModel, unstarModel } from '@/api/models'
 
 // 状态
 const loading = ref(false)
@@ -226,6 +259,7 @@ const pageSize = ref(5)
 const showDetailDialog = ref(false)
 const detailLoading = ref(false)
 const dialogFollowLoading = ref(false)
+const dialogStarLoading = ref(false)
 const currentModel = ref(null)
 const modelDetail = ref(null)
 
@@ -249,7 +283,8 @@ const filteredModels = computed(() => {
 })
 
 // 榜单派生数据
-const followedCount = computed(() => filteredModels.value.filter(item => item.is_followed).length)
+const followedCount = computed(() => allModels.value.filter(item => item.is_followed).length)
+const totalStars = computed(() => allModels.value.reduce((acc, m) => acc + (m.star_count || 0), 0))
 
 // 各类型数量统计 (基于所有模型)
 const textModelCount = computed(() => allModels.value.filter(m => m.category === 'text').length)
@@ -351,7 +386,10 @@ const fetchAllModels = async () => {
     models = models.map(item => ({
       ...item,
       is_followed: item.is_followed || false,
-      followLoading: false
+      is_starred: item.is_starred || false,
+      star_count: item.star_count || 0,
+      followLoading: false,
+      starLoading: false
     }))
 
     // 默认排序：
@@ -400,6 +438,74 @@ const resetFilter = () => {
   onlyFollowed.value = false
   currentPage.value = 1
   fetchAllModels()
+}
+
+// 切换点赞状态
+const handleToggleStar = async (row) => {
+  const originalItem = allModels.value.find(m => m.id === row.id)
+  if (!originalItem) return
+  
+  originalItem.starLoading = true
+  try {
+    if (originalItem.is_starred) {
+      const res = await unstarModel(originalItem.id)
+      if (res.data?.code === 200) {
+        originalItem.is_starred = false
+        // 后端应返回更新后的数量，如果没返回则前端估算
+        originalItem.star_count = res.data.data?.star_count ?? (originalItem.star_count - 1)
+        ElMessage.success('已取消点赞')
+      }
+    } else {
+      const res = await starModel(originalItem.id)
+      if (res.data?.code === 201 || res.data?.code === 200) {
+        originalItem.is_starred = true
+        originalItem.star_count = res.data.data?.star_count ?? (originalItem.star_count + 1)
+        ElMessage.success('感谢点赞！')
+      }
+    }
+  } catch (error) {
+    if (error.response?.status === 401) ElMessage.warning('请先登录')
+    else ElMessage.error('操作失败')
+  } finally {
+    originalItem.starLoading = false
+  }
+}
+
+const handleToggleStarInDialog = async () => {
+  if (!modelDetail.value) return
+  dialogStarLoading.value = true
+  try {
+    if (modelDetail.value.is_starred) {
+      const res = await unstarModel(modelDetail.value.id)
+      if (res.data?.code === 200) {
+        modelDetail.value.is_starred = false
+        modelDetail.value.star_count = res.data.data?.star_count ?? (modelDetail.value.star_count - 1)
+        const item = allModels.value.find(m => m.id === modelDetail.value.id)
+        if (item) {
+          item.is_starred = false
+          item.star_count = modelDetail.value.star_count
+        }
+        ElMessage.success('已取消点赞')
+      }
+    } else {
+      const res = await starModel(modelDetail.value.id)
+      if (res.data?.code === 201 || res.data?.code === 200) {
+        modelDetail.value.is_starred = true
+        modelDetail.value.star_count = res.data.data?.star_count ?? (modelDetail.value.star_count + 1)
+        const item = allModels.value.find(m => m.id === modelDetail.value.id)
+        if (item) {
+          item.is_starred = true
+          item.star_count = modelDetail.value.star_count
+        }
+        ElMessage.success('感谢点赞！')
+      }
+    }
+  } catch (error) {
+    if (error.response?.status === 401) ElMessage.warning('请先登录')
+    else ElMessage.error('操作失败')
+  } finally {
+    dialogStarLoading.value = false
+  }
 }
 
 // 切换关注状态（列表中）
@@ -495,7 +601,9 @@ const showDetail = async (row) => {
     if (res.data?.code === 200 && res.data.data) {
       modelDetail.value = {
         ...res.data.data,
-        is_followed: row.is_followed // 从列表中继承关注状态
+        is_followed: row.is_followed, // 从列表中继承关注状态
+        is_starred: row.is_starred,
+        star_count: row.star_count
       }
     } else {
       modelDetail.value = row
@@ -603,8 +711,69 @@ onMounted(() => {
 .stat-card.type-total {
   border-left: 3px solid var(--text-primary);
 }
+.stat-card.type-star {
+  border-left: 3px solid #f56c6c; /* Danger/Red for stars */
+}
 .stat-card.type-followed {
   border-left: 3px solid #ffc107; /* Gold/Yellow for favorites */
+}
+
+/* ... existing styles ... */
+
+.stat-card.type-star:hover { border-color: #f56c6c; background: rgba(245, 108, 108, 0.05); }
+
+/* ... existing styles ... */
+
+.stat-card.type-star .value { color: #f56c6c; }
+
+.mini-star {
+  font-size: 12px;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.star-val {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #f56c6c !important;
+}
+
+.star-btn:hover {
+  background-color: #f56c6c22 !important;
+}
+
+.detail-header-stats {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.d-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.d-stat .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.d-stat .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f56c6c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .stat-card.type-text {
   border-left: 3px solid var(--el-color-primary);
