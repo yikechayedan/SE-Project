@@ -291,7 +291,7 @@ def run_subjective_evaluation(task: EvaluationTask):
         )
         item.predicted_answer = answer
 
-        # ② 再让模型给自己打分（下一步可换裁判模型）
+        # ② 再让模型给自己打分
         score_prompt = build_subjective_prompt(
             question=item.content,
             model_answer=answer,
