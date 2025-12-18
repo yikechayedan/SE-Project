@@ -141,6 +141,15 @@
           <div class="actions">
             <el-button type="primary" size="small" @click="showDetail(item)">详情</el-button>
             <el-button
+              type="primary"
+              plain
+              size="small"
+              :icon="ChatDotRound"
+              @click="handleShowComments(item)"
+            >
+              评论
+            </el-button>
+            <el-button
               :type="item.is_starred ? 'danger' : 'default'"
               size="small"
               :icon="item.is_starred ? StarFilled : Star"
@@ -178,6 +187,12 @@
     </div>
   </div>
 
+  <!-- 评论组件 -->
+  <CommentSection
+    v-model="showCommentDialog"
+    target-type="model"
+    :target-id="currentCommentModelId"
+  />
 
     <!-- 模型详情弹窗 -->
     <el-dialog 
@@ -241,8 +256,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Box, Loading, Star, StarFilled, Opportunity } from '@element-plus/icons-vue'
+import { Search, Refresh, Box, Loading, Star, StarFilled, Opportunity, ChatDotRound } from '@element-plus/icons-vue'
 import { getAllModels, getModelDetail, followModel, unfollowModel, starModel, unstarModel } from '@/api/models'
+import CommentSection from '@/components/common/CommentSection.vue'
 
 // 状态
 const loading = ref(false)
@@ -262,6 +278,16 @@ const dialogFollowLoading = ref(false)
 const dialogStarLoading = ref(false)
 const currentModel = ref(null)
 const modelDetail = ref(null)
+
+// 评论弹窗
+const showCommentDialog = ref(false)
+const currentCommentModelId = ref(null)
+
+// 显示评论
+const handleShowComments = (row) => {
+  currentCommentModelId.value = row.id
+  showCommentDialog.value = true
+}
 
 // 本地筛选后的模型
 const filteredModels = computed(() => {
@@ -909,7 +935,7 @@ onMounted(() => {
 
 .board-row {
   display: grid;
-  grid-template-columns: 80px 1.3fr 1fr 220px;
+  grid-template-columns: 80px 1.3fr 1fr 350px;
   gap: 16px;
   align-items: center;
   background: var(--bg-secondary);
