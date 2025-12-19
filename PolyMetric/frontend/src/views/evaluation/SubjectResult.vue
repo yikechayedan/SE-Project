@@ -295,7 +295,7 @@ onMounted(() => {
 /* ======================== 报告容器和背景 (保持不变) ======================== */
 .report-detail {
   padding: 40px; 
-  background-color: #f7f9fc; 
+  background-color: var(--bg-body); 
   min-height: 100vh;
 }
 
@@ -305,7 +305,7 @@ onMounted(() => {
   align-items: center;
   font-size: 32px; 
   font-weight: 600; 
-  color: #2c3e50; 
+  color: var(--text-primary); 
   margin-bottom: 5px;
 }
 .report-title .el-icon {
@@ -331,8 +331,8 @@ onMounted(() => {
     justify-content: center;
     transition: all 0.3s ease;
     cursor: default;
-    background-color: #ffffff;
-    border: 1px solid #e0e6ed;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 .meta-item-card:hover {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
@@ -342,7 +342,7 @@ onMounted(() => {
 
 .meta-label {
     font-size: 14px;
-    color: #8c939d;
+    color: var(--text-secondary);
     margin-bottom: 8px;
     font-weight: 500;
 }
@@ -383,6 +383,8 @@ onMounted(() => {
   border-radius: 12px;
   transition: all 0.3s ease; 
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); 
+  /* Fallback or let inline style override, but default border needed */
+  border: 1px solid var(--border-color);
 }
 .summary-card:hover {
     transform: translateY(-5px); 
@@ -395,7 +397,7 @@ onMounted(() => {
 .summary-value {
   font-size: 48px; 
   font-weight: 800;
-  color: #1a2a3a;
+  color: #1a2a3a; /* Keeping high contrast dark color for light bg card, or update if card bg is dark */
   margin-bottom: 8px;
   line-height: 1;
 }
@@ -408,7 +410,7 @@ onMounted(() => {
 .section-title {
   font-size: 22px;
   font-weight: 600;
-  color: #34495e;
+  color: var(--text-primary);
   margin-bottom: 20px;
   padding-left: 5px;
 }
@@ -416,6 +418,8 @@ onMounted(() => {
   height: 400px; /* 固定高度，与评测页一致 */
   overflow-y: auto; 
   margin-bottom: 20px;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 
 /* Prompt 样式 */
@@ -423,8 +427,8 @@ onMounted(() => {
   padding: 10px;
   border-left: 5px solid var(--el-color-info-light-5);
   margin: 10px 0;
-  background-color: var(--el-color-info-light-9);
-  color: #606266;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
   font-style: italic;
   min-height: 100px;
 }
@@ -437,12 +441,14 @@ onMounted(() => {
 .model-response {
   white-space: pre-wrap;
   line-height: 1.8;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 /* 评分区域样式 (借鉴自 SubjectiveEval.vue) */
 .rating-card {
   margin-top: 20px;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .rating-title {
     color: var(--el-color-danger);
@@ -493,8 +499,9 @@ onMounted(() => {
     font-size: 16px;
     font-weight: bold;
     border-radius: 50% !important;
-    border: 2px solid var(--el-color-info-light-7);
-    background-color: var(--el-color-white);
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 /* 禁用状态下已选中按钮的样式 (结果页保持选中效果) */
 .round-rating-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
@@ -511,7 +518,7 @@ onMounted(() => {
   align-items: center;
   margin-top: 25px;
   padding: 15px 0;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
 }
 .page-navigation {
     width: 120px;
@@ -528,6 +535,13 @@ onMounted(() => {
     height: 30px;
     line-height: 30px;
     font-size: 14px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+.custom-pager :deep(.el-pager li.is-active) {
+    background-color: var(--el-color-primary) !important;
+    color: #ffffff !important;
 }
 
 /* 移除原表格的样式，只保留必要的 */

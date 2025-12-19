@@ -336,7 +336,7 @@ onMounted(initData);
 /* 保持原有样式不变 */
 .evaluation-page {
   padding: 20px;
-  background-color: #f0f2f5;
+  background-color: var(--bg-body);
   min-height: calc(100vh - 50px);
 }
 
@@ -352,7 +352,7 @@ onMounted(initData);
 }
 .title {
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 /* --- 内容区域 --- */
@@ -360,6 +360,8 @@ onMounted(initData);
   height: 400px; 
   overflow-y: auto; 
   margin-bottom: 20px;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .section-title {
   font-size: 16px;
@@ -371,8 +373,8 @@ onMounted(initData);
   padding: 10px;
   border-left: 5px solid var(--el-color-info-light-5);
   margin: 10px 0;
-  background-color: var(--el-color-info-light-9);
-  color: #606266;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
   font-style: italic;
   min-height: 100px;
 }
@@ -384,7 +386,7 @@ onMounted(initData);
 .model-response {
   white-space: pre-wrap;
   line-height: 1.8;
-  color: #303133;
+  color: var(--text-primary);
 }
 .model-response ol {
     padding-left: 20px;
@@ -396,13 +398,15 @@ onMounted(initData);
 .content-placeholder {
     padding: 20px;
     text-align: center;
-    color: #909399;
+    color: var(--text-secondary);
 }
 
 
 /* --- 评分区域 --- */
 .rating-card {
   margin-top: 20px;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .rating-title {
     color: var(--el-color-danger);
@@ -461,14 +465,15 @@ onMounted(initData);
     font-size: 16px;
     font-weight: bold;
     border-radius: 50% !important;
-    border: 2px solid var(--el-color-info-light-7);
-    background-color: var(--el-color-white);
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
     transition: all 0.2s ease;
 }
 
 .round-rating-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
     background-color: var(--el-color-primary) !important;
-    color: var(--el-color-white) !important;
+    color: #ffffff !important;
     border-color: var(--el-color-primary) !important;
     transform: scale(1.05);
 }
@@ -485,7 +490,7 @@ onMounted(initData);
   align-items: center;
   margin-top: 25px;
   padding: 15px 0;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
 }
 .page-navigation {
     width: 120px;
@@ -506,6 +511,14 @@ onMounted(initData);
     height: 30px;
     line-height: 30px;
     font-size: 14px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.custom-pager :deep(.el-pager li.is-active) {
+    background-color: var(--el-color-primary) !important;
+    color: #ffffff !important;
 }
 
 /* --- 抽屉样式 --- */
@@ -514,7 +527,7 @@ onMounted(initData);
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     padding: 20px 10px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .item-id-button {
