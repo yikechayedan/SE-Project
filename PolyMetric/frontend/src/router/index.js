@@ -28,7 +28,7 @@ const routes = [
     props: true // ⬅️ 关键：启用 props 模式，可以直接在组件内接收 taskId
   },
   {
-    path: '/evaluation/subjective/:taskId', 
+    path: '/evaluation/subjective/:taskId/:reviewerId/:modelId/:datasetId', 
     name: 'SubjectiveEval', 
     component: () => import('../views/evaluation/SubjectiveEval.vue'),
     props: true
@@ -40,7 +40,7 @@ const routes = [
     props: true
   },
   { 
-    path: '/evaluation/adversarial/:taskId', 
+    path: '/evaluation/adversarial/:taskId/:reviewerId/:modelId/:model2Id/:datasetId', 
     name: 'AdversarialEval', 
     component: () => import('../views/evaluation/AdversarialEval.vue'),
     props: true

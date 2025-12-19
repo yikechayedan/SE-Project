@@ -30,13 +30,14 @@ export function runEvaluationTask(taskId) {
   return request({
     url: '/api/tasks/run-task/',
     method: 'post',
+    timeout: 60000, // 设置超时时间为60秒
     data: { task_id: taskId } // 请求体格式
   });
 }
 
 //获取待测条目
 export function getPendingItems(taskId, reviewerId) {
-  return request.get('/api/tasks/get-pending-items/', {
+  return request.get('/api/tasks/get-pending-items', {
     params: {
       taskid: taskId,
       reviewerid: reviewerId
@@ -46,7 +47,7 @@ export function getPendingItems(taskId, reviewerId) {
 
 // 获取单条条目详情
 export function getItemDetail(taskId, itemID) {
-  return request.get('/api/tasks/get-item-detail/', {
+  return request.get('/api/tasks/get-item-detail', {
     params: {
       task: taskId,
       itemID: itemID
@@ -56,10 +57,10 @@ export function getItemDetail(taskId, itemID) {
 
 // 提交主观评测分数
 export function submitSubjectiveScore(taskId, payload) {
-  return request.post(`/api/tasks/evaluation-tasks/${taskId}/submit_score/`, payload);
+  return request.post(`/api/tasks/evaluation-tasks/${taskId}/`, payload);
 }
 
 // 提交对抗评测偏好
 export function submitAdversarialPreference(taskId, payload) {
-  return request.post(`/api/tasks/evaluation-tasks/${taskId}/submit_score/`, payload);
+  return request.post(`/api/tasks/evaluation-tasks/${taskId}`, payload);
 }
