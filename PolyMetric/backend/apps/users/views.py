@@ -376,15 +376,10 @@ def user_stats(request):
     # 1. 统计总数
     total_count = User.objects.count()
     
-    # 2. 统计在线（近似值）：过去 15 分钟内有过登录行为的用户
-    # 注意：这依赖于 last_login 字段。
-    # 如果想统计"活跃"，需要在中间件中频繁更新 last_login 或使用 Redis。
+    # 2. 统计在线用户：过去 15 分钟内有过登录行为的用户
+    # 现在有了中间件自动更新 last_login，这个统计更加准确
     time_threshold = timezone.now() - timedelta(minutes=15)
     online_count = User.objects.filter(last_login__gte=time_threshold).count()
-
-    # 兜底：如果当前有人调用这个接口，说明至少有1人在线
-    if online_count == 0 and request.user.is_authenticated:
-        online_count = 1
 
     return Response({
         "code": 200,
