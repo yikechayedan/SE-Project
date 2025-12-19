@@ -359,5 +359,52 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 无需额外样式，Element Plus 默认模态 + 拖动 */
+/* Dialog Theme Overrides */
+:deep(.el-dialog) {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+:deep(.el-dialog__title) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:deep(.el-dialog__body) {
+  color: var(--text-primary);
+  padding: 20px 24px 24px;
+}
+
+:deep(.el-dialog__headerbtn .el-dialog__close) {
+  color: var(--text-secondary);
+}
+
+:deep(.el-dialog__headerbtn:hover .el-dialog__close) {
+  color: var(--accent-color);
+}
+
+/* Form Item Label */
+:deep(.el-form-item__label) {
+  color: var(--text-primary);
+}
+
+/* Input Fields */
+:deep(.el-input__wrapper) {
+  background-color: var(--bg-tertiary);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+:deep(.el-input__inner) {
+  color: var(--text-primary);
+}
+
+/* Radio Buttons */
+:deep(.el-radio__label) {
+  color: var(--text-primary);
+}
+
+:deep(.el-radio__input.is-checked + .el-radio__label) {
+  color: var(--accent-color);
+}
 </style>

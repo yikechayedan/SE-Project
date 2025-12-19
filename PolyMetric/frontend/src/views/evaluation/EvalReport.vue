@@ -175,7 +175,7 @@ onMounted(() => {
 /* ======================== 报告容器和背景 ======================== */
 .report-detail {
   padding: 40px; 
-  background-color: #f7f9fc; 
+  background-color: var(--bg-body); 
   min-height: 100vh;
 }
 
@@ -185,7 +185,7 @@ onMounted(() => {
   align-items: center;
   font-size: 32px; 
   font-weight: 600; 
-  color: #2c3e50; 
+  color: var(--text-primary); 
   margin-bottom: 5px;
 }
 .report-title .el-icon {
@@ -211,8 +211,8 @@ onMounted(() => {
     justify-content: center;
     transition: all 0.3s ease;
     cursor: default;
-    background-color: #ffffff;
-    border: 1px solid #e0e6ed;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 .meta-item-card:hover {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
@@ -222,7 +222,7 @@ onMounted(() => {
 
 .meta-label {
     font-size: 14px;
-    color: #8c939d;
+    color: var(--text-secondary);
     margin-bottom: 8px;
     font-weight: 500;
 }
@@ -263,6 +263,7 @@ onMounted(() => {
   border-radius: 12px;
   transition: all 0.3s ease; 
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); 
+  border: 1px solid var(--border-color); /* Add border for dark mode visibility */
 }
 
 .summary-card:hover {
@@ -277,7 +278,7 @@ onMounted(() => {
 .summary-value {
   font-size: 48px; 
   font-weight: 800;
-  color: #1a2a3a;
+  color: #1a2a3a; /* Consider adapting this if card background changes drastically */
   margin-bottom: 8px;
   line-height: 1;
 }
@@ -290,7 +291,7 @@ onMounted(() => {
 .section-title {
   font-size: 22px;
   font-weight: 600;
-  color: #34495e;
+  color: var(--text-primary);
   margin-bottom: 20px;
   padding-left: 5px;
 }
@@ -299,8 +300,8 @@ onMounted(() => {
     overflow: hidden; 
 }
 .detail-table :deep(.el-table__header-wrapper th) {
-    background-color: #ecf0f1; 
-    color: #34495e;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
     font-weight: bold;
 }
 
@@ -312,21 +313,21 @@ onMounted(() => {
 }
 
 :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
-  background-color: #1f6bff;
+  background-color: var(--el-color-primary);
   color: #ffffff;
 }
 
 :deep(.el-pagination.is-background .el-pager li) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 :deep(.el-pagination.is-background .btn-prev),
 :deep(.el-pagination.is-background .btn-next) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 /* ======================== 结果图标 (保持不变) ======================== */
@@ -343,20 +344,20 @@ onMounted(() => {
 
 /* Descriptions Dark Mode Override */
 :deep(.el-descriptions__label) {
-  background-color: #161b22 !important;
-  color: #8b949e !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
 }
 
 :deep(.el-descriptions__content) {
-  background-color: #0d1117 !important;
-  color: #c9d1d9 !important;
+  background-color: var(--bg-body) !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.el-descriptions__cell) {
-  border-color: #30363d !important;
+  border-color: var(--border-color) !important;
 }
 
 :deep(.el-divider) {
-  border-color: #30363d;
+  border-color: var(--border-color);
 }
 </style>

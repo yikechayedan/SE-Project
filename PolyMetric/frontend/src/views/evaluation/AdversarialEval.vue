@@ -291,7 +291,7 @@ onMounted(initData);
 <style scoped>
 .evaluation-page {
   padding: 20px;
-  background-color: #f0f2f5;
+  background-color: var(--bg-body);
   min-height: calc(100vh - 50px);
 }
 
@@ -307,12 +307,14 @@ onMounted(initData);
 }
 .title {
   font-size: 24px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 /* --- Prompt 区域 --- */
 .prompt-card {
     margin-bottom: 20px;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
 }
 .prompt-title {
     color: var(--el-color-primary);
@@ -321,8 +323,8 @@ onMounted(initData);
   padding: 10px;
   border-left: 5px solid var(--el-color-info-light-5);
   margin: 10px 0;
-  background-color: var(--el-color-info-light-9);
-  color: #606266;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
   font-style: italic;
   min-height: 100px;
 }
@@ -338,6 +340,8 @@ onMounted(initData);
 .model-output-card {
   height: 450px; 
   overflow-y: auto; 
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 
 .model-a-title {
@@ -349,7 +353,7 @@ onMounted(initData);
 
 .model-response {
   line-height: 1.6;
-  color: #303133;
+  color: var(--text-primary);
 }
 .model-response ol {
     padding-left: 20px;
@@ -357,12 +361,14 @@ onMounted(initData);
 .content-placeholder {
     padding: 20px;
     text-align: center;
-    color: #909399;
+    color: var(--text-secondary);
 }
 
 /* --- 评判区域 --- */
 .rating-card {
   margin-top: 5px;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .judgement-title {
     color: var(--el-color-danger); 
@@ -378,7 +384,7 @@ onMounted(initData);
   align-items: center;
   margin-top: 25px;
   padding: 15px 0;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
 }
 .page-navigation {
     width: 120px;
@@ -399,6 +405,14 @@ onMounted(initData);
     height: 30px;
     line-height: 30px;
     font-size: 14px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.custom-pager :deep(.el-pager li.is-active) {
+    background-color: var(--el-color-primary) !important;
+    color: #ffffff !important;
 }
 
 /* --- 抽屉样式 --- */
@@ -407,7 +421,7 @@ onMounted(initData);
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     padding: 20px 10px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .item-id-button {
