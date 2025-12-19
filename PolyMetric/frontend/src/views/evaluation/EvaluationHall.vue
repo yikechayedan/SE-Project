@@ -418,8 +418,7 @@ onMounted(() => {
   fetchAllTasks()
   getYesterdayDateString();
   fetchUserID();
-})
-</script>
+})</script>
 
 <style scoped>
 .evaluation-hall {

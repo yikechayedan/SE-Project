@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
 from .run_logic import run_evaluation
+from .tasks import run_evaluation_task
 from .models import EvaluationTask, EvaluationItem
 from .serializers import (
     EvaluationTaskSerializer,
@@ -174,7 +175,7 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
 
         elif method == "adversarial":
             # 对抗评测必须有 preference
-            if preference not in ("left", "right"):
+            if preference not in ("left", "right", "tie"):
                 return Response({"error": "Invalid preference"}, status=400)
             item.preference = preference
         else:
@@ -182,6 +183,57 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
             return Response({"error": "Invalid method for submit_score"}, status=400)
 
         item.save()
+        
+        # -----------------------------
+        # 新增：检查是否所有条目都已评测完成
+        # -----------------------------
+        is_completed = False
+        if method == "subjective":
+            # 检查是否还有未评分的条目
+            if not task.items.filter(score__isnull=True).exists():
+                is_completed = True
+                # 计算平均分
+                from django.db.models import Avg
+                avg_score = task.items.aggregate(Avg("score"))["score__avg"]
+                task.score = avg_score
+
+        elif method == "adversarial":
+            # 检查是否还有未选偏好的条目
+            if not task.items.filter(preference__isnull=True).exists():
+                is_completed = True
+                # 对抗评测可能需要计算胜率等，暂只更新状态
+
+        if is_completed:
+            task.status = "completed"
+            task.save()
+
+            # --- 新增：自动生成汇总报告并更新排行榜 ---
+            from .models import EvaluationSummary
+            from apps.rankings.services import update_model_rankings
+
+            # 1. 创建/更新 EvaluationSummary
+            summary, created = EvaluationSummary.objects.get_or_create(task=task)
+            summary.model_name = task.myModel.name
+            
+            if method == "subjective":
+                summary.avg_score = task.score
+            elif method == "adversarial":
+                # 简单计算对抗评测的胜率（相对于 Model A），平局算 0.5 胜
+                total_items = task.items.count()
+                if total_items > 0:
+                    win_count = task.items.filter(preference="left").count()
+                    tie_count = task.items.filter(preference="tie").count()
+                    
+                    summary.correct = win_count  # 胜场仅记录完全胜利
+                    summary.total = total_items
+                    # 胜率 = (胜场 + 0.5 * 平局) / 总数
+                    summary.accuracy = (win_count + 0.5 * tie_count) / total_items
+            
+            summary.save()
+
+            # 2. 触发排行榜更新
+            update_model_rankings(task.dataset_id)
+
         # 此处暂不记录 reviewer / time_stamp，可根据需要扩展模型
         return Response({}, status=200)
 
@@ -286,12 +338,19 @@ def run_task(request):
     task_id = request.data.get("task_id")
 
     try:
-        EvaluationTask.objects.get(id=task_id)
+        task = EvaluationTask.objects.get(id=task_id)
     except EvaluationTask.DoesNotExist:
         return Response({"error": "task not found"}, status=404)
 
-    result = run_evaluation(task_id)
-    return Response({"msg": "task executed", "data": result})
+    # 改为异步调用：提交给 Celery Worker
+    run_evaluation_task.delay(task_id)
+    
+    # 立即返回，前端无需等待 60s+
+    return Response({
+        "msg": "Task submitted to background queue", 
+        "status": "pending",
+        "task_id": task_id
+    })
 
 
 @api_view(["POST"])
