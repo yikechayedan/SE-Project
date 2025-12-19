@@ -220,16 +220,24 @@ def get_pending_items(request):
     except User.DoesNotExist:
         return Response({"error": "Reviewer not found"}, status=400)
 
-    # 简化：当前实现是“条目全局只测一次”，未区分不同 reviewer
-    pending = task.items.filter(score__isnull=True, preference__isnull=True)
-    ids = [str(i.id) for i in pending]
+    # 获取全部条目的 QuerySet
+    all_items_qs = task.items.all()
+    # 获取全部 ID 列表 (转化为字符串以保持与原逻辑一致)
+    all_ids = [str(id) for id in all_items_qs.values_list('id', flat=True)]
+    
+    # 获取待测条目的 QuerySet (score 或 preference 为空)
+    pending_items_qs = all_items_qs.filter(score__isnull=True, preference__isnull=True)
+    # 获取待测 ID 列表
+    pending_ids = [str(id) for id in pending_items_qs.values_list('id', flat=True)]
 
     return Response(
         {
             "task": task.id,
             "reviewer": reviewer_id,
-            "pending_count": len(ids),
-            "pengdingItem_ids": ids,
+            "total_count": len(all_ids),
+            "all_item_ids": all_ids,
+            "pending_count": len(pending_ids),
+            "pengding_item_ids": pending_ids
         }
     )
 

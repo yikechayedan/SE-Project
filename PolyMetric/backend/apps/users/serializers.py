@@ -13,6 +13,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "username", "password", "email", "phone"]
 
+    def validate_phone(self, value):
+        """如果手机号为空字符串，转为 None"""
+        if not value:
+            return None
+        return value
+
     def create(self, validated_data):
         validated_data["password"] = make_password(validated_data["password"])
         return super().create(validated_data)
@@ -21,6 +27,12 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "email", "phone", "avatar", "bio"]
+
+    def validate_phone(self, value):
+        """如果手机号为空字符串，转为 None"""
+        if not value:
+            return None
+        return value
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)

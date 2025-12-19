@@ -222,6 +222,9 @@ const fetchUserInfo = async () => {
       username.value = userData.username
       localStorage.setItem('username', userData.username)
     }
+    if (userData.id) {
+      localStorage.setItem('userId', userData.id)
+    }
     if (userData.avatar) {
       userAvatar.value = userData.avatar
       localStorage.setItem('avatar', userData.avatar)

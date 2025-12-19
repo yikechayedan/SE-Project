@@ -58,7 +58,12 @@
         </div>
         <div class="stat-info">
           <span class="stat-value">{{ stats.userCount }}</span>
-          <span class="stat-label">活跃用户</span>
+          <span class="stat-label">
+            用户总数
+            <el-tag size="small" type="success" effect="plain" class="online-tag">
+              {{ stats.onlineUserCount }} 在线
+            </el-tag>
+          </span>
         </div>
       </el-card>
     </div>
@@ -88,7 +93,7 @@
           </template>
 
           <el-table 
-            :data="rankings" 
+            :data="paginatedRankings" 
             style="width: 100%;"
             :row-class-name="tableRowClassName"
             v-loading="rankingLoading"
@@ -96,10 +101,10 @@
             <el-table-column label="排名" width="80" align="center">
               <template #default="{ row, $index }">
                 <div class="rank-cell">
-                  <el-icon v-if="$index === 0" class="rank-icon gold"><Medal /></el-icon>
-                  <el-icon v-else-if="$index === 1" class="rank-icon silver"><Medal /></el-icon>
-                  <el-icon v-else-if="$index === 2" class="rank-icon bronze"><Medal /></el-icon>
-                  <span v-else class="rank-number">{{ $index + 1 }}</span>
+                  <el-icon v-if="row.rank === 1" class="rank-icon gold"><Medal /></el-icon>
+                  <el-icon v-else-if="row.rank === 2" class="rank-icon silver"><Medal /></el-icon>
+                  <el-icon v-else-if="row.rank === 3" class="rank-icon bronze"><Medal /></el-icon>
+                  <span v-else class="rank-number">{{ row.rank }}</span>
                 </div>
               </template>
             </el-table-column>
@@ -116,7 +121,14 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="综合得分" width="120" align="center">
+            
+            <!-- 综合得分 -->
+            <el-table-column 
+              label="综合得分" 
+              width="120" 
+              align="center"
+              :class-name="selectedDataset === 'comprehensive' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
                 <el-progress 
                   :percentage="row.overallScore" 
@@ -126,21 +138,58 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column prop="languageScore" label="语言理解" width="90" align="center">
+
+            <!-- 语言理解 -->
+            <el-table-column 
+              prop="languageScore" 
+              label="语言理解" 
+              width="90" 
+              align="center"
+              :class-name="selectedDataset === 'language' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
-                <span :style="{ color: getScoreColor(row.languageScore) }">{{ row.languageScore.toFixed(1) }}</span>
+                <span :style="{ 
+                  color: getScoreColor(row.languageScore),
+                  fontWeight: selectedDataset === 'language' ? 'bold' : 'normal',
+                  fontSize: selectedDataset === 'language' ? '16px' : '14px'
+                }">{{ row.languageScore.toFixed(1) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="reasoningScore" label="推理能力" width="90" align="center">
+
+            <!-- 推理能力 -->
+            <el-table-column 
+              prop="reasoningScore" 
+              label="推理能力" 
+              width="90" 
+              align="center"
+              :class-name="selectedDataset === 'math' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
-                <span :style="{ color: getScoreColor(row.reasoningScore) }">{{ row.reasoningScore.toFixed(1) }}</span>
+                <span :style="{ 
+                  color: getScoreColor(row.reasoningScore),
+                  fontWeight: selectedDataset === 'math' ? 'bold' : 'normal',
+                  fontSize: selectedDataset === 'math' ? '16px' : '14px'
+                }">{{ row.reasoningScore.toFixed(1) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="codeScore" label="代码能力" width="90" align="center">
+
+            <!-- 代码能力 -->
+            <el-table-column 
+              prop="codeScore" 
+              label="代码能力" 
+              width="90" 
+              align="center"
+              :class-name="selectedDataset === 'code' ? 'highlight-col' : ''"
+            >
               <template #default="{ row }">
-                <span :style="{ color: getScoreColor(row.codeScore) }">{{ row.codeScore.toFixed(1) }}</span>
+                <span :style="{ 
+                  color: getScoreColor(row.codeScore),
+                  fontWeight: selectedDataset === 'code' ? 'bold' : 'normal',
+                  fontSize: selectedDataset === 'code' ? '16px' : '14px'
+                }">{{ row.codeScore.toFixed(1) }}</span>
               </template>
             </el-table-column>
+
             <el-table-column label="趋势" width="80" align="center">
               <template #default="{ row }">
                 <el-icon v-if="row.trend > 0" class="trend-up"><Top /></el-icon>
@@ -149,6 +198,19 @@
               </template>
             </el-table-column>
           </el-table>
+
+          <div class="leaderboard-pagination">
+            <el-pagination
+              v-model:current-page="rankingPage"
+              v-model:page-size="rankingPageSize"
+              :total="rankings.length"
+              :page-sizes="[10, 20, 50]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleRankingSizeChange"
+              @current-change="handleRankingPageChange"
+              background
+            />
+          </div>
 
           <div class="leaderboard-footer">
             <el-text type="info" size="small">
@@ -200,7 +262,7 @@
           </div>
         </el-card>
 
-        <!-- 评测维度雷达图 -->
+        <!-- 评测维度说明 -->
         <el-card class="radar-card" shadow="never">
           <template #header>
             <div class="card-header">
@@ -210,13 +272,18 @@
           </template>
           <div class="dimension-list">
             <div class="dimension-item">
+              <div class="dimension-dot" style="background: #f093fb;"></div>
+              <span class="dimension-name">综合评测</span>
+              <span class="dimension-desc">全维度能力的加权综合评分</span>
+            </div>
+            <div class="dimension-item">
               <div class="dimension-dot" style="background: #409eff;"></div>
               <span class="dimension-name">语言理解</span>
               <span class="dimension-desc">文本理解、阅读理解、语义分析</span>
             </div>
             <div class="dimension-item">
               <div class="dimension-dot" style="background: #67c23a;"></div>
-              <span class="dimension-name">推理能力</span>
+              <span class="dimension-name">数学推理</span>
               <span class="dimension-desc">逻辑推理、数学计算、因果分析</span>
             </div>
             <div class="dimension-item">
@@ -225,14 +292,9 @@
               <span class="dimension-desc">代码生成、代码理解、调试修复</span>
             </div>
             <div class="dimension-item">
-              <div class="dimension-dot" style="background: #f56c6c;"></div>
-              <span class="dimension-name">知识问答</span>
-              <span class="dimension-desc">常识知识、专业知识、事实核查</span>
-            </div>
-            <div class="dimension-item">
               <div class="dimension-dot" style="background: #9b59b6;"></div>
-              <span class="dimension-name">安全合规</span>
-              <span class="dimension-desc">内容安全、伦理对齐、隐私保护</span>
+              <span class="dimension-name">多模态</span>
+              <span class="dimension-desc">图文理解、视频分析、跨模态生成</span>
             </div>
           </div>
         </el-card>
@@ -306,7 +368,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -318,6 +380,9 @@ import EvalDialog from '../components/common/EvalDialog.vue'
 import { getAllDatasets } from '@/api/datasets'
 import { getAllModels } from '@/api/models'
 import { getEvaluationTasks } from '@/api/tasks'
+import { getUserStats } from '@/api/users'
+import { getLeaderboard } from '@/api/rankings'
+import { getNewsFeed } from '@/api/system'
 
 const router = useRouter()
 
@@ -327,13 +392,19 @@ const tutorialStep = ref(0)
 const showEvalDialog = ref(false)
 const selectedDataset = ref('comprehensive')
 const rankingLoading = ref(false)
+let dataTimer = null
+
+// 排行榜分页状态
+const rankingPage = ref(1)
+const rankingPageSize = ref(10)
 
 // 统计数据
 const stats = ref({
   modelCount: 0,
   datasetCount: 0,
   taskCount: 0,
-  userCount: 0
+  userCount: 0,
+  onlineUserCount: 0
 })
 
 // 导航到评测页面
@@ -345,61 +416,75 @@ const goToEvaluation = () => {
 const fetchStats = async () => {
   try {
     // 并行获取所有统计数据
-    const [modelsRes, datasetsRes, tasksRes] = await Promise.all([
+    const [modelsRes, datasetsRes, tasksRes, usersRes] = await Promise.all([
       getAllModels().catch(() => null),
       getAllDatasets().catch(() => null),
-      getEvaluationTasks().catch(() => null)
+      getEvaluationTasks().catch(() => null),
+      getUserStats().catch(() => null)
     ])
     
-    // 处理模型数量
-    if (modelsRes) {
-      let models = []
-      if (modelsRes.data?.code === 200 && Array.isArray(modelsRes.data.data)) {
-        models = modelsRes.data.data
-      } else if (Array.isArray(modelsRes.data)) {
-        models = modelsRes.data
+    // 提取总数的辅助函数
+    const getCount = (res) => {
+      if (!res || !res.data) return 0
+      const d = res.data
+      // 优先级：1. 包装在 code/data 里的 count; 2. 顶层的 count; 3. 结果数组的长度
+      if (d.code === 200 && d.data) {
+        if (typeof d.data.total === 'number') return d.data.total
+        if (typeof d.data.count === 'number') return d.data.count
+        if (Array.isArray(d.data)) return d.data.length
       }
-      stats.value.modelCount = models.length
+      if (typeof d.count === 'number') return d.count
+      if (typeof d.total === 'number') return d.total
+      if (Array.isArray(d.results)) return d.count || d.results.length
+      if (Array.isArray(d)) return d.length
+      return 0
     }
+
+    stats.value.modelCount = getCount(modelsRes)
+    stats.value.datasetCount = getCount(datasetsRes)
+    stats.value.taskCount = getCount(tasksRes)
     
-    // 处理数据集数量
-    if (datasetsRes) {
-      let datasets = []
-      if (datasetsRes.data?.code === 200 && Array.isArray(datasetsRes.data.data)) {
-        datasets = datasetsRes.data.data
-      } else if (Array.isArray(datasetsRes.data)) {
-        datasets = datasetsRes.data
-      }
-      stats.value.datasetCount = datasets.length
+    // 处理用户统计数据 (专门的 API)
+    if (usersRes && usersRes.data) {
+      const resData = usersRes.data
+      const data = (resData.code === 200 && resData.data) ? resData.data : resData
+      if (data.total_users !== undefined) stats.value.userCount = data.total_users
+      if (data.online_users !== undefined) stats.value.onlineUserCount = data.online_users
     }
-    
-    // 处理任务数量
-    if (tasksRes) {
-      let tasks = []
-      if (tasksRes.data?.code === 200 && Array.isArray(tasksRes.data.data)) {
-        tasks = tasksRes.data.data
-      } else if (Array.isArray(tasksRes.data)) {
-        tasks = tasksRes.data
-      } else if (tasksRes.data?.results && Array.isArray(tasksRes.data.results)) {
-        tasks = tasksRes.data.results
-      }
-      stats.value.taskCount = tasks.length
-    }
-    
-    // 活跃用户数暂时显示注册用户的估计值（后端暂无统计 API）
-    // 可以根据实际情况添加一个用户统计 API
-    stats.value.userCount = Math.max(10, stats.value.modelCount + stats.value.datasetCount)
     
   } catch (error) {
     console.error('获取统计数据失败:', error)
-    // 使用默认值
-    stats.value = { modelCount: 0, datasetCount: 0, taskCount: 0, userCount: 0 }
   }
 }
 
-// 获取最新动态（从评测任务、数据集、模型中汇总）
+// 获取最新动态（优先从系统新闻流获取，兜底从各模块汇总）
 const fetchRecentActivities = async () => {
   try {
+    // 1. 尝试从系统新闻流 API 获取
+    const newsRes = await getNewsFeed().catch(() => null)
+    if (newsRes && newsRes.data?.code === 200 && Array.isArray(newsRes.data.data) && newsRes.data.data.length > 0) {
+      // 过滤重复内容（后端可能因并发产生重复记录）
+      const seenContent = new Set()
+      const uniqueActivities = []
+      
+      for (const item of newsRes.data.data) {
+        if (!seenContent.has(item.content)) {
+          seenContent.add(item.content)
+          uniqueActivities.push({
+            content: item.content,
+            time: formatTime(item.time || item.created_at),
+            type: item.type || 'primary',
+            timestamp: new Date(item.time || item.created_at).getTime()
+          })
+        }
+        if (uniqueActivities.length >= 5) break
+      }
+      
+      recentActivities.value = uniqueActivities
+      return
+    }
+
+    // 2. 兜底：从评测任务、数据集、模型中汇总
     const activities = []
     
     // 获取最新的评测任务
@@ -510,41 +595,88 @@ const formatTime = (dateStr) => {
   return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
 }
 
-// 排行榜数据（模拟数据，等待后端 API 实现）
-const rankings = ref([
-  { 
-    name: 'GPT-4o', company: 'OpenAI', color: '#10a37f',
-    overallScore: 92.5, languageScore: 94.2, reasoningScore: 91.8, codeScore: 93.1, trend: 0
-  },
-  { 
-    name: 'Claude 3.5 Sonnet', company: 'Anthropic', color: '#d97757',
-    overallScore: 91.2, languageScore: 93.5, reasoningScore: 90.1, codeScore: 91.8, trend: 1
-  },
-  { 
-    name: 'Gemini 1.5 Pro', company: 'Google', color: '#4285f4',
-    overallScore: 89.8, languageScore: 91.2, reasoningScore: 88.5, codeScore: 90.2, trend: 1
-  },
-  { 
-    name: '文心一言 4.0', company: '百度', color: '#2932e1',
-    overallScore: 87.3, languageScore: 89.1, reasoningScore: 85.6, codeScore: 86.9, trend: 0
-  },
-  { 
-    name: '通义千问 2.5', company: '阿里云', color: '#ff6a00',
-    overallScore: 86.5, languageScore: 88.3, reasoningScore: 84.2, codeScore: 87.1, trend: -1
-  },
-  { 
-    name: 'GLM-4', company: '智谱AI', color: '#1e50a2',
-    overallScore: 85.2, languageScore: 87.1, reasoningScore: 83.5, codeScore: 85.8, trend: 1
-  },
-  { 
-    name: 'Llama 3.1 405B', company: 'Meta', color: '#0866ff',
-    overallScore: 84.8, languageScore: 86.5, reasoningScore: 82.9, codeScore: 85.2, trend: 0
-  },
-  { 
-    name: 'Mistral Large 2', company: 'Mistral AI', color: '#f54e42',
-    overallScore: 83.6, languageScore: 85.2, reasoningScore: 81.8, codeScore: 84.1, trend: -1
+// 排行榜数据
+const rankings = ref([])
+
+// 计算当前页显示的排行榜数据
+const paginatedRankings = computed(() => {
+  const start = (rankingPage.value - 1) * rankingPageSize.value
+  const end = start + rankingPageSize.value
+  return rankings.value.slice(start, end)
+})
+
+// 获取排行榜数据（使用真实数据，带兜底逻辑）
+const fetchRankings = async () => {
+  rankingLoading.value = true
+  try {
+    const res = await getLeaderboard()
+    let leaderboardData = []
+    
+    // 如果排行榜 API 返回了数据
+    if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      leaderboardData = res.data.data
+    } else {
+      // 兜底方案：如果排行榜 API 返回空（可能因为没有 dimension_scores 记录）
+      // 获取所有模型并作为默认列表显示，分数为 0
+      const modelsRes = await getAllModels().catch(() => null)
+      if (modelsRes) {
+        const rawModels = modelsRes.data?.data || modelsRes.data?.results || (Array.isArray(modelsRes.data) ? modelsRes.data : [])
+        leaderboardData = rawModels.map((m, index) => ({
+          rank: index + 1,
+          model_id: m.id,
+          name: m.name,
+          company: m.company || 'Unknown',
+          category: m.category || 'text',
+          scores: { overall: 0, language: 0, math: 0, code: 0, multimodal: 0 },
+          trends: { overall: 'stable' }
+        }))
+      }
+    }
+    
+    // 映射为排行榜显示格式
+    rankings.value = leaderboardData.map((item) => {
+      const trendMap = { 'up': 1, 'down': -1, 'stable': 0 }
+      return {
+        rank: item.rank,
+        id: item.model_id,
+        name: item.name,
+        company: item.company || 'Unknown',
+        color: getModelColor(item.category),
+        overallScore: item.scores?.overall || 0,
+        languageScore: item.scores?.language || 0,
+        reasoningScore: item.scores?.math || 0,
+        codeScore: item.scores?.code || 0,
+        trend: trendMap[item.trends?.overall] || 0
+      }
+    })
+  } catch (error) {
+    console.error('获取排行榜失败:', error)
+    // 发生错误时不要清空现有数据，除非原本就没数据
+  } finally {
+    rankingLoading.value = false
   }
-])
+}
+
+// 处理分页变化
+const handleRankingPageChange = (page) => {
+  rankingPage.value = page
+}
+
+const handleRankingSizeChange = (size) => {
+  rankingPageSize.value = size
+  rankingPage.value = 1
+}
+
+// 根据模型类型获取头像背景色
+const getModelColor = (category) => {
+  const colors = {
+    'text': '#409eff',
+    'image': '#e6a23c', 
+    'code': '#67c23a',
+    'multimodal': '#9b59b6'
+  }
+  return colors[category] || '#909399'
+}
 
 // 最近活动（动态获取）
 const recentActivities = ref([])
@@ -557,13 +689,21 @@ const lastUpdated = computed(() => {
   })
 })
 
-// 刷新排行榜
-const refreshRankings = () => {
+// 刷新所有数据
+const refreshRankings = async () => {
   rankingLoading.value = true
-  setTimeout(() => {
+  try {
+    await Promise.all([
+      fetchStats(),
+      fetchRankings(),
+      fetchRecentActivities()
+    ])
+    ElMessage.success('首页数据已刷新')
+  } catch (error) {
+    console.error('刷新失败:', error)
+  } finally {
     rankingLoading.value = false
-    ElMessage.success('排行榜已更新')
-  }, 800)
+  }
 }
 
 // 表格行样式
@@ -582,7 +722,22 @@ const getScoreColor = (score) => {
 
 onMounted(() => {
   fetchStats()
+  fetchRankings()
   fetchRecentActivities()
+  
+  // 每 60 秒自动轮询更新数据（包括在线人数）
+  dataTimer = setInterval(() => {
+    fetchStats()
+    fetchRankings()
+    fetchRecentActivities()
+  }, 60000)
+})
+
+onUnmounted(() => {
+  if (dataTimer) {
+    clearInterval(dataTimer)
+    dataTimer = null
+  }
 })
 </script>
 
@@ -705,6 +860,19 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-secondary);
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.online-tag {
+  border-radius: 10px;
+  padding: 0 8px;
+  height: 18px;
+  line-height: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 /* 主内容区域 */
@@ -832,6 +1000,12 @@ onMounted(() => {
 
 :deep(.top-rank-row:hover) {
   background-color: rgba(64, 158, 255, 0.1) !important;
+}
+
+/* 高亮列样式 */
+:deep(.el-table .highlight-col) {
+  background-color: var(--el-color-primary-light-9) !important;
+  transition: background-color 0.3s ease;
 }
 
 .leaderboard-footer {

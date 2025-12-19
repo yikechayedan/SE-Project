@@ -57,7 +57,9 @@ INSTALLED_APPS = [
     
     # 模型排名模块
     "apps.rankings.apps.RankingsConfig",
-
+    
+    # 评论系统模块
+    "apps.comments.apps.CommentsConfig",
 
     # 项目应用
     'apps.users',
@@ -74,6 +76,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.users.middleware.UpdateLastLoginMiddleware',  # 添加自定义中间件
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

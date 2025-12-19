@@ -1,5 +1,6 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
+from .auth import CustomTokenObtainPairView
 
 from .views import (
     RegisterView,  ChangePasswordView,
@@ -7,14 +8,14 @@ from .views import (
     ForgotPasswordView, VerifyCodeView, ResetPasswordView,
     AvatarUploadView,
     UserPublicView, UserFollowView, FollowedUsersListView,
-    PrivacySettingView, CurrentUserView
+    PrivacySettingView, CurrentUserView, user_stats
 )
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
 
     # 登录 & 刷新 token
-    path("login/", TokenObtainPairView.as_view(), name="login"),
+    path("login/", CustomTokenObtainPairView.as_view(), name="login"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
     # 用户信息
@@ -38,4 +39,5 @@ urlpatterns = [
     path('followed/', FollowedUsersListView.as_view(), name='user-followed-list'),  # 改为测试用例的名称
     path('privacy/', PrivacySettingView.as_view(), name='user-privacy-update'), 
     path("me/", CurrentUserView.as_view(), name="user-me"),
+    path("stats/", user_stats, name="user_stats"),
 ]

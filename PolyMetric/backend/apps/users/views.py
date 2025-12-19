@@ -1,9 +1,12 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserFollow
 from .serializers import (
@@ -363,40 +366,26 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
             "data": serializer.data
         })
 
-# ========== 修复当前用户信息视图（API6） ==========
-class CurrentUserView(generics.RetrieveUpdateAPIView):
+# ========== 用户统计视图（API7） ==========
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def user_stats(request):
     """
-    GET: 获取当前用户信息（返回隐私设置字段）
-    PUT/PATCH: 更新当前用户信息（email, phone, bio等）
+    统计用户总数和近期活跃用户数
     """
-    permission_classes = [IsAuthenticated]
+    # 1. 统计总数
+    total_count = User.objects.count()
+    
+    # 2. 统计在线用户：过去 15 分钟内有过登录行为的用户
+    # 现在有了中间件自动更新 last_login，这个统计更加准确
+    time_threshold = timezone.now() - timedelta(minutes=15)
+    online_count = User.objects.filter(last_login__gte=time_threshold).count()
 
-    def get_object(self):
-        return self.request.user
-
-    def get_serializer_class(self):
-        # GET 请求用 UserMeSerializer（包含隐私设置字段）
-        # PUT/PATCH 请求用 UserSerializer（用于更新基本资料）
-        if self.request.method == 'GET':
-            return UserMeSerializer
-        return UserSerializer
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response({
-            "code": 200,
-            "msg": "查询成功",
-            "data": serializer.data
-        })
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response({
-            "code": 200,
-            "msg": "更新成功",
-            "data": serializer.data
-        })
+    return Response({
+        "code": 200,
+        "msg": "success",
+        "data": {
+            "total_users": total_count,
+            "online_users": online_count
+        }
+    })

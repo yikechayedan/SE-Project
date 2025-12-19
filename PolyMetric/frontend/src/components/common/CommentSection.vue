@@ -21,11 +21,15 @@
         
         <div v-for="item in comments" :key="item.id" class="comment-item">
           <div class="comment-avatar">
-            <el-avatar :size="40" :src="item.user?.avatar || defaultAvatar" />
+            <UserPopover :userId="item.user?.id" :username="item.user?.username">
+              <el-avatar :size="40" :src="item.user?.avatar || defaultAvatar" class="clickable-avatar" />
+            </UserPopover>
           </div>
           <div class="comment-content-box">
             <div class="comment-header">
-              <span class="username">{{ item.user?.username || '未知用户' }}</span>
+              <UserPopover :userId="item.user?.id" :username="item.user?.username">
+                <span class="username">{{ item.user?.username || '未知用户' }}</span>
+              </UserPopover>
               <span class="time">{{ formatDate(item.created_at) }}</span>
             </div>
             <div class="comment-text">{{ item.content }}</div>
@@ -89,6 +93,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, StarFilled, Delete, Loading } from '@element-plus/icons-vue'
 import { getComments, postComment, deleteComment, toggleCommentLike } from '@/api/comments'
+import UserPopover from '@/components/common/UserPopover.vue'
 
 // 使用在线占位图作为默认头像
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
@@ -308,6 +313,15 @@ const formatDate = (dateStr) => {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 14px;
+}
+
+.clickable-avatar {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.clickable-avatar:hover {
+  opacity: 0.8;
 }
 
 .time {
