@@ -262,7 +262,7 @@
           </div>
         </el-card>
 
-        <!-- 评测维度雷达图 -->
+        <!-- 评测维度说明 -->
         <el-card class="radar-card" shadow="never">
           <template #header>
             <div class="card-header">
@@ -272,13 +272,18 @@
           </template>
           <div class="dimension-list">
             <div class="dimension-item">
+              <div class="dimension-dot" style="background: #f093fb;"></div>
+              <span class="dimension-name">综合评测</span>
+              <span class="dimension-desc">全维度能力的加权综合评分</span>
+            </div>
+            <div class="dimension-item">
               <div class="dimension-dot" style="background: #409eff;"></div>
               <span class="dimension-name">语言理解</span>
               <span class="dimension-desc">文本理解、阅读理解、语义分析</span>
             </div>
             <div class="dimension-item">
               <div class="dimension-dot" style="background: #67c23a;"></div>
-              <span class="dimension-name">推理能力</span>
+              <span class="dimension-name">数学推理</span>
               <span class="dimension-desc">逻辑推理、数学计算、因果分析</span>
             </div>
             <div class="dimension-item">
@@ -287,14 +292,9 @@
               <span class="dimension-desc">代码生成、代码理解、调试修复</span>
             </div>
             <div class="dimension-item">
-              <div class="dimension-dot" style="background: #f56c6c;"></div>
-              <span class="dimension-name">知识问答</span>
-              <span class="dimension-desc">常识知识、专业知识、事实核查</span>
-            </div>
-            <div class="dimension-item">
               <div class="dimension-dot" style="background: #9b59b6;"></div>
-              <span class="dimension-name">安全合规</span>
-              <span class="dimension-desc">内容安全、伦理对齐、隐私保护</span>
+              <span class="dimension-name">多模态</span>
+              <span class="dimension-desc">图文理解、视频分析、跨模态生成</span>
             </div>
           </div>
         </el-card>
@@ -368,7 +368,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -382,6 +382,7 @@ import { getAllModels } from '@/api/models'
 import { getEvaluationTasks } from '@/api/tasks'
 import { getUserStats } from '@/api/users'
 import { getLeaderboard } from '@/api/rankings'
+import { getNewsFeed } from '@/api/system'
 
 const router = useRouter()
 
@@ -391,6 +392,7 @@ const tutorialStep = ref(0)
 const showEvalDialog = ref(false)
 const selectedDataset = ref('comprehensive')
 const rankingLoading = ref(false)
+let dataTimer = null
 
 // 排行榜分页状态
 const rankingPage = ref(1)
@@ -455,9 +457,34 @@ const fetchStats = async () => {
   }
 }
 
-// 获取最新动态（从评测任务、数据集、模型中汇总）
+// 获取最新动态（优先从系统新闻流获取，兜底从各模块汇总）
 const fetchRecentActivities = async () => {
   try {
+    // 1. 尝试从系统新闻流 API 获取
+    const newsRes = await getNewsFeed().catch(() => null)
+    if (newsRes && newsRes.data?.code === 200 && Array.isArray(newsRes.data.data) && newsRes.data.data.length > 0) {
+      // 过滤重复内容（后端可能因并发产生重复记录）
+      const seenContent = new Set()
+      const uniqueActivities = []
+      
+      for (const item of newsRes.data.data) {
+        if (!seenContent.has(item.content)) {
+          seenContent.add(item.content)
+          uniqueActivities.push({
+            content: item.content,
+            time: formatTime(item.time || item.created_at),
+            type: item.type || 'primary',
+            timestamp: new Date(item.time || item.created_at).getTime()
+          })
+        }
+        if (uniqueActivities.length >= 5) break
+      }
+      
+      recentActivities.value = uniqueActivities
+      return
+    }
+
+    // 2. 兜底：从评测任务、数据集、模型中汇总
     const activities = []
     
     // 获取最新的评测任务
@@ -578,34 +605,53 @@ const paginatedRankings = computed(() => {
   return rankings.value.slice(start, end)
 })
 
-// 获取排行榜数据（使用真实数据）
+// 获取排行榜数据（使用真实数据，带兜底逻辑）
 const fetchRankings = async () => {
   rankingLoading.value = true
   try {
     const res = await getLeaderboard()
-    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
-      const leaderboardData = res.data.data
-      
-      // 映射为排行榜显示格式
-      rankings.value = leaderboardData.map((item) => {
-        const trendMap = { 'up': 1, 'down': -1, 'stable': 0 }
-        return {
-          rank: item.rank,
-          id: item.model_id,
-          name: item.name,
-          company: item.company || 'Unknown',
-          color: getModelColor(item.category),
-          overallScore: item.scores.overall || 0,
-          languageScore: item.scores.language || 0,
-          reasoningScore: item.scores.math || 0,
-          codeScore: item.scores.code || 0,
-          trend: trendMap[item.trends.overall] || 0
-        }
-      })
+    let leaderboardData = []
+    
+    // 如果排行榜 API 返回了数据
+    if (res.data?.code === 200 && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      leaderboardData = res.data.data
+    } else {
+      // 兜底方案：如果排行榜 API 返回空（可能因为没有 dimension_scores 记录）
+      // 获取所有模型并作为默认列表显示，分数为 0
+      const modelsRes = await getAllModels().catch(() => null)
+      if (modelsRes) {
+        const rawModels = modelsRes.data?.data || modelsRes.data?.results || (Array.isArray(modelsRes.data) ? modelsRes.data : [])
+        leaderboardData = rawModels.map((m, index) => ({
+          rank: index + 1,
+          model_id: m.id,
+          name: m.name,
+          company: m.company || 'Unknown',
+          category: m.category || 'text',
+          scores: { overall: 0, language: 0, math: 0, code: 0, multimodal: 0 },
+          trends: { overall: 'stable' }
+        }))
+      }
     }
+    
+    // 映射为排行榜显示格式
+    rankings.value = leaderboardData.map((item) => {
+      const trendMap = { 'up': 1, 'down': -1, 'stable': 0 }
+      return {
+        rank: item.rank,
+        id: item.model_id,
+        name: item.name,
+        company: item.company || 'Unknown',
+        color: getModelColor(item.category),
+        overallScore: item.scores?.overall || 0,
+        languageScore: item.scores?.language || 0,
+        reasoningScore: item.scores?.math || 0,
+        codeScore: item.scores?.code || 0,
+        trend: trendMap[item.trends?.overall] || 0
+      }
+    })
   } catch (error) {
     console.error('获取排行榜失败:', error)
-    ElMessage.error('排行榜数据加载失败')
+    // 发生错误时不要清空现有数据，除非原本就没数据
   } finally {
     rankingLoading.value = false
   }
@@ -643,10 +689,21 @@ const lastUpdated = computed(() => {
   })
 })
 
-// 刷新排行榜
-const refreshRankings = () => {
-  fetchRankings()
-  ElMessage.success('排行榜已更新')
+// 刷新所有数据
+const refreshRankings = async () => {
+  rankingLoading.value = true
+  try {
+    await Promise.all([
+      fetchStats(),
+      fetchRankings(),
+      fetchRecentActivities()
+    ])
+    ElMessage.success('首页数据已刷新')
+  } catch (error) {
+    console.error('刷新失败:', error)
+  } finally {
+    rankingLoading.value = false
+  }
 }
 
 // 表格行样式
@@ -665,8 +722,22 @@ const getScoreColor = (score) => {
 
 onMounted(() => {
   fetchStats()
-  fetchRankings() // 调用真实数据
+  fetchRankings()
   fetchRecentActivities()
+  
+  // 每 60 秒自动轮询更新数据（包括在线人数）
+  dataTimer = setInterval(() => {
+    fetchStats()
+    fetchRankings()
+    fetchRecentActivities()
+  }, 60000)
+})
+
+onUnmounted(() => {
+  if (dataTimer) {
+    clearInterval(dataTimer)
+    dataTimer = null
+  }
 })
 </script>
 
