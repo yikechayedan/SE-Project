@@ -175,3 +175,10 @@ export function getUserFollowedModels(userId) {
 export function getUserFollowedDatasets(userId) {
   return getFollowedDatasets(userId);
 }
+
+/**
+ * 获取用户统计数据（总用户数，在线人数）
+ */
+export function getUserStats() {
+  return request.get("/api/users/stats/");
+}

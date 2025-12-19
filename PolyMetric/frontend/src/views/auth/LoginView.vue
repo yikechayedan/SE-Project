@@ -85,18 +85,19 @@ const login = () => {
           username: form.username,
           password: form.password
         })
-        const data = res.data
-        if (data.access) {
-          localStorage.setItem('token', data.access)
-          localStorage.setItem('refresh', data.refresh)
+        const responseData = res.data
+        if (responseData.code === 200 && responseData.data && responseData.data.access) {
+          const tokens = responseData.data
+          localStorage.setItem('token', tokens.access)
+          localStorage.setItem('refresh', tokens.refresh)
           localStorage.setItem('username', form.username)
           ElMessage.success('登录成功！')
           router.push('/home')
         } else {
-          ElMessage.error('登录失败，请检查用户名或密码')
+          ElMessage.error(responseData.msg || '登录失败，请检查用户名或密码')
         }
       } catch (error) {
-        ElMessage.error('登录失败：' + (error.response?.data?.detail || '网络错误'))
+        ElMessage.error('登录失败：' + (error.response?.data?.msg || error.response?.data?.detail || '网络错误'))
       } finally {
         loading.value = false
       }
