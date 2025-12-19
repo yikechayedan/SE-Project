@@ -299,6 +299,10 @@ def run_objective_evaluation(task: EvaluationTask):
         }
     )
 
+    # 触发排行榜更新
+    from apps.rankings.services import update_model_rankings
+    update_model_rankings(task.dataset_id)
+
     return {
         "task_id": task.id,
         "method": task.method,
@@ -381,6 +385,10 @@ def run_subjective_evaluation(task: EvaluationTask):
         }
     )
 
+    # 触发排行榜更新
+    from apps.rankings.services import update_model_rankings
+    update_model_rankings(task.dataset_id)
+
     return {
         "task_id": task.id,
         "method": "subjective",
@@ -453,7 +461,8 @@ def generate_adversarial_summary(task):
     tie = items.filter(preference="tie").count()
 
     # 防止除 0
-    win_rate_a = round(win_a / total, 4) if total > 0 else 0.0
+    # 胜率计算：(胜场 + 0.5 * 平局) / 总场次
+    win_rate_a = round((win_a + 0.5 * tie) / total, 4) if total > 0 else 0.0
 
     model_a_name = task.myModel.name
     model_b_name = task.myModel_2.name if task.myModel_2 else "Unknown"
@@ -575,6 +584,10 @@ def run_evaluation(task_id: int):
         if task.judge_type == "model":
             run_adversarial_auto_judge(task)
             summary = generate_adversarial_summary(task)
+
+            # 触发排行榜更新
+            from apps.rankings.services import update_model_rankings
+            update_model_rankings(task.dataset_id)
 
             task.status = "completed"
             task.save(update_fields=["status"])

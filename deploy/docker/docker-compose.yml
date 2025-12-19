@@ -83,7 +83,7 @@ services:
       dockerfile: deploy/docker/Dockerfile.backend
     container_name: polymetric-celery-worker
     restart: always
-    command: celery -A PolyMetric worker --loglevel=info --concurrency=2
+    command: celery -A PolyMetric worker --loglevel=info -P threads -c 50
     environment:
       - DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
