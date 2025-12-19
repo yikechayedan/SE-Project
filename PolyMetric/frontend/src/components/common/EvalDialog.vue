@@ -43,7 +43,7 @@
                      placeholder="选择模型二" 
                      :loading="modelLoading"
                      style="flex: 1;"> <el-option
-              v-for="model in filteredModelsList"
+              v-for="model in filteredModelsList2"
               :key="model.id"
               :label="model.name"
               :value="model.name"
@@ -51,7 +51,7 @@
           </el-select>
 
           <el-input 
-            v-model="modelSearchQuery" 
+            v-model="modelSearchQuery2" 
             placeholder="搜索模型" 
             prefix-icon="Search" 
             style="width: 150px; margin-left: 10px;"
@@ -71,7 +71,7 @@
                      placeholder="选择裁判模型" 
                      :loading="modelLoading"
                      style="flex: 1;"> <el-option
-              v-for="model in filteredModelsList"
+              v-for="model in filteredJudgeModelsList"
               :key="model.id"
               :label="model.name"
               :value="model.name"
@@ -118,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, computed, onMounted} from 'vue'
+import { ref, defineProps, defineEmits, computed, onMounted, watch} from 'vue'
 import { ElMessage } from 'element-plus'
 import { createEvaluationTask, runEvaluationTask } from '@/api/tasks.js'
 import { getAllDatasets } from '@/api/datasets.js'
@@ -132,6 +132,7 @@ const datasetsList = ref([])
 const modelLoading = ref(false)
 const datasetLoading = ref(false)
 const modelSearchQuery = ref('')
+const modelSearchQuery2 = ref('')
 const judgeModelSearchQuery = ref('')
 const datasetSearchQuery = ref('') 
 
@@ -146,7 +147,24 @@ const props = defineProps({
 // 2. 定义 emits：必须定义 update:showDialog，用于通知父组件更新
 const emit = defineEmits(['update:showDialog', 'close', 'task-submitted']) 
 
-const form = ref({ taskName: '', description: '', selectedModelName: '', selectedDatasetName: '', method: '', type: '', judgeModelName: '' }) 
+const form = ref({ 
+  taskName: '', 
+  description: '', 
+  selectedModelName: '', 
+  selectedModelName2: '', 
+  selectedDatasetName: '', 
+  method: 'objective', 
+  type: 'human', 
+  judgeModelName: '' 
+}) 
+
+// 监听评测类型变化，如果是客观评测，重置裁判相关字段
+watch(() => form.value.method, (newMethod) => {
+  if (newMethod === 'objective') {
+    form.value.type = 'human'
+    form.value.judgeModelName = ''
+  }
+})
 
 const isVisible = computed({
     get() {
@@ -183,6 +201,16 @@ const filteredModelsList = computed(() => {
         return modelsList.value;
     }
     const query = modelSearchQuery.value.toLowerCase();
+    return modelsList.value.filter(model => 
+        model.name.toLowerCase().includes(query)
+    );
+})
+
+const filteredModelsList2 = computed(() => {
+    if (!modelSearchQuery2.value) {
+        return modelsList.value;
+    }
+    const query = modelSearchQuery2.value.toLowerCase();
     return modelsList.value.filter(model => 
         model.name.toLowerCase().includes(query)
     );
@@ -235,13 +263,27 @@ const filteredDatasetsList = computed(() => {
 const handleClose = () => {
     isVisible.value=false
     // 提交后/关闭时重置表单
-    form.value = { taskName: '', description: '', selectedModelName: '', selectedDatasetName: '', type: '' };
+    form.value = { 
+      taskName: '', 
+      description: '', 
+      selectedModelName: '', 
+      selectedModelName2: '',
+      selectedDatasetName: '', 
+      method: 'objective',
+      type: 'human',
+      judgeModelName: ''
+    };
     emit('close') 
 }
 
 const submitEval = async() => {
     if (!form.value.taskName || !form.value.selectedDatasetName || !form.value.method) {
-      ElMessage.warning('请选择数据集和评测方式')
+      ElMessage.warning('请填写任务名称、选择数据集和评测方式')
+      return
+    }
+
+    if ((form.value.method === 'subjective' || form.value.method === 'adversarial') && !form.value.type) {
+      ElMessage.warning('请选择评测方式（人工或模型）')
       return
     }
     
@@ -254,58 +296,59 @@ const submitEval = async() => {
 
     //查找模型ID
     const selectedModel = modelsList.value.find(m => m.name === form.value.selectedModelName);
-    if (form.value.method !== 'adversarial' && !selectedModel) {
-      ElMessage.error('模型信息缺失，请重新选择');
+    if (!selectedModel) {
+      ElMessage.error('请选择评测模型');
       return;
     }
 
-    const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
-    if (form.value.method === 'adversarial' && !selectedModel2) {
-      ElMessage.error('模型二信息缺失，请重新选择');
-      return;
+    let selectedModel2 = null;
+    if (form.value.method === 'adversarial') {
+      selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
+      if (!selectedModel2) {
+        ElMessage.error('请选择模型二');
+        return;
+      }
     }
 
-    const selectedJudgeModel = modelsList.value.find(m => m.name === form.value.judgeModelName);
-    if (form.value.method === 'adversarial' && form.value.type === 'model' && !selectedJudgeModel) {
-      ElMessage.error('裁判模型信息缺失，请重新选择');
-      return;
+    let selectedJudgeModel = null;
+    if ((form.value.method === 'adversarial' || form.value.method === 'subjective') && form.value.type === 'model') {
+      selectedJudgeModel = modelsList.value.find(m => m.name === form.value.judgeModelName);
+      if (!selectedJudgeModel) {
+        ElMessage.error('请选择裁判模型');
+        return;
+      }
     }
 
     const requestBody = {
       "name": form.value.taskName,
       "description": form.value.description,
       "method": form.value.method,
-      "judge_type": form.value.type,
+      "judge_type": form.value.method === 'objective' ? 'human' : form.value.type,
       "dataset": selectedDataset.id,
-      "myModel": selectedModel ? selectedModel.id : null,
+      "myModel": selectedModel.id,
       "myModel_2": selectedModel2 ? selectedModel2.id : null,
       "judge_model": selectedJudgeModel ? selectedJudgeModel.id : null
     };
-    if (form.value.method == 'adversarial' && !selectedModel2.id) {
-        ElMessage.warning('请选择模型')
-        return
-    }
     
     try {
       const response = await createEvaluationTask(requestBody);
 
       if (response.status === 201) {
-        const result = await response.data;
+        const result = response.data.data || response.data;
         
-        ElMessage.success(`任务 [${result.name}] 创建成功!`);
+        ElMessage.success(`任务 [${form.value.taskName}] 创建成功!`);
         
         emit('task-submitted', result); 
         handleClose();
         
       } else {
-        // 处理非 201 状态码，例如 400 Bad Request
-        const errorData = await response.data;
-        ElMessage.error(`任务创建失败: ${errorData.detail || response.statusText}`);
+        const errorData = response.data;
+        ElMessage.error(`任务创建失败: ${errorData.detail || errorData.msg || response.statusText}`);
       }
     } catch (error) {
-      // 处理网络错误
       console.error('任务提交网络错误:', error);
-      ElMessage.error('网络连接失败，请检查您的网络。');
+      const errorMsg = error.response?.data?.detail || error.response?.data?.msg || '网络连接失败，请检查您的网络。';
+      ElMessage.error(errorMsg);
     }
 }
 

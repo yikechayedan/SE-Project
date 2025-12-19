@@ -97,6 +97,7 @@
           v-if="scope.row.method === 'objective' && scope.row.status === 'pending'" 
           type="success" 
           link 
+          :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
           启动自动评测
@@ -113,6 +114,7 @@
           v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'model'" 
           type="success"
           link 
+          :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
           启动自动评测
@@ -121,6 +123,7 @@
           v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'human'" 
           type="success"
           link 
+          :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
           启动人工评测
@@ -178,6 +181,7 @@ const currentPage = ref(1)
 const pageSize = 5
 
 const isTableLoading = ref(false)
+const loadingTasks = ref({})
 const showEvalDialog = ref(false)
 const evaluations = ref([])
 const MyEvaluations = ref([])
@@ -385,17 +389,21 @@ const handleViewEvaluation = (task) => {
 }
 
 const handleRunEvaluation = async (task) => {
-    isTableLoading.value = true;
+    // 1. 立即给用户反馈（乐观更新）
+    // 不需要转圈了，直接把状态改为 running，界面会立刻显示 "正在处理，请稍候"
+    task.status = 'running'; 
     
     try {
-        const response = await runEvaluationTask(task.id);
-        //该请求的响应需要耗费大量时间，等待后端引入celery实现异步处理后再优化
+        // 2. 发送请求给后端（虽然后端会卡很久，但前端界面已经变了）
+        await runEvaluationTask(task.id);
+        
+        // 3. 后端终于跑完后，再拉取一次最新结果（可能是 completed）
         fetchAllTasks();
     } catch (error) {
         console.error('启动评测失败:', error);
         ElMessage.error(`启动失败: ${error.message}`);
-    } finally {
-        isTableLoading.value = false;
+        // 如果失败了，把状态改回去，或者重新拉取列表
+        fetchAllTasks();
     }
 }
 
