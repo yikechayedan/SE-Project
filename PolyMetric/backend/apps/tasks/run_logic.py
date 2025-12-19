@@ -422,7 +422,6 @@ def run_adversarial_generation(task: EvaluationTask):
         item.predicted_answer_2 = answer_b
         item.save()
 
-
     return {
         "task_id": task.id,
         "method": "adversarial",

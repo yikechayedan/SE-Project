@@ -47,7 +47,7 @@
       </div>
     </div>
 
-    <el-table :data="filteredEvaluations" border style="width: 100%; margin-bottom: 40px;">
+    <el-table :data="filteredEvaluations" v-loading="isTableLoading" border style="width: 100%; margin-bottom: 40px;">
       <el-table-column prop="initiator" label="发起人" show-overflow-tooltip/>
       <el-table-column prop="taskName" label="任务名称" show-overflow-tooltip/>
       <el-table-column prop="model" label="模型" show-overflow-tooltip>
@@ -55,6 +55,7 @@
               <div class="model-name overflow-container">
                 <el-icon><Box /></el-icon>
                 <span class="ellipsis-content">{{ row.myModel_name }}</span>
+                <span v-if="row.method === 'adversarial'"class="ellipsis-content">| {{ row.myModel_2_name }}</span>
               </div>
             </template>
       </el-table-column>
@@ -62,7 +63,7 @@
         <template #default="{ row }">
               <div class="dataset-name overflow-container">
                 <el-icon><Folder /></el-icon>
-                <span class="ellipsis-content">{{ row.dataset_name }}</span>
+                <span class="ellipsis-content">{{ row.data }}</span>
               </div>
             </template>
       </el-table-column>
@@ -101,7 +102,7 @@
           启动自动评测
         </el-button>
         <el-button 
-          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending'" 
+          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'awaiting_human_judge'" 
           type="success" 
           link 
           @click="handleStartEvaluation(scope.row)"
@@ -109,12 +110,20 @@
           人工测评
         </el-button>
         <el-button 
-          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending'" 
+          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'model'" 
           type="success"
           link 
           @click="handleRunEvaluation(scope.row)"
         >
           启动自动评测
+        </el-button>
+        <el-button
+          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'human'" 
+          type="success"
+          link 
+          @click="handleRunEvaluation(scope.row)"
+        >
+          启动人工评测
         </el-button>
         <el-button 
           v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'completed'" 
@@ -159,6 +168,7 @@ import { ElMessage } from 'element-plus'
 import { Timer, Refresh } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router' 
 import { getEvaluationTasks, runEvaluationTask } from '@/api/tasks.js'
+import { getUserInfo } from '@/api/users.js'
 import { el } from 'element-plus/es/locale/index.mjs'
 
 
@@ -167,12 +177,15 @@ const categoryFilter = ref('')
 const currentPage = ref(1)
 const pageSize = 5
 
+const isTableLoading = ref(false)
 const showEvalDialog = ref(false)
 const evaluations = ref([])
 const MyEvaluations = ref([])
 const router = useRouter()
 // 获取昨天的日期字符串，例如 "2025-12-10"
 const yesterdayDate = ref();
+// 获取当前用户ID
+const currentUserId = ref(null);
 
 const filteredEvaluations = computed(() => {
   // 1. 根据搜索和分类条件进行过滤
@@ -220,7 +233,8 @@ const formatTaskDisplay = (task) => {
         initiator: task.creator_username,
         taskName: task.name,
         model: task.myModel_name,
-        dataset: task.dataset_name,
+        data: task.dataset_name,
+        type: task.judge_type,
         time: task.created_at ? new Date(task.created_at).toLocaleDateString() : 'N/A',
         update: task.updated_at ? new Date(task.updated_at).toLocaleDateString() : 'N/A',
     };
@@ -246,9 +260,10 @@ const getMethodTag = (method) => {
 
 const formatStatus = (status) => {
   const map = {
-    pending: '待测评',
+    pending: '待启动',
     running: '进行中',
     completed: '已完成',
+    awaiting_human_judge: '待评测',
     failed: '失败',
   };
   return map[status] || status;
@@ -260,6 +275,7 @@ const getStatusTag = (status) => {
     running: 'warning',
     completed: 'success',
     failed: 'danger',
+    awaiting_human_judge: 'info'
   };
   return map[status] || '';
 };
@@ -272,11 +288,8 @@ const getYesterdayDateString = () => {
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     
-    // 3. 格式化为 YYYY-MM-DD 字符串
-    const year = yesterday.getFullYear();
-    const month = String(yesterday.getMonth() + 1).padStart(2, '0'); // 月份从 0 开始
-    const day = String(yesterday.getDate()).padStart(2, '0');
-    yesterdayDate.value = `${year}-${month}-${day}`;
+    // 3. 获取格式化的日期字符串
+    yesterdayDate.value = yesterday.toLocaleDateString();
 };
 
 // 统计昨日新建任务数
@@ -286,10 +299,11 @@ const yesterdayNewCount = computed(() => {
     }
     
     return evaluations.value.filter(task => {
-        const taskDate = task.created_at ? task.created_at.substring(0, 10) : '';
-        return taskDate === yesterdayDate;
+        const taskDate = task.time ? task.time.substring(0, 10) : '';
+        return taskDate === yesterdayDate.value;
     }).length;
 });
+
 
 /**
  * 获取所有评测任务列表
@@ -306,6 +320,17 @@ const fetchAllTasks = async () => {
     } catch (error) {
         console.error('加载评测任务失败:', error);
         ElMessage.error(`加载评测任务失败: ${error.message}`);
+    }
+}
+
+const fetchUserID = async () => {
+    try {
+        const response = await getUserInfo();
+        const data = response.data.data;
+        currentUserId.value = data.id;
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+        ElMessage.error(`获取用户信息失败: ${error.message}`);
     }
 }
 
@@ -335,12 +360,12 @@ const handleStartEvaluation = (task) => {
   if(task.method === 'subjective') {
     router.push({
       name: 'SubjectiveEval',
-      params: { taskId: task.id }
+      params: { taskId: task.id , reviewerId: currentUserId.value , modelId: task.myModel , datasetId: task.dataset}
     })
   } else if(task.method === 'adversarial'){
     router.push({
       name: 'AdversarialEval',
-      params: { taskId: task.id }
+      params: { taskId: task.id , reviewerId: currentUserId.value, modelId: task.myModel, model2Id: task.myModel_2, datasetId: task.dataset}
     })
   }
 }
@@ -360,10 +385,18 @@ const handleViewEvaluation = (task) => {
 }
 
 const handleRunEvaluation = async (task) => {
-  
-    const response = await runEvaluationTask(task.id);
-    ElMessage.success('启动自动评测成功');
-
+    isTableLoading.value = true;
+    
+    try {
+        const response = await runEvaluationTask(task.id);
+        //该请求的响应需要耗费大量时间，等待后端引入celery实现异步处理后再优化
+        fetchAllTasks();
+    } catch (error) {
+        console.error('启动评测失败:', error);
+        ElMessage.error(`启动失败: ${error.message}`);
+    } finally {
+        isTableLoading.value = false;
+    }
 }
 
 const handleSubmit =() => {
@@ -376,6 +409,7 @@ const handleLocalFilter = (val) => {
 onMounted(() => {
   fetchAllTasks()
   getYesterdayDateString();
+  fetchUserID();
 })
 </script>
 

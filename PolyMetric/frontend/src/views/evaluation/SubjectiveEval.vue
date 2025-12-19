@@ -19,7 +19,7 @@
               {{ currentItem.item_content.input_query }}
             </blockquote>
             <div v-else class="content-placeholder">请等待问题加载...</div>
-            <p class="meta-info">数据集：历史知识库 | 类型：开放式问答</p>
+            <p class="meta-info">数据集 ID：{{ datasetId }} | 类型：开放式问答</p>
           </el-card>
         </el-col>
 
@@ -41,7 +41,7 @@
         </template>
         
         <el-form :model="form" v-if="currentItem.itemID">
-          <el-form-item class ="comprehensive-score-item">
+          <el-form-item class="comprehensive-score-item">
             <div class="score-labels-low">
                 <span class="label-low">极差 (1)</span>
             </div>
@@ -71,7 +71,7 @@
         <div class="page-navigation item-list-btn-wrapper">
             <el-button @click="drawerVisible = true" :disabled="loading">
                 <el-icon><Tickets /></el-icon>
-                <span>条目列表 ({{ totalCount }}</span>)
+                <span>条目列表 ({{ totalCount }})</span>
             </el-button>
         </div>
 
@@ -81,7 +81,7 @@
               layout="prev, pager, next"
               :total="totalCount"
               :page-size="1"
-              :current-page="currentPendingIndex + 1"
+              :current-page="currentPageIndex"
               :pager-count="11"
               @current-change="handlePageChange"
               class="custom-pager"
@@ -92,6 +92,7 @@
                     v-if="totalCount > 0"
                     v-model="gotoPageNum"
                     :min="1"
+                    :max="totalCount"
                     :step="1"
                     size="small"
                     controls-position="right"
@@ -104,7 +105,7 @@
         <div class="page-navigation">
             <el-button 
                 type="primary" 
-                @click="handleNext" 
+                @click="handleSubmit" 
                 :loading="submitting" 
                 :disabled="form.score === null || loading"
             >
@@ -123,7 +124,7 @@
     >
         <div class="item-id-grid">
             <el-button
-                v-for="(id, index) in pendingItems"
+                v-for="(id, index) in allItemIds"
                 :key="id"
                 :type="submissionStatus.get(id) ? 'primary' : 'info'"
                 :plain="!submissionStatus.get(id)"
@@ -136,8 +137,6 @@
             </el-button>
         </div>
         <div class="drawer-legend">
-            <el-tag type="primary">已提交 (蓝色)</el-tag>
-            <el-tag type="info" plain>待提交 (白色)</el-tag>
             <el-tag type="success" class="current-tag">当前条目 (绿色边框)</el-tag>
         </div>
     </el-drawer>
@@ -145,279 +144,192 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Tickets } from '@element-plus/icons-vue' // 【新增导入】
+import { ref, reactive, onMounted, computed } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { useRouter } from 'vue-router';
+import { Tickets } from '@element-plus/icons-vue';
+import { getPendingItems, getItemDetail, submitSubjectiveScore } from '@/api/tasks.js';
 
-
-// --- 模拟数据和后端接口 ---
-// 【新增模拟数据】
-const mockPendingItems = [
-    'TASK-ITEM-001', 'TASK-ITEM-002', 'TASK-ITEM-003' 
-];
-
-const mockItemDetails = {
-    'TASK-ITEM-001': {
-        method: "subjective",
-        itemID: "TASK-ITEM-001",
-        item_content: {
-            input_query: "我想了解文艺复兴时期的代表人物和主要成就。",
-            myModel1_response: `
-              <p>好的，文艺复兴...</p>
-              <ol><li><strong>达·芬奇</strong>：《蒙娜丽莎》。</li><li><strong>米开朗基罗</strong>：《大卫》。</li></ol>
-            `,
-        }
-    },
-    'TASK-ITEM-002': {
-        method: "subjective",
-        itemID: "TASK-ITEM-002",
-        item_content: {
-            input_query: "请用一段话解释量子纠缠。",
-            myModel1_response: "量子纠缠就像是一对分手的恋人...",
-        }
-    },
-    'TASK-ITEM-003': {
-        method: "subjective",
-        itemID: "TASK-ITEM-003",
-        item_content: {
-            input_query: "什么是黑洞的事件视界？",
-            myModel1_response: "事件视界是黑洞周围的一个边界...",
-        }
-    },
-};
-
-const fetchPendingItems = async (taskId, reviewerId) => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve({
-                task: taskId,
-                reviewer: reviewerId,
-                pending_count: 3,
-                pengdingItem_ids: mockPendingItems,
-            });
-        }, 500);
-    });
-};
-
-const fetchItemDetail = async (taskId, itemId) => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            const detail = mockItemDetails[itemId];
-            if (detail) {
-                resolve(detail);
-            } else {
-                reject(new Error(`Item detail for ID ${itemId} not found.`));
-            }
-        }, 500);
-    });
-};
-
-const submitEvaluation = async (payload) => {
-    console.log("提交评分数据:", payload);
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve({ success: true, message: "评分提交成功" });
-        }, 300);
-    });
-};
-
-// --- Vue 响应式状态 ---
-
-// 【修改点 7：props 结构统一】
+// 接收父组件参数
 const props = defineProps({
-    taskId: { type: [String, Number], required: true, default: 'TASK-SUB-001' },
-    reviewerId: { type: [String, Number], required: false, default: 1 }
+  taskId: { type: [String, Number], required: true },
+  reviewerId: { type: [String, Number], required: true },
+  modelId: { type: [String, Number], required: true },
+  datasetId: { type: [String, Number], required: true }
 });
 
+// 状态管理
 const loading = ref(false);
 const submitting = ref(false);
+const drawerVisible = ref(false);
+const router = useRouter();
 
-const pendingItems = ref([]);
 const totalCount = ref(0);
-const currentPendingIndex = ref(-1);
-const currentItem = reactive({
-    itemID: null,
-    item_content: null,
+const allItemIds = ref([]); // 所有条目
+const pendingItemIds = ref([]); // 待测条目
+const submissionStatus = ref(new Map()); // 维护每个ID的完成状态 (ID -> Boolean)
+
+const currentItemId = ref(null);
+const currentItem = ref({
+  itemID: null,
+  item_content: { input_query: '', myModel1_response: '' }
 });
 
-// 【修改点 8：统一评分字段为 score】
-const form = reactive({
-    itemID: null,
-    score: null, 
-});
-
+const form = reactive({ score: null });
 const gotoPageNum = ref(1);
-
-// 【新增状态】
-const drawerVisible = ref(false); 
-const submissionStatus = reactive(new Map());
-// 【新增核心状态：本地保存评分】
-const savedScores = reactive(new Map());
-
 
 // --- 计算属性 ---
 
-const canGoPrevious = computed(() => currentPendingIndex.value > 0);
-const isLastItem = computed(() => currentPendingIndex.value === pendingItems.value.length - 1);
-const currentItemId = computed(() => {
-    if (currentPendingIndex.value >= 0 && pendingItems.value.length > currentPendingIndex.value) {
-        return pendingItems.value[currentPendingIndex.value];
-    }
-    return null;
+// 当前是第几页（基于 ID 在全量列表中的索引）
+const currentPageIndex = computed(() => {
+  // 增加对 allItemIds.value 的判断，防止数据未加载时报错
+  if (!allItemIds.value || !Array.isArray(allItemIds.value)) {
+    return 1;
+  }
+  const index = allItemIds.value.indexOf(currentItemId.value);
+  return index !== -1 ? index + 1 : 1;
 });
 
+const canGoPrevious = computed(() => currentPageIndex.value > 1);
 
-// --- 核心方法 ---
+// 判断是否是最后一个待评分项
+const isLastItem = computed(() => {
+  // 增加安全判断：确保 pendingItemIds.value 存在且是数组
+  if (!pendingItemIds.value || !Array.isArray(pendingItemIds.value)) {
+    return false;
+  }
+  return pendingItemIds.value.length === 1 && pendingItemIds.value.includes(currentItemId.value);
+});
 
-const initEvaluation = async () => {
-    loading.value = true;
-    try {
-        const response = await fetchPendingItems(props.taskId, props.reviewerId);
-        pendingItems.value = response.pengdingItem_ids;
-        totalCount.value = response.pending_count;
-        
-        // 初始化提交状态
-        submissionStatus.clear();
-        if (pendingItems.value.length > 0) {
-            pendingItems.value.forEach(id => {
-                submissionStatus.set(id, false);
-            });
-            currentPendingIndex.value = 0;
-        } else {
-            ElMessage.warning('当前任务没有待评测条目。');
-        }
-    } catch (error) {
-        ElMessage.error('获取待测列表失败: ' + error.message);
-    } finally {
-        loading.value = false;
-    }
+// --- 核心逻辑 ---
+
+// 获取待测条目列表并初始化
+const initData = async () => {
+  loading.value = true;
+  try {
+    const res = await getPendingItems(props.taskId, props.reviewerId);
+    
+    // 使用逻辑或 || 提供兜底空数组
+    allItemIds.value = res.data.all_item_ids || [];
+    pendingItemIds.value = res.data.pengding_item_ids || []; // 确保这里不会是 undefined
+    totalCount.value = res.data.total_count || 0;
+
+    const pendingSet = new Set(pendingItemIds.value);
+    allItemIds.value.forEach(id => {
+      submissionStatus.value.set(id, !pendingSet.has(id));
+    });
+
+    const targetId = pendingItemIds.value.length > 0 ? pendingItemIds.value[0] : allItemIds.value[0];
+    if (targetId) await fetchDetail(targetId);
+  } catch (error) {
+    console.error('初始化数据失败:', error);
+    // 出错时也确保是空数组
+    allItemIds.value = [];
+    pendingItemIds.value = [];
+  } finally {
+    loading.value = false;
+  }
 };
 
-// 【修改点 9：加载时检查本地评分并回显】
-const loadItemDetail = async (itemId) => {
-    if (!itemId) return;
-
-    loading.value = true;
-    currentItem.itemID = null; 
-    currentItem.item_content = null;
-
-    try {
-        const response = await fetchItemDetail(props.taskId, itemId);
-        
-        currentItem.itemID = response.itemID;
-        currentItem.item_content = response.item_content;
-        
-        form.itemID = response.itemID;
-        
-        // 检查是否有本地保存的评分
-        const savedScore = savedScores.get(response.itemID);
-        if (savedScore !== undefined) {
-            form.score = savedScore; // 如果有保存值，则回显
-        } else {
-            form.score = null; // 否则重置为 null 
-        }
-        
-        gotoPageNum.value = currentPendingIndex.value + 1;
-
-    } catch (error) {
-        ElMessage.error(`加载条目 ${itemId} 详情失败: ` + error.message);
-    } finally {
-        loading.value = false;
-    }
+// 获取条目详情
+const fetchDetail = async (id) => {
+  loading.value = true;
+  currentItemId.value = id;
+  try {
+    const res = await getItemDetail(props.taskId, id);
+    currentItem.value = res.data;
+    form.score = null; // 切换题目重置评分
+    gotoPageNum.value = currentPageIndex.value;
+  } catch (error) {
+    ElMessage.error('加载条目详情失败');
+  } finally {
+    loading.value = false;
+  }
 };
 
-// 【修改点 10：提交成功后保存评分到本地 Map】
-const handleNext = async () => {
-    if (form.score === null) {
-        ElMessage.warning('请先为当前条目评分 (1-10)。');
-        return;
-    }
+// 提交逻辑
+const handleSubmit = async () => {
+  if (isLastItem.value) {
+    ElMessageBox.confirm('这已经是最后一题了，提交后将结束评测任务。', '完成提示', {
+      confirmButtonText: '提交并完成',
+      cancelButtonText: '取消',
+      type: 'success'
+    }).then(() => executeSubmit(true));
+  } else {
+    executeSubmit(false);
+  }
+};
 
-    submitting.value = true;
+const executeSubmit = async (isFinal) => {
+  submitting.value = true;
+  try {
+    // 按照要求的格式构造 Body
     const payload = {
-        method: "subjective",
-        myModel: 1, 
-        dataset: 1,
-        reviewer: props.reviewerId,
-        time_stamp: new Date().toISOString(),
-        itemID: form.itemID,
-        score: form.score,
+      myModel: props.modelId,
+      dataset: props.datasetId,
+      reviewer: props.reviewerId,
+      itemID: currentItemId.value,
+      score: form.score,
+      preference: null // 主观评测下默认为 null
     };
 
-    try {
-        const result = await submitEvaluation(payload);
+    await submitSubjectiveScore(props.taskId, payload);
+    ElMessage.success('提交成功');
 
-        if (result.success) {
-            ElMessage.success(`条目 ${form.itemID} 评分提交成功!`);
-            
-            // 更新提交状态和本地保存的评分
-            submissionStatus.set(form.itemID, true);
-            savedScores.set(form.itemID, form.score);
-            
-            if (!isLastItem.value) {
-                currentPendingIndex.value += 1;
-            } else {
-                ElMessage.info('所有待测条目已完成评测！');
-            }
-        } else {
-            ElMessage.error('评分提交失败，请重试。');
-        }
-    } catch (error) {
-        ElMessage.error('提交评分时发生错误: ' + error.message);
-    } finally {
-        submitting.value = false;
+    // 1. 更新本地状态 Map
+    submissionStatus.value.set(currentItemId.value, true);
+
+    // 2. 刷新待测列表
+    const res = await getPendingItems(props.taskId, props.reviewerId);
+    pendingItemIds.value = res.data.pengding_item_ids;
+
+    if (isFinal) {
+      router.push({ name: 'Evaluation' });
+    } else {
+      // 3. 自动跳转：寻找下一个未提交的 ID
+      const nextPendingId = pendingItemIds.value.find(id => id !== currentItemId.value) || pendingItemIds.value[0];
+      if (nextPendingId) {
+        fetchDetail(nextPendingId);
+      }
     }
+  } catch (error) {
+    console.error('提交报错详情:', error);
+    ElMessage.error('提交分数失败');
+  } finally {
+    submitting.value = false;
+  }
 };
 
+// --- UI 交互方法 ---
+
 const handlePrevious = () => {
-    if (canGoPrevious.value) {
-        currentPendingIndex.value -= 1;
-    } else {
-        ElMessage.info('当前已是第一题。');
-    }
+  const index = allItemIds.value.indexOf(currentItemId.value);
+  if (index > 0) fetchDetail(allItemIds.value[index - 1]);
 };
 
 const handlePageChange = (page) => {
-    currentPendingIndex.value = page - 1;
+  // 1. 检查数组是否存在且有内容
+  // 2. 检查计算出的索引是否在数组范围内
+  if (allItemIds.value && allItemIds.value.length >= page) {
+    const targetId = allItemIds.value[page - 1];
+    if (targetId !== undefined) {
+      fetchDetail(targetId);
+    }
+  } else {
+    console.warn('正在尝试跳转到不存在的页码:', page);
+  }
 };
 
-// 【修改点 11：跳转逻辑】
-const handleGotoPage = (value) => {
-    const totalPages = pendingItems.value.length;
-    
-    if (value === null || value < 1 || value > totalPages) {
-        ElMessage.warning(`不存在该页面，请输入 1 到 ${totalPages} 之间的页码。`);
-        setTimeout(() => {
-            gotoPageNum.value = currentPendingIndex.value + 1;
-        }, 50); 
-        return;
-    }
-    
-    currentPendingIndex.value = value - 1;
+const handleGotoPage = (val) => {
+  if (val) fetchDetail(allItemIds.value[val - 1]);
 };
 
-// 【修改点 12：通过 ID 跳转逻辑】
-const handleJumpToItemById = (itemId) => {
-    const index = pendingItems.value.findIndex(id => id === itemId);
-    if (index !== -1 && index !== currentPendingIndex.value) {
-        currentPendingIndex.value = index;
-    }
-    drawerVisible.value = false;
+const handleJumpToItemById = (id) => {
+  drawerVisible.value = false;
+  fetchDetail(id);
 };
 
-
-// --- 生命周期和监听器 ---
-
-onMounted(() => {
-    initEvaluation();
-});
-
-watch(currentPendingIndex, (newIndex) => {
-    if (newIndex >= 0 && newIndex < pendingItems.value.length) {
-        const itemId = pendingItems.value[newIndex];
-        loadItemDetail(itemId);
-    }
-}, { immediate: false }); 
+onMounted(initData);
 </script>
 
 <style scoped>
