@@ -206,7 +206,7 @@ onMounted(() => {
 /* 继承并微调 SubjectResult 的样式 */
 .evaluation-page {
   padding: 40px;
-  background-color: #f7f9fc;
+  background-color: var(--bg-body);
   min-height: 100vh;
 }
 
@@ -224,7 +224,7 @@ onMounted(() => {
 
 .title {
   font-size: 26px;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -235,10 +235,12 @@ onMounted(() => {
 .meta-item-card {
   text-align: center;
   border-radius: 10px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
 }
 .meta-label {
   font-size: 14px;
-  color: #8c939d;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 .meta-value {
@@ -250,15 +252,18 @@ onMounted(() => {
 .section-title {
   font-size: 18px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 .prompt-card {
   margin-bottom: 20px;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .prompt-text {
   padding: 15px;
   border-left: 5px solid #409eff;
-  background-color: #f0f7ff;
-  color: #444;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
   font-style: italic;
   margin: 0;
 }
@@ -270,18 +275,22 @@ onMounted(() => {
 .model-output-card {
   height: 450px;
   overflow-y: auto;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .model-a-title { color: #67c23a; }
 .model-b-title { color: #e6a23c; }
 .model-response {
   white-space: pre-wrap;
   line-height: 1.6;
-  color: #333;
+  color: var(--text-primary);
 }
 
 /* 评分/偏好展示 */
 .rating-card {
   text-align: center;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 .judgement-title {
   color: #f56c6c;
@@ -298,6 +307,12 @@ onMounted(() => {
   opacity: 1 !important;
 }
 
+:deep(.el-radio-button__inner) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
 /* 底部导航 */
 .navigation-footer {
   display: flex;
@@ -305,7 +320,7 @@ onMounted(() => {
   align-items: center;
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
 }
 .page-navigation {
   width: 150px;

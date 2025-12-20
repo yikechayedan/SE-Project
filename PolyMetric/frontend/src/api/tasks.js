@@ -30,7 +30,7 @@ export function runEvaluationTask(taskId) {
   return request({
     url: '/api/tasks/run-task/',
     method: 'post',
-    timeout: 60000, // 设置超时时间为60秒
+    timeout: 300000, // 设置超时时间为 300 秒 (5分钟)
     data: { task_id: taskId } // 请求体格式
   });
 }

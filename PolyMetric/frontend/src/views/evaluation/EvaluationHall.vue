@@ -97,6 +97,7 @@
           v-if="scope.row.method === 'objective' && scope.row.status === 'pending'" 
           type="success" 
           link 
+          :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
           启动自动评测
@@ -113,6 +114,7 @@
           v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'model'" 
           type="success"
           link 
+          :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
           启动自动评测
@@ -121,6 +123,7 @@
           v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'human'" 
           type="success"
           link 
+          :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
           启动人工评测
@@ -178,6 +181,7 @@ const currentPage = ref(1)
 const pageSize = 5
 
 const isTableLoading = ref(false)
+const loadingTasks = ref({})
 const showEvalDialog = ref(false)
 const evaluations = ref([])
 const MyEvaluations = ref([])
@@ -385,17 +389,21 @@ const handleViewEvaluation = (task) => {
 }
 
 const handleRunEvaluation = async (task) => {
-    isTableLoading.value = true;
+    // 1. 立即给用户反馈（乐观更新）
+    // 不需要转圈了，直接把状态改为 running，界面会立刻显示 "正在处理，请稍候"
+    task.status = 'running'; 
     
     try {
-        const response = await runEvaluationTask(task.id);
-        //该请求的响应需要耗费大量时间，等待后端引入celery实现异步处理后再优化
+        // 2. 发送请求给后端（虽然后端会卡很久，但前端界面已经变了）
+        await runEvaluationTask(task.id);
+        
+        // 3. 后端终于跑完后，再拉取一次最新结果（可能是 completed）
         fetchAllTasks();
     } catch (error) {
         console.error('启动评测失败:', error);
         ElMessage.error(`启动失败: ${error.message}`);
-    } finally {
-        isTableLoading.value = false;
+        // 如果失败了，把状态改回去，或者重新拉取列表
+        fetchAllTasks();
     }
 }
 
@@ -410,15 +418,13 @@ onMounted(() => {
   fetchAllTasks()
   getYesterdayDateString();
   fetchUserID();
-})
-</script>
+})</script>
 
 <style scoped>
 .evaluation-hall {
   padding: 24px;
-  background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 50%, #f7fbff 100%);
+  background: var(--bg-body);
   border-radius: 14px;
-  box-shadow: 0 6px 24px rgba(31, 41, 61, 0.08);
   min-height: calc(100vh - 140px);
 }
 
@@ -508,27 +514,13 @@ onMounted(() => {
 }
 
 .tool-bar {
-  background: #ffffff;
+  background: var(--bg-secondary);
   border-radius: 12px;
   padding: 14px;
   padding-left: 24px;
-  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   margin-bottom: 14px;
-}
-
-.overflow-container {
-    overflow: hidden; 
-    display: flex; 
-    align-items: center;
-    gap: 8px; 
-}
-
-.ellipsis-content {
-    white-space: nowrap; 
-    overflow: hidden;    
-    text-overflow: ellipsis; 
-    flex: 1; 
-    display: block; 
+  border: 1px solid var(--border-color);
 }
 
 .overflow-container {
@@ -547,12 +539,12 @@ onMounted(() => {
 }
 
 .dataset-name {
-  color: #409eff;
+  color: var(--accent-color);
   font-weight: 500;
 }
 
 .model-name {
-  color: #409eff;
+  color: var(--accent-color);
   font-weight: 500;
 }
 
@@ -566,77 +558,32 @@ onMounted(() => {
   margin-bottom: 20px; 
 }
 
-/* 新增：容器样式，控制溢出和图标对齐 */
-.overflow-container {
-  display: flex;
-  align-items: center;
-  gap: 8px; /* 图标和文本之间的间隔 */
-  overflow: hidden; /* 裁剪溢出内容 */
-}
-
-/* 新增：文本样式，实现省略号 */
-.ellipsis-content {
-  white-space: nowrap; 
-  overflow: hidden;    
-  text-overflow: ellipsis; 
-  flex: 1; /* 确保它占据所有剩余空间 */
-  display: block; 
-}
-
-.el-table th { background: #f5f7fa; color: #333; }
-
-.action-bar { 
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px; 
-}
-
-/* 新增：容器样式，控制溢出和图标对齐 */
-.overflow-container {
-  display: flex;
-  align-items: center;
-  gap: 8px; /* 图标和文本之间的间隔 */
-  overflow: hidden; /* 裁剪溢出内容 */
-}
-
-/* 新增：文本样式，实现省略号 */
-.ellipsis-content {
-  white-space: nowrap; 
-  overflow: hidden;    
-  text-overflow: ellipsis; 
-  flex: 1; /* 确保它占据所有剩余空间 */
-  display: block; 
-}
-
-.el-table th { background: #f5f7fa; color: #333; }
-  
-
-/* Table Dark Theme Overrides */
+/* Table Theme Overrides using variables */
 :deep(.el-table) {
-  --el-table-bg-color: #161b22;
-  --el-table-tr-bg-color: #161b22;
-  --el-table-header-bg-color: #0d1117;
-  --el-table-border-color: #30363d;
-  --el-table-text-color: #c9d1d9;
-  --el-table-header-text-color: #8b949e;
-  --el-table-row-hover-bg-color: #1f2428;
+  --el-table-bg-color: var(--bg-secondary);
+  --el-table-tr-bg-color: var(--bg-secondary);
+  --el-table-header-bg-color: var(--bg-body);
+  --el-table-border-color: var(--border-color);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-row-hover-bg-color: var(--bg-hover);
 }
 
 :deep(.el-table__inner-wrapper::before) {
-  background-color: #30363d;
+  background-color: var(--border-color);
 }
 
 :deep(.el-table th) {
-  background-color: #0d1117 !important;
-  color: #8b949e !important;
-  border-bottom: 1px solid #30363d !important;
+  background-color: var(--bg-body) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
 :deep(.el-table td) {
-  border-bottom: 1px solid #30363d !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
-/* Pagination Dark Mode Override */
+/* Pagination Theme Override */
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -645,30 +592,30 @@ onMounted(() => {
 }
 
 :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
-  background-color: #1f6bff;
+  background-color: var(--accent-color);
   color: #ffffff;
 }
 
 :deep(.el-pagination.is-background .el-pager li) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 :deep(.el-pagination.is-background .btn-prev),
 :deep(.el-pagination.is-background .btn-next) {
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
-/* Input/Select Dark Mode Overrides (if global not enough) */
+/* Input/Select Theme Overrides */
 :deep(.el-input__wrapper) {
-  background-color: #0d1117;
-  box-shadow: 0 0 0 1px #30363d inset;
+  background-color: var(--bg-tertiary);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
 }
 
 :deep(.el-input__inner) {
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 </style>
