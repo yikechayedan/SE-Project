@@ -21,6 +21,16 @@ class Dataset(models.Model):
         verbose_name="数据集类型",
         choices=[("image", "图像"), ("text", "文本"), ("multimodal", "多模态")]
     )
+    evaluation_type = models.CharField(
+        max_length=20,
+        verbose_name="测评类型",
+        choices=[
+            ("subjective", "主观测评"),
+            ("objective", "客观测评"),
+            ("adversarial", "对抗测评")
+        ],
+        default="subjective"
+    )
     file_format = models.CharField(
         max_length=20,
         verbose_name="文件格式",

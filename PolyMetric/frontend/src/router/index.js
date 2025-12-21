@@ -45,7 +45,12 @@ const routes = [
     component: () => import('../views/evaluation/AdversarialEval.vue'),
     props: true
   },
-  { path: '/evaluation/adversarial-result/:taskId', name: 'AdversarialResult', component: () => import('../views/evaluation/AdversarialResult.vue'), props: true },
+  { 
+    path: '/evaluation/adversarial-result/:taskId',
+    name: 'AdversarialResult', 
+    component: () => import('../views/evaluation/AdversarialResult.vue'), 
+    props: true 
+  },
   
   { path: '/user/:id', name: 'UserProfile', component: () => import('../views/profile/UserProfile.vue'), props: true },
   { path: '/user/:id/datasets', name: 'UserDatasets', component: () => import('../views/profile/UserDatasets.vue') },

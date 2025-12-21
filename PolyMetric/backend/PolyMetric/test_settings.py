@@ -1,33 +1,34 @@
-"""
-测试环境配置
-基于主配置文件，但使用SQLite数据库
-"""
 from .settings import *
 
-# 修改数据库配置为SQLite
+# 测试环境配置
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',  # 使用内存数据库
+        'NAME': BASE_DIR / 'test_db.sqlite3',
     }
 }
 
-# 禁用迁移以提高测试速度
-class DisableMigrations:
-    def __contains__(self, item):
-        return True
-    
-    def __getitem__(self, item):
-        return None
+# 禁用一些不需要的中间件
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
 
-MIGRATION_MODULES = DisableMigrations()
+# 简化认证配置
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+}
 
-# 禁用密码验证器以提高测试速度
-AUTH_PASSWORD_VALIDATORS = []
-
-# 禁用邮件发送
-EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+# 禁用邮件功能
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # 禁用Celery
 CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True

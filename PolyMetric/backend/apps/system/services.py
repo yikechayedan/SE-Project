@@ -15,14 +15,19 @@ def log_rank_change(model_obj, old_rank, new_rank):
         
     rank_change = old_rank - new_rank  # 排名数字越小，排名越高
     
+    company_name = getattr(model_obj, 'company', '') or '未知公司'
+        
+    # --- 添加调试代码 ---
+    print(f"DEBUG: model_id={model_obj.id}, model_name={model_obj.name}")
+    print(f"DEBUG: company_name value is: '{company_name}' (type: {type(company_name)})")
     if rank_change > 0:  # 排名上升
         SystemEvent.objects.create(
             event_type='rank_up',
             actor_name="榜单更新",
             target_id=model_obj.id,
             target_name=model_obj.name,
-            target_extra=getattr(model_obj, 'company', ''),
-            message=f"{getattr(model_obj, 'company', '未知公司')} 的模型 {model_obj.name} 排名飙升，上升了 {rank_change} 位！"
+            target_extra=company_name,
+            message=f"{company_name} 的模型 {model_obj.name} 排名飙升，上升了 {rank_change} 位！"
         )
 
 
