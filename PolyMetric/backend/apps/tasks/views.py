@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
 from .run_logic import run_evaluation
-from .tasks import run_evaluation_task
+from .tasks import init_evaluation_task
 from .models import EvaluationTask, EvaluationItem
 from .serializers import (
     EvaluationTaskSerializer,
@@ -354,7 +354,8 @@ def run_task(request):
         return Response({"error": "task not found"}, status=404)
 
     # 改为异步调用：提交给 Celery Worker
-    run_evaluation_task.delay(task_id)
+    from .tasks import init_evaluation_task
+    init_evaluation_task.delay(task_id)
     
     # 立即返回，前端无需等待 60s+
     return Response({
