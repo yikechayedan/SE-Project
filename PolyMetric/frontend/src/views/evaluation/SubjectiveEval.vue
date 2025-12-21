@@ -168,6 +168,7 @@ const totalCount = ref(0);
 const allItemIds = ref([]); // 所有条目
 const pendingItemIds = ref([]); // 待测条目
 const submissionStatus = ref(new Map()); // 维护每个ID的完成状态 (ID -> Boolean)
+const completedScoresMap = ref(new Map());
 
 const currentItemId = ref(null);
 const currentItem = ref({
@@ -209,23 +210,36 @@ const initData = async () => {
   try {
     const res = await getPendingItems(props.taskId, props.reviewerId);
     
-    // 使用逻辑或 || 提供兜底空数组
     allItemIds.value = res.data.all_item_ids || [];
-    pendingItemIds.value = res.data.pengding_item_ids || []; // 确保这里不会是 undefined
+    pendingItemIds.value = res.data.pending_item_ids || []; // 注意：此处根据你后端返回的 key 名对齐
     totalCount.value = res.data.total_count || 0;
 
-    const pendingSet = new Set(pendingItemIds.value);
+    // 1. 清空旧状态
+    submissionStatus.value.clear();
+    completedScoresMap.value.clear();
+
+    // 2. 处理已评测的数据
+    if (res.data.completed_items) {
+      res.data.completed_items.forEach(item => {
+        submissionStatus.value.set(item.id, true);
+        completedScoresMap.value.set(item.id, {
+          score: item.score,
+          preference: item.preference
+        });
+      });
+    }
+
+    // 3. 处理所有 ID 的完成状态（未在已评测列表中的即为 false）
     allItemIds.value.forEach(id => {
-      submissionStatus.value.set(id, !pendingSet.has(id));
+      if (!submissionStatus.value.has(id)) {
+        submissionStatus.value.set(id, false);
+      }
     });
 
     const targetId = pendingItemIds.value.length > 0 ? pendingItemIds.value[0] : allItemIds.value[0];
     if (targetId) await fetchDetail(targetId);
   } catch (error) {
     console.error('初始化数据失败:', error);
-    // 出错时也确保是空数组
-    allItemIds.value = [];
-    pendingItemIds.value = [];
   } finally {
     loading.value = false;
   }
@@ -238,7 +252,15 @@ const fetchDetail = async (id) => {
   try {
     const res = await getItemDetail(props.taskId, id);
     currentItem.value = res.data;
-    form.score = null; // 切换题目重置评分
+
+    // --- 分数回显核心逻辑 ---
+    // 检查这个 ID 是否在已评测缓存中
+    if (completedScoresMap.value.has(id)) {
+      form.score = completedScoresMap.value.get(id).score;
+    } else {
+      form.score = null; // 如果没评测过，才重置为空
+    }
+    
     gotoPageNum.value = currentPageIndex.value;
   } catch (error) {
     ElMessage.error('加载条目详情失败');
@@ -261,43 +283,44 @@ const handleSubmit = async () => {
 };
 
 const executeSubmit = async (isFinal) => {
-  submitting.value = true;
-  try {
-    // 按照要求的格式构造 Body
-    const payload = {
-      myModel: props.modelId,
-      dataset: props.datasetId,
-      reviewer: props.reviewerId,
-      itemID: currentItemId.value,
-      score: form.score,
-      preference: null // 主观评测下默认为 null
-    };
+    submitting.value = true;
+    try {
+        const payload = {
+        myModel: props.modelId,
+        dataset: props.datasetId,
+        reviewer: props.reviewerId,
+        itemID: currentItemId.value,
+        score: form.score,
+        preference: null 
+        };
 
-    await submitSubjectiveScore(props.taskId, payload);
-    ElMessage.success('提交成功');
+        await submitSubjectiveScore(props.taskId, payload);
+        ElMessage.success('提交成功');
 
-    // 1. 更新本地状态 Map
-    submissionStatus.value.set(currentItemId.value, true);
+        // 更新本地缓存，这样如果用户点“上一题”回来，就能看到刚才打的分数
+        submissionStatus.value.set(currentItemId.value, true);
+        completedScoresMap.value.set(currentItemId.value, { 
+            score: form.score, 
+            preference: null 
+        });
 
-    // 2. 刷新待测列表
-    const res = await getPendingItems(props.taskId, props.reviewerId);
-    pendingItemIds.value = res.data.pengding_item_ids;
+        // 刷新列表数据（保持与后端同步）
+        const res = await getPendingItems(props.taskId, props.reviewerId);
+        pendingItemIds.value = res.data.pending_item_ids;
 
-    if (isFinal) {
-      router.push({ name: 'Evaluation' });
-    } else {
-      // 3. 自动跳转：寻找下一个未提交的 ID
-      const nextPendingId = pendingItemIds.value.find(id => id !== currentItemId.value) || pendingItemIds.value[0];
-      if (nextPendingId) {
-        fetchDetail(nextPendingId);
-      }
+        if (isFinal) {
+        router.push({ name: 'Evaluation' });
+        } else {
+        const nextPendingId = pendingItemIds.value.find(id => id !== currentItemId.value) || pendingItemIds.value[0];
+        if (nextPendingId) {
+            fetchDetail(nextPendingId);
+        }
+        }
+    } catch (error) {
+        ElMessage.error('提交分数失败');
+    } finally {
+        submitting.value = false;
     }
-  } catch (error) {
-    console.error('提交报错详情:', error);
-    ElMessage.error('提交分数失败');
-  } finally {
-    submitting.value = false;
-  }
 };
 
 // --- UI 交互方法 ---

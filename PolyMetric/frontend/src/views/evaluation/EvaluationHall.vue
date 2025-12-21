@@ -31,18 +31,21 @@
       <div class="tool-bar">
         <el-button type="primary"  @click="showEvalDialog = true">添加评测</el-button>
         <el-input v-model="searchQuery" placeholder="搜索评测" prefix-icon="Search" style="width: 300px; margin-left: 30px;" />
-        <el-select 
-            v-model="categoryFilter" 
-            placeholder="选择分类" 
-            clearable
-            @change="handleLocalFilter"
-            style="width: 150px; margin-left: 15px;"
-          >
-            <el-option label="全部分类" value="" />
-            <el-option label="客观评测" value="objective" />
-            <el-option label="主观评测" value="subjective" />
-            <el-option label="对抗评测" value="adversarial" />
-          </el-select>
+        <el-select v-model="creatorFilter" placeholder="创建者" style="width: 120px; margin-left: 15px;">
+          <el-option label="我的任务" value="mine" />
+          <el-option label="全部任务" value="all" />
+        </el-select>
+
+        <el-select v-model="categoryFilter" placeholder="评测方法" clearable style="width: 130px; margin-left: 15px;">
+          <el-option label="客观评测" value="objective" />
+          <el-option label="主观评测" value="subjective" />
+          <el-option label="对抗评测" value="adversarial" />
+        </el-select>
+
+        <el-select v-model="judgeTypeFilter" v-if="categoryFilter !== 'objective'" placeholder="评测方式" clearable style="width: 130px; margin-left: 15px;">
+          <el-option label="模型评测" value="model" />
+          <el-option label="人工评测" value="human" />
+        </el-select>
           <el-button :icon="Refresh" @click="resetFilter" style="margin-left: 15px;">重置</el-button>
       </div>
     </div>
@@ -126,7 +129,7 @@
           :loading="loadingTasks[scope.row.id]"
           @click="handleRunEvaluation(scope.row)"
         >
-          启动人工评测
+          生成回答
         </el-button>
         <el-button 
           v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'completed'" 
@@ -165,9 +168,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch} from 'vue'
+import { computed, onMounted, onUnmounted,  ref, watch} from 'vue'
 import EvalDialog from '../../components/common/EvalDialog.vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Timer, Refresh } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router' 
 import { getEvaluationTasks, runEvaluationTask } from '@/api/tasks.js'
@@ -175,16 +178,18 @@ import { getUserInfo } from '@/api/users.js'
 import { el } from 'element-plus/es/locale/index.mjs'
 
 
-const searchQuery = ref('')
-const categoryFilter = ref('')
+const searchQuery = ref('') // 搜索框
+const categoryFilter = ref('') // 评测类型
+const judgeTypeFilter = ref('')  // 评测方式
+const creatorFilter = ref('mine') // 创建者
 const currentPage = ref(1)
-const pageSize = 5
+const pageSize = ref(5)
+const pollTimer = ref(null)
 
 const isTableLoading = ref(false)
 const loadingTasks = ref({})
 const showEvalDialog = ref(false)
 const evaluations = ref([])
-const MyEvaluations = ref([])
 const router = useRouter()
 // 获取昨天的日期字符串，例如 "2025-12-10"
 const yesterdayDate = ref();
@@ -204,20 +209,26 @@ const filteredEvaluations = computed(() => {
                           (item.initiator || '').includes(searchQuery.value);
     // 检查是否符合分类条件
     // 如果 categoryFilter 为空字符串 ('')，表示“全部分类”，即所有都符合
-    const matchesCategory = !categoryFilter.value || (item.method === categoryFilter.value)
+    const matchesCategory = !categoryFilter.value || (item.method === categoryFilter.value);
     
-    return matchesSearch && matchesCategory
+    // 评测方式过滤
+    const matchesJudgeType = !judgeTypeFilter.value || (item.type === judgeTypeFilter.value);
+
+    //  创建者过滤 (我的/全部)
+    const matchesCreator = creatorFilter.value === 'all' || (item.creator === currentUserId.value);
+    
+    return matchesSearch && matchesCategory && matchesJudgeType && matchesCreator;
   })
 
   // 2. 在过滤后的数组上进行分页操作
-  const start = (currentPage.value - 1) * pageSize
-  const end = currentPage.value * pageSize
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = currentPage.value * pageSize.value
   
   return filteredBySearchAndCategory.slice(start, end)
 })
 
 // 监听筛选条件变化，重置到第一页
-watch([searchQuery, categoryFilter], () => {
+watch([searchQuery, categoryFilter, judgeTypeFilter, creatorFilter], () => {
   currentPage.value = 1
 })
 
@@ -225,6 +236,8 @@ watch([searchQuery, categoryFilter], () => {
 const resetFilter = () => {
   searchQuery.value = ''
   categoryFilter.value = ''
+  judgeTypeFilter.value = ''
+  creatorFilter.value = 'mine'
   currentPage.value = 1
   fetchAllTasks()
 }
@@ -308,22 +321,58 @@ const yesterdayNewCount = computed(() => {
     }).length;
 });
 
+const MyEvaluations = computed(() => {
+  if (!currentUserId.value || !evaluations.value) return [];
+  return evaluations.value.filter(item => item.creator === currentUserId.value);
+});
+
 
 /**
  * 获取所有评测任务列表
  */
-const fetchAllTasks = async () => {
+const fetchAllTasks = async (isSilent = false) => {
+    if (!isSilent) isTableLoading.value = true;
     try {
         const response = await getEvaluationTasks();
         const data = response.data;
-        // 格式化所有任务并赋值给 evaluations
         const formattedTasks = data.map(formatTaskDisplay);
         evaluations.value = formattedTasks;
-        MyEvaluations.value = formattedTasks.filter(task => task.creator_username === localStorage.getItem('username'));
         
+        // 自动判断是否需要启动或停止轮询
+        checkPollingNecessity();
     } catch (error) {
         console.error('加载评测任务失败:', error);
-        ElMessage.error(`加载评测任务失败: ${error.message}`);
+        if (!isSilent) ElMessage.error(`加载评测任务失败: ${error.message}`);
+    } finally {
+        if (!isSilent) isTableLoading.value = false;
+    }
+}
+
+const checkPollingNecessity = () => {
+    const hasActiveTask = evaluations.value.some(
+        task => task.status === 'running' || task.status === 'pending'
+    );
+
+    if (hasActiveTask) {
+        startPolling();
+    } else {
+        stopPolling();
+    }
+}
+
+const startPolling = () => {
+    if (pollTimer.value) return; // 避免重复启动
+    console.log('检测到正在运行的任务，开启轮询...');
+    pollTimer.value = setInterval(() => {
+        fetchAllTasks(true); // 传入 true，实现无感知静默更新
+    }, 5000); // 每 5 秒轮询一次
+}
+
+const stopPolling = () => {
+    if (pollTimer.value) {
+        clearInterval(pollTimer.value);
+        pollTimer.value = null;
+        console.log('所有任务已完成或停止，关闭轮询');
     }
 }
 
@@ -389,21 +438,30 @@ const handleViewEvaluation = (task) => {
 }
 
 const handleRunEvaluation = async (task) => {
-    // 1. 立即给用户反馈（乐观更新）
-    // 不需要转圈了，直接把状态改为 running，界面会立刻显示 "正在处理，请稍候"
-    task.status = 'running'; 
-    
-    try {
-        // 2. 发送请求给后端（虽然后端会卡很久，但前端界面已经变了）
+   isTableLoading.value = true;
+   try {
+        await ElMessageBox.confirm(
+            `确认启动任务吗？ 启动后将不能改变评测所用的类型、模型和数据集`,
+            '警告',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        );
         await runEvaluationTask(task.id);
+        ElMessage.success('正在尝试启动任务...');      
+        startPolling(); 
+        task.status = 'running';
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // 3. 后端终于跑完后，再拉取一次最新结果（可能是 completed）
-        fetchAllTasks();
     } catch (error) {
         console.error('启动评测失败:', error);
         ElMessage.error(`启动失败: ${error.message}`);
         // 如果失败了，把状态改回去，或者重新拉取列表
         fetchAllTasks();
+    } finally {
+      isTableLoading.value = false;
     }
 }
 
@@ -418,7 +476,12 @@ onMounted(() => {
   fetchAllTasks()
   getYesterdayDateString();
   fetchUserID();
-})</script>
+})
+
+onUnmounted(() => {
+    stopPolling();
+})
+</script>
 
 <style scoped>
 .evaluation-hall {
