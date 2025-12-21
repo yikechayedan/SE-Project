@@ -27,7 +27,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
         fields = [
-            "id", "name", "description", "category", "file_format",
+            "id", "name", "description", "category", "evaluation_type", "file_format",
             "file_size", "sample_count", "creator", "creator_id", "creator_username",
             "is_public", "is_verified", "is_followed", "has_file", "star_count", "is_starred",
             "created_at", "updated_at", "file_url", "file_path"
@@ -86,6 +86,82 @@ class DatasetSerializer(serializers.ModelSerializer):
         
         return file
 
+    def validate(self, attrs):
+        """
+        全局验证方法，用于验证数据集格式
+        """
+        file_obj = attrs.get("file_path")
+        evaluation_type = attrs.get("evaluation_type", "subjective")
+        
+        if file_obj:
+            self.validate_dataset_format(file_obj, evaluation_type)
+        
+        return attrs
+
+    def validate_dataset_format(self, file_obj, evaluation_type):
+        """
+        验证数据集格式是否符合对应的测评类型要求
+        """
+        if file_obj is None:
+            return True
+            
+        try:
+            file_obj.seek(0)
+            content = file_obj.read()
+            
+            if file_obj.name.split(".")[-1].lower() != "json":
+                return True  # 非JSON文件暂时跳过格式验证
+                
+            import json
+            try:
+                data = json.loads(content.decode('utf-8'))
+            except:
+                raise serializers.ValidationError("JSON文件格式错误，无法解析")
+                
+            if not isinstance(data, list):
+                raise serializers.ValidationError("数据集必须是数组格式")
+                
+            if len(data) == 0:
+                raise serializers.ValidationError("数据集不能为空")
+                
+            # 根据测评类型验证格式
+            if evaluation_type == "subjective":
+                # 主观测评：每个项目必须包含 input 和 reference 字段
+                for i, item in enumerate(data[:5]):  # 只检查前5个项目，提高性能
+                    if not isinstance(item, dict):
+                        raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
+                    if "input" not in item:
+                        raise serializers.ValidationError(f"主观测评数据集第{i+1}个项目缺少必需的 'input' 字段")
+                    if "reference" not in item:
+                        raise serializers.ValidationError(f"主观测评数据集第{i+1}个项目缺少必需的 'reference' 字段")
+                        
+            elif evaluation_type == "objective":
+                # 客观测评：每个项目必须包含 input 和 answer 字段
+                for i, item in enumerate(data[:5]):
+                    if not isinstance(item, dict):
+                        raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
+                    if "input" not in item:
+                        raise serializers.ValidationError(f"客观测评数据集第{i+1}个项目缺少必需的 'input' 字段")
+                    if "answer" not in item:
+                        raise serializers.ValidationError(f"客观测评数据集第{i+1}个项目缺少必需的 'answer' 字段")
+                        
+            elif evaluation_type == "adversarial":
+                # 对抗测评：每个项目只需包含 input 字段
+                for i, item in enumerate(data[:5]):
+                    if not isinstance(item, dict):
+                        raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
+                    if "input" not in item:
+                        raise serializers.ValidationError(f"对抗测评数据集第{i+1}个项目缺少必需的 'input' 字段")
+                        
+            return True
+            
+        except serializers.ValidationError:
+            raise
+        except Exception as e:
+            raise serializers.ValidationError(f"验证数据集格式时出错: {str(e)}")
+        finally:
+            file_obj.seek(0)
+
     def _count_samples(self, file_obj, file_format):
         """
         统计样本数量（用于预览，不存储到数据库）
@@ -139,8 +215,12 @@ class DatasetSerializer(serializers.ModelSerializer):
         validated_data["creator"] = self.context["request"].user
         
         file_obj = validated_data.get("file_path")
+        evaluation_type = validated_data.get("evaluation_type", "subjective")
         
         if file_obj:
+            # 验证数据集格式
+            self.validate_dataset_format(file_obj, evaluation_type)
+            
             # 计算文件大小 (MB)
             validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 2)
             # 统计样本数量
@@ -155,8 +235,12 @@ class DatasetSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """更新数据集"""
         file_obj = validated_data.get("file_path")
+        evaluation_type = validated_data.get("evaluation_type", instance.evaluation_type)
         
         if file_obj:
+            # 验证数据集格式
+            self.validate_dataset_format(file_obj, evaluation_type)
+            
             # 删除旧文件
             if instance.has_file():
                 try:
