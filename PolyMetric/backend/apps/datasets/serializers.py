@@ -16,6 +16,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     """
     creator_id = serializers.IntegerField(source='creator.id', read_only=True)  # 新增
     creator_username = serializers.CharField(source="creator.username", read_only=True)
+    evaluation_type = serializers.CharField(required=False, allow_null=True)
     file_url = serializers.SerializerMethodField(read_only=True)
     has_file = serializers.SerializerMethodField(read_only=True)
     is_followed = serializers.SerializerMethodField(read_only=True)
@@ -222,7 +223,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             self.validate_dataset_format(file_obj, evaluation_type)
             
             # 计算文件大小 (MB)
-            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 2)
+            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             # 统计样本数量
             file_format = validated_data.get("file_format", "").lower()
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
@@ -250,7 +251,7 @@ class DatasetSerializer(serializers.ModelSerializer):
                 except:
                     pass
             
-            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 2)
+            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             file_format = validated_data.get("file_format", instance.file_format).lower()
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
         
