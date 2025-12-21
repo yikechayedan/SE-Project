@@ -41,7 +41,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
     queryset = Dataset.objects.all()
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["category", "file_format", "is_public", "is_verified"]
+    filterset_fields = ["category", "evaluation_type", "file_format", "is_public", "is_verified"]
     search_fields = ["name", "description", "creator__username"]
     ordering_fields = ["created_at", "updated_at", "sample_count", "file_size"]
 
