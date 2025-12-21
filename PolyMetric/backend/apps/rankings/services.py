@@ -34,23 +34,36 @@ def update_model_rankings(dataset_id):
     except Dataset.DoesNotExist:
         return {"error": f"Dataset with id {dataset_id} not found"}
     
-    # 获取该数据集上的所有评测结果
-    summaries = EvaluationSummary.objects.filter(
+    # 1. 获取所有评测结果（这里先按时间排，确保最新任务在前）
+    all_summaries = EvaluationSummary.objects.filter(
         task__dataset=dataset
-    ).select_related('task__myModel').order_by('-accuracy', '-avg_score')
-    
-    if not summaries.exists():
-        return {"error": f"No evaluation results found for dataset {dataset.name}"}
-    
+    ).select_related('task__myModel').order_by('-task__created_at')
+
+    # 2. 逻辑去重：每个模型只保留“最近一次”的评测对象
+    latest_summaries_dict = {}
+    for s in all_summaries:
+        model_id = s.task.myModel_id
+        if model_id not in latest_summaries_dict:
+            latest_summaries_dict[model_id] = s
+
+    # 3. 第二次排序：按分数对这些“最新表现”进行大排队
+    # 这样确保了 index 1 是最新表现里最强的，index 2 是次强的
+    final_sorted_summaries = sorted(
+        latest_summaries_dict.values(),
+        key=lambda x: (x.accuracy or 0, x.avg_score or 0),
+        reverse=True
+    )
+
     with transaction.atomic():
+        
         # 获取当前所有排名记录
         existing_rankings = {
             ranking.model_id: ranking for ranking in 
             ModelRanking.objects.filter(dataset=dataset)
         }
         
-        # 更新排名
-        for index, summary in enumerate(summaries, 1):
+        # 4. 此时的 index 才是真正的“最新战力排名”
+        for index, summary in enumerate(final_sorted_summaries, 1):
             model = summary.task.myModel
             old_rank = None
             
@@ -68,24 +81,20 @@ def update_model_rankings(dataset_id):
             normalized_score = round(normalized_score, 2)
             # ------------------------------------------
 
-            # 获取旧排名
-            if model.id in existing_rankings:
-                old_rank = existing_rankings[model.id].rank
-                # 更新现有排名记录
-                ranking = existing_rankings[model.id]
-                ranking.previous_rank = ranking.rank
-                ranking.rank = index
-                ranking.score = normalized_score
-                ranking.save()
-            else:
-                # 创建新排名记录
-                ranking = ModelRanking.objects.create(
-                    model=model,
-                    dataset=dataset,
-                    rank=index,
-                    score=normalized_score,
-                    previous_rank=None
-                )
+            # 先获取旧排名（如果有的话）
+            old_ranking_obj = existing_rankings.get(model.id)
+            old_rank = old_ranking_obj.rank if old_ranking_obj else None
+
+            # 使用 update_or_create
+            ranking, created = ModelRanking.objects.update_or_create(
+                model=model,
+                dataset=dataset,
+                defaults={
+                    'score': normalized_score,
+                    'rank': index,
+                    'previous_rank': old_rank  # 将刚才取到的旧排名存入
+                }
+            )
             
             # 记录排名历史
             RankingHistory.objects.create(
@@ -109,7 +118,7 @@ def update_model_rankings(dataset_id):
         target_dim = _get_dataset_dimension(dataset)
         
         # 获取本次更新涉及的所有模型
-        involved_models = set(summary.task.myModel for summary in summaries)
+        involved_models = set(summary.task.myModel for summary in final_sorted_summaries)
         
         for model in involved_models:
             # 1. 更新特定维度的分数
@@ -142,7 +151,7 @@ def update_model_rankings(dataset_id):
         "success": True,
         "message": f"Updated rankings for dataset {dataset.name}",
         "dataset": dataset.name,
-        "total_models": summaries.count()
+        "total_models": len(final_sorted_summaries)
     }
 
 

@@ -15,7 +15,7 @@
       :data="filteredTasks" 
       border 
       style="width: 100%;" 
-      v-loading="loading"
+      v-loading="isTableLoading"
     >
       <el-table-column prop="id" label="ID" width="60" show-overflow-tooltip/>
       <el-table-column prop="name" label="任务名称" show-overflow-tooltip />
@@ -58,12 +58,33 @@
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="scope">
           <el-button 
+            v-if="scope.row.status === 'completed'"
             size="small" 
             type="primary" 
             round 
             @click="handleViewReport(scope.row)"
           >
             <el-icon><View /></el-icon>查看详情
+          </el-button>
+
+          <el-button 
+            v-if="scope.row.status === 'pending'"
+            size="small" 
+            type="primary" 
+            round 
+            @click="handleRunEvaluation(scope.row)"
+          >
+            <el-icon><VideoPlay /></el-icon>生成回答
+          </el-button>
+
+          <el-button 
+            v-if="scope.row.status === 'awaiting_human_judge'"
+            size="small" 
+            type="primary" 
+            round 
+            @click="handleStartEvaluation(scope.row)"
+          >
+            <el-icon><Stopwatch /></el-icon>人工评测
           </el-button>
           
           <el-button 
@@ -87,18 +108,16 @@
       </el-table-column>
     </el-table>
 
-    <div class="pagination-container">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :page-sizes="[5, 10, 20, 50]"
-            :total="myTasks.length"
-            :background="true"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handlePageChange"
-          />
-    </div>
+    <el-pagination
+      class="pagination-container"
+      v-model:current-page="currentPage"
+      v-model:page-size="pageSize"
+      :page-sizes="[5, 10, 20, 50]"
+      :total="totalCount"  :background="true"
+      layout="total, sizes, prev, pager, next, jumper"
+      @size-change="handleSizeChange"
+      @current-change="handlePageChange"
+    />
   </div>
 
   <el-dialog
@@ -112,7 +131,14 @@
       <el-form-item label="任务描述">
         <el-input v-model="form.description" placeholder="输入任务描述" />
       </el-form-item>
-      <el-form-item label="模型选择" v-if="form.type !== 'adversarial'">
+      <el-form-item label="评测类型" v-if="form.status === 'pending'">
+        <el-radio-group v-model="form.method" >
+          <el-radio label="objective">客观评测</el-radio>
+          <el-radio label="subjective">主观评测</el-radio>
+          <el-radio label="adversarial">对抗评测</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="模型选择" v-if="form.status === 'pending'">
         <div style="display: flex; width: 100%;">
           
           <el-select v-model="form.selectedModelName" 
@@ -134,7 +160,57 @@
             />
         </div>
       </el-form-item>
-      <el-form-item label="数据集">
+      <el-form-item label="模型二选择" v-if="form.method === 'adversarial' && form.status === 'pending'">
+        <div style="display: flex; width: 100%;">
+          
+          <el-select v-model="form.selectedModelName2" 
+                     placeholder="选择模型二" 
+                     :loading="modelLoading"
+                     style="flex: 1;"> <el-option
+              v-for="model in filteredModel2sList"
+              :key="model.id"
+              :label="model.name"
+              :value="model.name"
+            />
+          </el-select>
+
+          <el-input 
+            v-model="model2SearchQuery" 
+            placeholder="搜索模型" 
+            prefix-icon="Search" 
+            style="width: 150px; margin-left: 10px;"
+            />
+        </div>
+      </el-form-item>
+      <el-form-item label="评测方式" v-if="(form.method === 'adversarial' || form.method === 'subjective') && form.status === 'pending'">
+        <el-radio-group v-model="form.type">
+          <el-radio label="human">人工评测</el-radio>
+          <el-radio label="model">模型评测</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="选择裁判模型" v-if="(form.method === 'adversarial' || form.method === 'subjective') && form.type === 'model' && form.status === 'pending'">
+        <div style="display: flex; width: 100%;">
+          
+          <el-select v-model="form.judgeModelName" 
+                     placeholder="选择裁判模型" 
+                     :loading="modelLoading"
+                     style="flex: 1;"> <el-option
+              v-for="model in filteredJudgeModelsList"
+              :key="model.id"
+              :label="model.name"
+              :value="model.name"
+            />
+          </el-select>
+
+          <el-input 
+            v-model="judgeModelSearchQuery" 
+            placeholder="搜索模型" 
+            prefix-icon="Search" 
+            style="width: 150px; margin-left: 10px;"
+            />
+        </div>
+      </el-form-item>
+      <el-form-item label="数据集" v-if="form.status === 'pending'">
         <div style="display: flex; width: 100%;">
           
           <el-select v-model="form.selectedDatasetName" 
@@ -156,13 +232,7 @@
           />
         </div>
       </el-form-item>
-      <el-form-item label="评测方式">
-        <el-radio-group v-model="form.type">
-          <el-radio label="objective">客观评测</el-radio>
-          <el-radio label="subjective">主观评测</el-radio>
-          <el-radio label="adversarial">对抗评测</el-radio>
-        </el-radio-group>
-      </el-form-item>
+      
     </el-form>
     <template #footer>
       <el-button @click="showEditDialog=false">取消</el-button>
@@ -177,22 +247,24 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { View, Edit, Delete } from '@element-plus/icons-vue';
+import { View, Edit, Delete, VideoPlay, Stopwatch } from '@element-plus/icons-vue';
 import EvalDialog from '../common/EvalDialog.vue';
 import { getEvaluationTasks, deleteEvaluationTask, updateEvaluationTask } from '@/api/tasks.js';
 import { getAllDatasets } from '@/api/datasets.js';
 import { getAllModels } from '@/api/models.js';
+import { getUserInfo} from '@/api/users.js'
 
 const router = useRouter();
 
 // ------------------------------------
 // 状态与数据
 // ------------------------------------
-const loading = ref(true);
-const tasks = ref([]); // 存放所有任务数据
+const isTableLoading = ref(true);
+const pollTimer = ref(null);
+const currentUserId = ref(null);
 const myTasks = ref([]); // 存放我的任务数据
 const modelsList = ref([]);
 const datasetsList = ref([]);
@@ -200,6 +272,8 @@ const searchQuery = ref(''); // 搜索框输入
 const modelLoading = ref(false);
 const datasetLoading = ref(false);
 const modelSearchQuery = ref('');
+const model2SearchQuery = ref('');
+const judgeModelSearchQuery = ref('');
 const datasetSearchQuery = ref('');
 const showEvalDialog = ref(false);
 const showEditDialog = ref(false);
@@ -212,9 +286,23 @@ const form = reactive({
   name: '',
   description: '',
   type: '',
+  status: '',
   selectedModelName: '',
-  selectedDatasetName: ''
+  selectedModelName2: '',
+  selectedDatasetName: '',
+  judgeModelName: '',
 })
+
+const fetchUserID = async () => {
+    try {
+        const response = await getUserInfo();
+        const data = response.data.data;
+        currentUserId.value = data.id;
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+        ElMessage.error(`获取用户信息失败: ${error.message}`);
+    }
+}
 
 /**
  * 获取模型列表
@@ -242,6 +330,26 @@ const filteredModelsList = computed(() => {
         return modelsList.value;
     }
     const query = modelSearchQuery.value.toLowerCase();
+    return modelsList.value.filter(model => 
+        model.name.toLowerCase().includes(query)
+    );
+})
+
+const filteredModel2sList = computed(() => {
+    if (!model2SearchQuery.value) {
+        return modelsList.value;
+    }
+    const query = model2SearchQuery.value.toLowerCase();
+    return modelsList.value.filter(model => 
+        model.name.toLowerCase().includes(query)
+    );
+})
+
+const filteredJudgeModelsList = computed(() => {
+    if (!judgeModelSearchQuery.value) {
+        return modelsList.value;
+    }
+    const query = judgeModelSearchQuery.value.toLowerCase();
     return modelsList.value.filter(model => 
         model.name.toLowerCase().includes(query)
     );
@@ -279,24 +387,61 @@ const filteredDatasetsList = computed(() => {
 })
 
 // ------------------------------------
+// 数据加载
+// ------------------------------------
+const fetchTasks = async (isSilent = false) => {
+    if (!isSilent) isTableLoading.value = true;
+    try {
+        const response = await getEvaluationTasks();
+        const data = response.data;
+        //  格式化所有任务并赋值给 evaluations
+        const formattedTasks = data.map(formatTaskDisplay);
+        myTasks.value = formattedTasks.filter(task => task.creator === currentUserId.value);
+
+        checkPollingNecessity();
+        
+    } catch (error) {
+        console.error('加载评测任务失败:', error);
+        if (!isSilent) ElMessage.error(`加载评测任务失败: ${error.message}`);
+    } finally {
+        if (!isSilent) isTableLoading.value = false;
+    }
+}
+
+// ------------------------------------
 // 计算属性
 // ------------------------------------
 // 过滤任务列表
 const filteredTasks = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  if (!query) {
-    return myTasks.value;
-  }
-  const firstFilteredTasks = myTasks.value.filter(task => 
-    task.name.toLowerCase().includes(query) ||
-    task.myModel_name.toLowerCase().includes(query) ||
-    task.dataset_name.toLowerCase().includes(query)
+  
+  // 1. 先进行关键词过滤
+  const searchResult = myTasks.value.filter(task => 
+    (task.name || '').toLowerCase().includes(query) ||
+    (task.myModel_name || '').toLowerCase().includes(query) ||
+    (task.dataset_name || '').toLowerCase().includes(query)
   );
 
-  return firstFilteredTasks.slice(
-    (currentPage.value - 1) * pageSize.value,
-    currentPage.value * pageSize.value
-  );
+  // 2. 再对过滤后的结果进行分页切片
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = currentPage.value * pageSize.value;
+  
+  return searchResult.slice(start, end);
+});
+
+// 获取当前过滤条件下的总条数
+const totalCount = computed(() => {
+  const query = searchQuery.value.toLowerCase();
+  if (!query) return myTasks.value.length;
+  return myTasks.value.filter(task => 
+    (task.name || '').toLowerCase().includes(query) ||
+    (task.myModel_name || '').toLowerCase().includes(query) ||
+    (task.dataset_name || '').toLowerCase().includes(query)
+  ).length;
+});
+
+watch(searchQuery, () => {
+  currentPage.value = 1;
 });
 
 // ------------------------------------
@@ -336,8 +481,9 @@ const getMethodTag = (method) => {
 
 const formatStatus = (status) => {
   const map = {
-    pending: '待测评',
+    pending: '待启动',
     running: '进行中',
+    awaiting_human_judge: '待测评',
     completed: '已完成',
     failed: '失败',
   };
@@ -350,6 +496,7 @@ const getStatusTag = (status) => {
     running: 'warning',
     completed: 'success',
     failed: 'danger',
+    awaiting_human_judge: 'info',
   };
   return map[status] || '';
 };
@@ -377,12 +524,66 @@ const handleSubmit = () => {
 
 // 查看报告/详情
 const handleViewReport = (task) => {
-  // 跳转到评测报告详情页
-  router.push({ 
-    name: 'EvalReport', 
-    params: { id: task.id } 
-  });
+  if(task.method === 'objective'){
+    router.push({ 
+      name: 'EvalReport', 
+      params: { taskId: task.id } 
+    });
+  }
+  else if(task.method === 'subjective'){
+    router.push({
+      name: 'SubjectResult',
+      params: { taskId: task.id }
+    })
+  }
+  else if(task.method === 'adversarial'){
+      router.push({
+        name: 'AdversarialResult',
+        params: { taskId: task.id}
+      })
+  }
 };
+
+const handleRunEvaluation = async (task) => {
+   try {
+        await ElMessageBox.confirm(
+            `确认启动任务吗？ 启动后将不能改变评测所用的类型、模型和数据集`,
+            '警告',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        );
+        runEvaluationTask(task.id).then(() => {
+            console.log('任务实际在后端启动成功');
+        }).catch(err => {
+            ElMessage.error('任务启动失败: ' + err.message);
+            fetchTasks(true); // 失败了也刷新下状态
+        });
+
+        ElMessage.success('正在尝试启动任务...');
+        
+        startPolling(); 
+        
+    } catch (error) {
+        console.error('逻辑错误:', error);
+    }
+}
+
+const handleStartEvaluation = (task) => {
+  if(task.method === 'subjective') {
+    router.push({
+      name: 'SubjectiveEval',
+      params: { taskId: task.id , reviewerId: currentUserId.value , modelId: task.myModel , datasetId: task.dataset}
+    })
+  } else if(task.method === 'adversarial'){
+    router.push({
+      name: 'AdversarialEval',
+      params: { taskId: task.id , reviewerId: currentUserId.value, modelId: task.myModel, model2Id: task.myModel_2, datasetId: task.dataset}
+    })
+  }
+}
 
 //编辑任务
 const handleEditTask = (task) => {
@@ -390,9 +591,13 @@ const handleEditTask = (task) => {
   form.id = task.id;
   form.taskName = task.taskName;  
   form.description = task.description;
-  form.type = task.method;
+  form.method = task.method;
+  form.status = task.status;
+  form.type = task.judge_type
   form.selectedModelName = task.myModel_name;
+  form.selectedModelName2 = task.myModel_2_name;
   form.selectedDatasetName = task.dataset_name;
+  form.judgeModelName = modelsList.value.find(m => m.id === task.judge_model)?.name;
 };
 
 const saveEditTask = async () => {
@@ -400,9 +605,12 @@ const saveEditTask = async () => {
         const requestBody = {
             name: form.taskName,
             description: form.description,
-            method: form.type,
-            dataset: datasetsList.value.find(d => d.name === form.selectedDatasetName)?.id,
-            ...(form.type !== 'adversarial' ? { myModel: modelsList.value.find(m => m.name === form.selectedModelName)?.id } : {})
+            method: form.method,
+            judge_type: form.type === "model" ? "model" : "human",
+            dataset: datasetsList.value.find(d => d.name === form.selectedDatasetName)?.id || null,
+            myModel: modelsList.value.find(d => d.name === form.selectedModelName)?.id || null,
+            myModel_2: (form.method === 'adversarial')? modelsList.value.find(d => d.name === form.selectedModelName2)?.id || null : null,
+            judge_model: (form.type === 'model')? modelsList.value.find(d => d.name === form.judgeModelName)?.id || null : null
         };
         await updateEvaluationTask(form.id, requestBody);
         ElMessage.success('任务更新成功');
@@ -440,31 +648,44 @@ const handleDeleteTask = async (task) => {
     }
 };
 
-// ------------------------------------
-// 数据加载
-// ------------------------------------
-const fetchTasks = async () => {
-    try {
-        const response = await getEvaluationTasks();
-        const data = response.data;
-        //  格式化所有任务并赋值给 evaluations
-        const formattedTasks = data.map(formatTaskDisplay);
-        tasks.value = formattedTasks;
-        myTasks.value = formattedTasks.filter(task => task.initiator === localStorage.getItem('username'));
-        
-    } catch (error) {
-        console.error('加载评测任务失败:', error);
-        ElMessage.error(`加载评测任务失败: ${error.message}`);
-    } finally {
-        loading.value = false;
+const checkPollingNecessity = () => {
+    const hasActiveTask = myTasks.value.some(
+        task => task.status === 'running' || task.status === 'pending'
+    );
+
+    if (hasActiveTask) {
+        startPolling();
+    } else {
+        stopPolling();
+    }
+}
+
+const startPolling = () => {
+    if (pollTimer.value) return; // 避免重复启动
+    console.log('检测到正在运行的任务，开启轮询...');
+    pollTimer.value = setInterval(() => {
+        fetchTasks(true); // 传入 true，实现无感知静默更新
+    }, 5000); // 每 5 秒轮询一次
+}
+
+const stopPolling = () => {
+    if (pollTimer.value) {
+        clearInterval(pollTimer.value);
+        pollTimer.value = null;
+        console.log('所有任务已完成或停止，关闭轮询');
     }
 }
 
 onMounted(() => {
-    fetchTasks();
+    fetchTasks(false);
     fetchDatasets();
     fetchModels();
+    fetchUserID();
 });
+
+onUnmounted(() => {
+    stopPolling();
+})
 </script>
 
 <style scoped>
@@ -511,14 +732,11 @@ onMounted(() => {
 .pagination-container {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
-  padding: 15px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #58a6ff;
-  font-weight: 500;
+  margin-top: 40px; 
+  margin-bottom: 20px;
+  padding: 10px 0;
 }
+
 
 /* Table Dark Theme Overrides */
 :deep(.el-table) {
