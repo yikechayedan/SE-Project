@@ -82,8 +82,14 @@ class UserAuthenticationAPITest(TestCase, APITestMixin):
         }
         response = self.client.post("/api/users/login/", data, format="json")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
+        # 检查标准响应格式
+        if "data" in response.data:
+            self.assertIn("access", response.data["data"])
+            self.assertIn("refresh", response.data["data"])
+        else:
+            # 兼容旧格式
+            self.assertIn("access", response.data)
+            self.assertIn("refresh", response.data)
     
     def test_user_login_invalid_credentials(self):
         """测试无效凭据登录"""
@@ -102,13 +108,23 @@ class UserAuthenticationAPITest(TestCase, APITestMixin):
             "password": "test123456"
         }
         login_response = self.client.post("/api/users/login/", data, format="json")
-        refresh_token = login_response.data["refresh"]
+        
+        # 获取refresh令牌，兼容不同响应格式
+        if "data" in login_response.data:
+            refresh_token = login_response.data["data"]["refresh"]
+        else:
+            refresh_token = login_response.data["refresh"]
         
         # 刷新令牌
         refresh_data = {"refresh": refresh_token}
         response = self.client.post("/api/users/token/refresh/", refresh_data, format="json")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("access", response.data)
+        
+        # 检查响应格式
+        if "data" in response.data:
+            self.assertIn("access", response.data["data"])
+        else:
+            self.assertIn("access", response.data)
     
     def test_user_logout_success(self):
         """测试用户登出成功"""
