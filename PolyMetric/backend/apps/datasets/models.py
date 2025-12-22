@@ -21,6 +21,16 @@ class Dataset(models.Model):
         verbose_name="数据集类型",
         choices=[("image", "图像"), ("text", "文本"), ("multimodal", "多模态")]
     )
+    evaluation_type = models.CharField(
+        max_length=20,
+        verbose_name="测评类型",
+        choices=[
+            ("subjective", "主观测评"),
+            ("objective", "客观测评"),
+            ("adversarial", "对抗测评")
+        ],
+        default="subjective"
+    )
     file_format = models.CharField(
         max_length=20,
         verbose_name="文件格式",
@@ -29,13 +39,17 @@ class Dataset(models.Model):
     
     # 文件信息
     file_path = models.FileField(
-        upload_to="datasets/%Y/%m/%d/", 
+        upload_to="datasets/%Y/%m/%d/",
         verbose_name="数据集文件",
         blank=True,
         null=True
     )
     file_size = models.FloatField(verbose_name="文件大小(MB)", default=0.0)
     sample_count = models.IntegerField(verbose_name="样本数量", null=True, blank=True, default=0)
+    
+    # 图片相关字段
+    has_images = models.BooleanField(default=False, verbose_name="是否包含图片")
+    image_count = models.IntegerField(verbose_name="图片数量", null=True, blank=True, default=0)
 
     # 权限与关联
     creator = models.ForeignKey(

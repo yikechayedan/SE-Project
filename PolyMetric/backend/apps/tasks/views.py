@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
 from .run_logic import run_evaluation
-from .tasks import run_evaluation_task
+from .tasks import init_evaluation_task
 from .models import EvaluationTask, EvaluationItem
 from .serializers import (
     EvaluationTaskSerializer,
@@ -272,15 +272,25 @@ def get_pending_items(request):
     except User.DoesNotExist:
         return Response({"error": "Reviewer not found"}, status=400)
 
-    # 获取全部条目的 QuerySet
+    # 1. 获取全部条目的 QuerySet
     all_items_qs = task.items.all()
-    # 获取全部 ID 列表 (转化为字符串以保持与原逻辑一致)
-    all_ids = [str(id) for id in all_items_qs.values_list('id', flat=True)]
-    
-    # 获取待测条目的 QuerySet (score 或 preference 为空)
+    all_ids = [str(item.id) for item in all_items_qs]
+
+    # 2. 获取“待评测”条目 (score 和 preference 都为空)
     pending_items_qs = all_items_qs.filter(score__isnull=True, preference__isnull=True)
-    # 获取待测 ID 列表
-    pending_ids = [str(id) for id in pending_items_qs.values_list('id', flat=True)]
+    pending_ids = [str(item.id) for item in pending_items_qs]
+
+    # 3. 获取“已评测”条目 (score 不为空 OR preference 不为空)
+    completed_items_qs = all_items_qs.exclude(score__isnull=True, preference__isnull=True)
+    
+    # 构造已评测数据的列表，包含 id 及其评分/偏好
+    completed_data = []
+    for item in completed_items_qs:
+        completed_data.append({
+            "id": str(item.id),
+            "score": item.score,
+            "preference": item.preference
+        })
 
     return Response(
         {
@@ -289,10 +299,11 @@ def get_pending_items(request):
             "total_count": len(all_ids),
             "all_item_ids": all_ids,
             "pending_count": len(pending_ids),
-            "pengding_item_ids": pending_ids
+            "pending_item_ids": pending_ids,
+            "completed_count": len(completed_data),
+            "completed_items": completed_data  # 返回详细的已评测信息
         }
     )
-
 
 # --------------------------------------------------
 # 10. 请求单条条目详情：
@@ -343,7 +354,8 @@ def run_task(request):
         return Response({"error": "task not found"}, status=404)
 
     # 改为异步调用：提交给 Celery Worker
-    run_evaluation_task.delay(task_id)
+    from .tasks import init_evaluation_task
+    init_evaluation_task.delay(task_id)
     
     # 立即返回，前端无需等待 60s+
     return Response({

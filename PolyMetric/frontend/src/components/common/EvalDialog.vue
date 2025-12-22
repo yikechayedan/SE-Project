@@ -43,7 +43,7 @@
                      placeholder="选择模型二" 
                      :loading="modelLoading"
                      style="flex: 1;"> <el-option
-              v-for="model in filteredModelsList2"
+              v-for="model in filteredModel2sList"
               :key="model.id"
               :label="model.name"
               :value="model.name"
@@ -147,24 +147,15 @@ const props = defineProps({
 // 2. 定义 emits：必须定义 update:showDialog，用于通知父组件更新
 const emit = defineEmits(['update:showDialog', 'close', 'task-submitted']) 
 
-const form = ref({ 
-  taskName: '', 
-  description: '', 
-  selectedModelName: '', 
-  selectedModelName2: '', 
-  selectedDatasetName: '', 
-  method: 'objective', 
-  type: 'human', 
-  judgeModelName: '' 
-}) 
-
-// 监听评测类型变化，如果是客观评测，重置裁判相关字段
-watch(() => form.value.method, (newMethod) => {
-  if (newMethod === 'objective') {
-    form.value.type = 'human'
-    form.value.judgeModelName = ''
-  }
-})
+const form = ref({
+    taskName: '',
+    description: '', 
+    selectedModelName: '',
+    selectedModelName2: '', 
+    selectedDatasetName: '', 
+    method: '', 
+    type: '', 
+    judgeModelName: '' }) 
 
 const isVisible = computed({
     get() {
@@ -206,7 +197,7 @@ const filteredModelsList = computed(() => {
     );
 })
 
-const filteredModelsList2 = computed(() => {
+const filteredModel2sList = computed(() => {
     if (!modelSearchQuery2.value) {
         return modelsList.value;
     }
@@ -323,7 +314,7 @@ const submitEval = async() => {
       "name": form.value.taskName,
       "description": form.value.description,
       "method": form.value.method,
-      "judge_type": form.value.method === 'objective' ? 'human' : form.value.type,
+      "judge_type": form.value.type === "model" ? "model" : "human",
       "dataset": selectedDataset.id,
       "myModel": selectedModel.id,
       "myModel_2": selectedModel2 ? selectedModel2.id : null,

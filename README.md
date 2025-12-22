@@ -1,6 +1,34 @@
 # SE-Project
 多模态大模型能力评测榜单
 
+## 🚀 快速开始
+
+### 本地部署
+
+**方式一：使用快速部署脚本（推荐）**
+
+```bash
+# Linux/macOS
+./scripts/quick-start.sh
+
+# Windows (推荐使用简化版)
+scripts\quick-start-simple.bat
+
+# Windows (原版)
+scripts\quick-start.bat
+```
+
+**方式二：手动部署**
+
+- [通用本地部署指南](docs/本地部署指南.md)
+- [Windows 专用部署指南](docs/Windows部署指南.md)
+- [Docker 部署故障排除](docs/Docker部署故障排除.md)
+- [Docker 常见错误解决](docs/Docker常见错误解决.md)
+- [部署流程详解](docs/部署流程详解.md)
+- [终端环境与命令差异](docs/终端环境与命令差异.md)
+
+### 项目结构
+
 ```
 SE-Project
 ├─ PolyMetric
