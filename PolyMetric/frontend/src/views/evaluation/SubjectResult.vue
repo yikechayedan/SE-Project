@@ -6,25 +6,56 @@
         <el-icon><Document /></el-icon> 主观评测报告
       </h2>
 
+      <div class="report-subtitle-bar">
+        <el-space spacer="|">
+          <span class="sub-item">被评测模型：<strong>{{ reportData.myModel_name }}</strong></span>
+          <span class="sub-item">数据集：<strong>{{ reportData.dataset_name }}</strong></span>
+          <span class="sub-item">创建者：{{ reportData.creator_username }}</span>
+        </el-space>
+      </div>
+
       <el-divider class="title-divider" />
 
       <h3 class="section-title">📚 基础信息</h3>
       <el-row :gutter="20" class="meta-row">
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card shadow="hover" class="meta-item-card">
-            <div class="meta-label">评测 ID</div>
-            <div class="meta-value primary">{{ reportData.id }}</div>
+            <div class="meta-label">评测名称</div>
+            <div class="meta-value primary small-text">{{ reportData.name }}</div>
           </el-card>
         </el-col>
 
-        <el-col :span="8">
+        <el-col :span="6">
           <el-card shadow="hover" class="meta-item-card">
-            <div class="meta-label">评测方法</div>
-            <div class="meta-value info">{{ reportData.method === 'subjective' ? '主观评测' : reportData.method }}</div>
+            <div class="meta-label">裁判类型</div>
+            <div class="meta-value info">
+                <el-tag :type="reportData.judge_type === 'human' ? 'warning' : 'primary'" size="small" class="judge-tag">
+                    <el-icon><User v-if="reportData.judge_type === 'human'" /><service v-else /></el-icon>
+                    {{ reportData.judge_type === 'human' ? '人类裁判' : '模型裁判' }}
+                </el-tag>
+                <el-tooltip
+                    v-if="reportData.judge_type === 'model'"
+                    class="box-item"
+                    effect="dark"
+                    :content="judgeModelName"
+                    placement="top"
+                  >
+                    <span class="judge-model-inline-name">
+                      {{ judgeModelName }}
+                    </span>
+                  </el-tooltip>
+            </div>
           </el-card>
         </el-col>
 
-        <el-col :span="8">
+        <el-col :span="6">
+          <el-card shadow="hover" class="meta-item-card">
+            <div class="meta-label">运行耗时</div>
+            <div class="meta-value info time-text">{{ formatTimeUsed(reportData.time_used) }}</div>
+          </el-card>
+        </el-col>
+
+        <el-col :span="6">
           <el-card shadow="hover" class="meta-item-card">
             <div class="meta-label">任务状态</div>
             <div class="meta-value status">
@@ -33,6 +64,10 @@
           </el-card>
         </el-col>
       </el-row>
+
+      <div v-if="reportData.description" class="description-container">
+        <p class="description-text"><strong>评测描述：</strong>{{ reportData.description }}</p>
+      </div>
       
       <el-divider class="meta-divider" /> 
       
@@ -71,7 +106,7 @@
                 <span class="section-title">模型输出 (Model Output)</span>
               </template>
               <div class="model-response">
-                {{ currentItem.predicted_answer }} 
+                <div class="markdown-body" v-html="renderedResponse"></div>
               </div>
             </el-card>
           </el-col>
@@ -158,8 +193,12 @@
 
 <script setup>
 import { computed, ref, onMounted, defineProps } from 'vue'
-import { Document, Tickets } from '@element-plus/icons-vue' // 引入 Tickets 图标
-import { getEvaluationTaskDetail } from '../../api/tasks.js' // 假设的 API 路径
+import { Document, Tickets, User, Service } from '@element-plus/icons-vue' // 引入 Tickets 图标
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
+import { getEvaluationTaskDetail } from '@/api/tasks.js' // 假设的 API 路径
+import { getAllModels } from '@/api/models.js' 
 
 const currentPage = ref(1)
 const gotoPageNum = ref(null);
@@ -173,12 +212,29 @@ const props = defineProps({
 })
 
 // ===================== 响应式数据定义 (继承自报告) =====================
+const allModels = ref([])
+
 const reportData = ref({
     id: null,
     method: '',
     status: '', 
     score: null, 
-    data: [], // 包含所有条目的数组
+    data: [],
+    description: '',
+    time_used: '',
+    myModel_name: '',
+    dataset_name: '',
+    creator_username: '',
+    judge_type: '',
+    judge_model: null,
+});
+
+const judgeModelName = computed(() => {
+    if (reportData.value.judge_type === 'model' && reportData.value.judge_model) {
+        const model = allModels.value.find(m => m.id === reportData.value.judge_model);
+        return model ? model.name : `模型 ID: ${reportData.value.judge_model}`;
+    }
+    return '';
 });
 
 const loading = ref(true); 
@@ -199,6 +255,23 @@ const currentItem = computed(() => {
 
 
 // ===================== 辅助函数 (适配主观报告) =====================
+const formatTimeUsed = (timeStr) => {
+  if (!timeStr) return '00:00:00';
+  
+  if (typeof timeStr === 'string' && timeStr.includes('.')) {
+    return timeStr.split('.')[0];
+  }
+  
+  // 方式 2：如果后端偶尔返回的是秒数（数字），则需要另一种逻辑
+  if (typeof timeStr === 'number') {
+    const h = Math.floor(timeStr / 3600).toString().padStart(2, '0');
+    const m = Math.floor((timeStr % 3600) / 60).toString().padStart(2, '0');
+    const s = Math.floor(timeStr % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  return timeStr; // 兜底返回原字符串
+}
 
 const formatScore = (rate) => {
   if (rate === undefined || rate === null) return 'N/A'
@@ -218,6 +291,34 @@ const getScoreTagType = (score) => {
     if (score >= 7) return 'warning';
     return 'danger';
 }
+
+const md = new MarkdownIt({
+  html: true,         // 允许 HTML 标签
+  linkify: true,      // 自动转换 URL
+  typographer: true,
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return '<pre class="hljs"><code>' +
+               hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+               '</code></pre>';
+      } catch (__) {}
+    }
+    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+  }
+});
+
+const renderedResponse = computed(() => {
+  if (currentItem.value && currentItem.value.predicted_answer) {
+    let content = currentItem.value.predicted_answer;
+    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
+    let htmlContent = md.render(currentItem.value.predicted_answer);
+    htmlContent = htmlContent.replace(/>\s+</g, '><');
+    return htmlContent;
+  }
+  return '';
+});
 
 // ===================== 导航逻辑 (处理分页切换) =====================
 
@@ -258,7 +359,12 @@ const fetchReportData = async () => {
   loading.value = true;
   errorMessage.value = null;
   try{
-    const response = await getEvaluationTaskDetail(props.taskId);
+    const [response, modelsRes] = await Promise.all([
+        getEvaluationTaskDetail(props.taskId),
+        getAllModels() 
+    ]);
+
+    allModels.value = modelsRes.data || [];
 
     if (response.data && response.data.id) {
         reportData.value = response.data;
@@ -319,6 +425,98 @@ onMounted(() => {
 }
 
 /* ======================== 基础信息卡片 (保持不变) ======================== */
+/* 顶部副标题栏 */
+.report-subtitle-bar {
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.sub-item strong {
+  color: var(--el-color-primary);
+  margin-left: 4px;
+}
+
+/* 裁判模型名称微调 */
+.judge-model-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-weight: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 耗时字体 */
+.time-text {
+  font-size: 22px !important;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.meta-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  height: 20px;       /* 固定高度 */
+  line-height: 20px;  /* 确保文字垂直居中 */
+  margin-bottom: 12px;/* 统一间距 */
+  text-align: center;
+  width: 100%;
+}
+
+/* 重点：固定数据区域高度，确保下方内容不会推挤标题 */
+.meta-value {
+  display: flex;
+  flex-direction: row;
+  align-items: center;    /* 垂直方向居中对齐 */
+  justify-content: center;/* 水平方向居中对齐 */
+  height: 32px;           /* 固定高度，匹配 el-tag 的高度 */
+  gap: 8px;               /* 元素间距 */
+  width: 100%;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* 模型名称微调 */
+.judge-model-inline-name {
+  font-size: 14px;
+  color: var(--el-color-info);
+  font-weight: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px; /* 限制宽度防止撑开 */
+}
+
+/* 修正 el-tag 图标对齐 */
+.judge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 描述容器 */
+.description-container {
+  background: var(--bg-secondary);
+  padding: 12px 20px;
+  border-radius: 8px;
+  border-left: 4px solid var(--el-color-primary-light-5);
+  margin-bottom: 30px;
+}
+.description-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-regular);
+}
+
+/* 基础信息卡片高度适配 4 列 */
+.meta-item-card {
+  height: 110px;
+}
+.small-text {
+  font-size: 20px !important;
+}
+
 .meta-row {
     margin-bottom: 20px;
 }
@@ -550,5 +748,119 @@ onMounted(() => {
     white-space: nowrap;
     text-overflow: ellipsis;
     max-width: 100%;
+}
+
+/* 容器基础设置 */
+.markdown-body {
+  font-size: 18px;            /* 调大字号 */
+  line-height: 1.75;          /* 黄金行高 */
+  color: #2c3e50;             /* 深灰色文字，比纯黑更柔和 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  word-wrap: break-word;
+  user-select: text !important; /* 核心：确保全文可选 */
+  overflow-wrap: break-word; /* 确保长单词能换行，不至于撑破容器 */
+}
+
+/* 表格容器：这是最容易超出宽度的地方 */
+.markdown-body :deep(table) {
+  display: block;
+  width: 100% !important;
+  overflow-x: auto;
+  border-spacing: 0;
+  border-collapse: collapse;
+  word-break: normal;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 单元格边框与内边距 */
+.markdown-body :deep(table th),
+.markdown-body :deep(table td) {
+  /* 1. 设置最小宽度，防止内容被挤压成一竖排 */
+  min-width: 120px; 
+  
+  /* 2. 允许内容折行（如果你不希望它一直横向延伸） */
+  /* 或者保持 white-space: nowrap; 如果你想要整行显示并触发滚动条 */
+  white-space: normal; 
+  
+  word-break: break-all;
+  padding: 10px 15px;
+  line-height: 1.5;
+}
+
+/* 解决加粗文字与文本间隙的同时，允许其在极长情况下不撑破布局 */
+.markdown-body :deep(strong) {
+  display: inline; /* 改回 inline 配合 word-break */
+  white-space: normal; 
+}
+
+/* 1. 段落间距控制：这是消除“大空行”的关键 */
+.markdown-body :deep(p) {
+  margin-top: 0;
+  margin-bottom: 12px;        /* 限制段落间距 */
+}
+
+/* 2. 列表样式：模拟 AI 的缩进感并确保标号可选 */
+.markdown-body :deep(ol), 
+.markdown-body :deep(ul) {
+  padding-left: 2em;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 6px;         /* 列表项之间的微小间距 */
+  list-style-position: outside; 
+}
+
+/* 3. 解决标号选中问题 */
+.markdown-body :deep(li::marker) {
+  font-weight: 600;
+  color: #409eff;             /* 标号使用主题色，视觉更清晰 */
+  user-select: text;          /* 允许选中标号 */
+}
+
+.markdown-body :deep(li) {
+  white-space: normal !important; /* 列表项通常不需要保留原始换行 */
+}
+
+.markdown-body :deep(li p) {
+  display: inline; /* 让 p 标签不作为块级撑开，紧随标号 */
+  white-space: normal;
+}
+
+.markdown-body :deep(hr) {
+  height: 1px;
+  background-color: #e1e4e8;
+  border: none;
+  margin: 20px 0;
+}
+
+.markdown-body :deep(pre) {
+    display: block;          /* 确保是块级元素 */
+    width: 100%;             /* 占据全宽 */
+    overflow-x: auto;        /* 关键：宽度不足时显示横向滚动条 */
+    overflow-y: hidden;      /* 隐藏纵向滚动条 */
+    background-color: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    
+    /* 强制代码不换行，这样才能触发横向滚动条 */
+    white-space: pre;        
+    word-break: normal;
+    word-wrap: normal;
+}
+
+/* 针对代码块内部的 code 标签 */
+.markdown-body :deep(pre code) {
+    display: inline;         /* 保持内联以便在 pre 中横向延伸 */
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    white-space: pre;        /* 再次确保不换行 */
+}
+
+.markdown-body {
+  white-space: pre-wrap;      /* 保留原始缩进（如 \t），但允许自动换行 */
 }
 </style>

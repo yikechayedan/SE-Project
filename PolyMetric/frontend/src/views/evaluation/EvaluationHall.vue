@@ -62,7 +62,7 @@
               </div>
             </template>
       </el-table-column>
-      <el-table-column prop="dataset" label="使用数据集" >
+      <el-table-column prop="dataset" label="使用数据集" show-overflow-tooltip>
         <template #default="{ row }">
               <div class="dataset-name overflow-container">
                 <el-icon><Folder /></el-icon>
@@ -70,10 +70,17 @@
               </div>
             </template>
       </el-table-column>
-      <el-table-column prop="method" label="评测方法" width="100">
+      <el-table-column prop="method" label="评测类型" width="100">
         <template #default="scope">
           <el-tag :type="getMethodTag(scope.row.method)" size="small">
             {{ formatMethod(scope.row.method) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="judge_type" label="评测方式" width="100">
+        <template #default="scope">
+          <el-tag :type="getTypeTag(scope.row.judge_type)" size="small">
+            {{ formatType(scope.row.judge_type) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -84,66 +91,42 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="time" label="创建时间" width="100"/>
-      <el-table-column prop="update" label="更新时间" width="100"/>
+      <el-table-column prop="time" label="创建时间" width="120"/>
+      <el-table-column prop="update" label="更新时间" width="120"/>
       <el-table-column label="操作">
         <template #default="scope">
-        <el-button 
-          v-if="scope.row.method === 'objective' && scope.row.status === 'completed'" 
-          type="primary" 
-          link 
-          @click="handleViewReport(scope.row)"
-        >
-          查看报告
-        </el-button>
-        <el-button 
-          v-if="scope.row.method === 'objective' && scope.row.status === 'pending'" 
-          type="success" 
-          link 
-          :loading="loadingTasks[scope.row.id]"
-          @click="handleRunEvaluation(scope.row)"
-        >
-          启动自动评测
-        </el-button>
-        <el-button 
-          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'awaiting_human_judge'" 
-          type="success" 
-          link 
-          @click="handleStartEvaluation(scope.row)"
-        >
-          人工测评
-        </el-button>
-        <el-button 
-          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'model'" 
-          type="success"
-          link 
-          :loading="loadingTasks[scope.row.id]"
-          @click="handleRunEvaluation(scope.row)"
-        >
-          启动自动评测
-        </el-button>
-        <el-button
-          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'pending' && scope.row.type === 'human'" 
-          type="success"
-          link 
-          :loading="loadingTasks[scope.row.id]"
-          @click="handleRunEvaluation(scope.row)"
-        >
-          生成回答
-        </el-button>
-        <el-button 
-          v-if="(scope.row.method === 'subjective' || scope.row.method === 'adversarial') && scope.row.status === 'completed'" 
-          type="info"
-          link 
-          @click="handleViewEvaluation(scope.row)"
-        >
-          查看测评
-        </el-button>
-        <span 
-          v-if="scope.row.status === 'running'"
-          style="color: #909399; font-size: 14px;">
-          正在处理，请稍候 
-        </span>
+          <div class="action-container">
+            <el-button 
+              v-if="scope.row.status === 'completed'" 
+              type="primary" class="custom-action-btn" size="small"
+              @click="scope.row.method === 'objective' ? handleViewReport(scope.row) : handleViewEvaluation(scope.row)"
+            >
+              <el-icon><Document /></el-icon><span>查看结果</span>
+            </el-button>
+
+            <el-button 
+              v-if="scope.row.status === 'pending'" 
+              type="success" class="custom-action-btn" size="small"
+              :loading="loadingTasks[scope.row.id]"
+              @click="handleRunEvaluation(scope.row)"
+            >
+              <el-icon v-if="!loadingTasks[scope.row.id]"><VideoPlay /></el-icon>
+              <span>{{ scope.row.type === 'human' ? '生成回答' : '启动自动评测' }}</span>
+            </el-button>
+
+            <el-button 
+              v-if="scope.row.status === 'awaiting_human_judge'" 
+              type="warning" class="custom-action-btn" size="small"
+              @click="handleStartEvaluation(scope.row)"
+            >
+              <el-icon><EditPen /></el-icon><span>人工测评</span>
+            </el-button>
+
+            <div v-if="scope.row.status === 'running'" class="running-status-box">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              <span>正在处理...</span>
+            </div>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -171,7 +154,7 @@
 import { computed, onMounted, onUnmounted,  ref, watch} from 'vue'
 import EvalDialog from '../../components/common/EvalDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Timer, Refresh } from '@element-plus/icons-vue'
+import { Timer, Refresh, Document, VideoPlay, EditPen, Loading, } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router' 
 import { getEvaluationTasks, runEvaluationTask } from '@/api/tasks.js'
 import { getUserInfo } from '@/api/users.js'
@@ -204,8 +187,9 @@ const filteredEvaluations = computed(() => {
 
     // 使用安全访问 (?. 或 || '') 确保属性存在且是字符串，防止对 undefined 调用 includes()
     const matchesSearch = (item.taskName || '').includes(searchQuery.value) || 
-                          (item.model || '').includes(searchQuery.value) || 
-                          (item.dataset || '').includes(searchQuery.value) || 
+                          (item.myModel_name || '').includes(searchQuery.value) || 
+                          (item.myModel_2_name || '').includes(searchQuery.value) ||
+                          (item.data || '').includes(searchQuery.value) || 
                           (item.initiator || '').includes(searchQuery.value);
     // 检查是否符合分类条件
     // 如果 categoryFilter 为空字符串 ('')，表示“全部分类”，即所有都符合
@@ -271,6 +255,22 @@ const getMethodTag = (method) => {
     objective: 'success',
     subjective: 'warning',
     adversarial: 'danger',
+  };
+  return map[method] || '';
+};
+
+const formatType = (type) => {
+  const map = {
+    model: '模型评测',
+    human: '人工评测',
+  };
+  return map[type] || type;
+};
+
+const getTypeTag = (method) => {
+  const map = {
+    model: 'success',
+    human: 'warning',
   };
   return map[method] || '';
 };
@@ -441,8 +441,8 @@ const handleViewEvaluation = (task) => {
   }
 }
 const handleRunEvaluation = async (task) => {
-   isTableLoading.value = true;
    try {
+        loadingTasks.value[task.id] = true;
         await ElMessageBox.confirm(
             `确认启动任务吗？ 启动后将不能改变评测所用的类型、模型和数据集`,
             '警告',
@@ -464,7 +464,7 @@ const handleRunEvaluation = async (task) => {
         // 如果失败了，把状态改回去，或者重新拉取列表
         fetchAllTasks();
     } finally {
-      isTableLoading.value = false;
+      loadingTasks.value[task.id] = false;
     }
 }
 
@@ -622,6 +622,52 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 20px; 
+}
+
+.action-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 统一按钮基础样式 */
+.custom-action-btn {
+  border: none !important; /* 去掉边框，让背景更纯粹 */
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  padding: 6px 10px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 默认状态：赋予一个较浅的背景色 (使用 Element 的变色函数或透明度) */
+.custom-action-btn.el-button--primary { background-color: #ecf5ff !important; color: #409eff !important; }
+.custom-action-btn.el-button--success { background-color: #f0f9eb !important; color: #67c23a !important; }
+.custom-action-btn.el-button--warning { background-color: #fdf6ec !important; color: #e6a23c !important; }
+.custom-action-btn.el-button--danger  { background-color: #fef0f0 !important; color: #f56c6c !important; }
+
+/* 悬停状态：颜色加深，背景变亮/变显眼 */
+.custom-action-btn.el-button--primary:hover { background-color: #409eff !important; color: #ffffff !important; }
+.custom-action-btn.el-button--success:hover { background-color: #67c23a !important; color: #ffffff !important; }
+.custom-action-btn.el-button--warning:hover { background-color: #e6a23c !important; color: #ffffff !important; }
+.custom-action-btn.el-button--danger:hover  { background-color: #f56c6c !important; color: #ffffff !important; }
+
+/* 运行中状态的样式盒子 */
+.running-status-box {
+  background-color: #f4f4f5;
+  color: #909399;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.custom-action-btn .el-icon {
+  margin-right: 4px; /* 图标与文字的间距 */
 }
 
 /* Table Theme Overrides using variables */

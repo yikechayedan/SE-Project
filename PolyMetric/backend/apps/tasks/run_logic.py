@@ -790,7 +790,19 @@ def try_finalize_task(task_id: int, from_dispatcher: bool = False):
         from apps.rankings.services import update_model_rankings
         update_model_rankings(task.dataset_id)
 
+        
 
+def parse_adversarial_judge(text: str) -> str:
+    if not text:
+        return "tie"
+    t = text.strip().lower()
+    if t == "left":
+        return "left"
+    if t == "right":
+        return "right"
+    if t == "tie":
+        return "tie"
+    return "tie"
 # =========================================================
 # 对外统一入口
 # =========================================================
