@@ -77,6 +77,7 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         # -----------------------------------------------------------
         # 【精准去重：四元组匹配 (A, B, D, J)】
         # 只要 模型、数据集、裁判方式 全都一致，直接跳转
+        # 但如果是 人工评测 (human)，则不进行去重拦截，允许新建任务（复用回答）
         # -----------------------------------------------------------
         from django.db.models import Q
         
@@ -89,18 +90,22 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
             'status__in': reuse_status_list
         }
 
-        if method == 'objective' or method == 'subjective':
-            identical_filters['myModel_id'] = my_model_id
-            existing_task = EvaluationTask.objects.filter(**identical_filters).first()
+        existing_task = None
         
-        elif method == 'adversarial':
-            # 对抗评测支持镜像匹配 (A vs B == B vs A)
-            existing_task = EvaluationTask.objects.filter(
-                **identical_filters
-            ).filter(
-                (Q(myModel_id=my_model_id) & Q(myModel_2_id=my_model_2_id)) |
-                (Q(myModel_id=my_model_2_id) & Q(myModel_2_id=my_model_id))
-            ).first()
+        # 仅当非人工评测时，才进行去重拦截
+        if judge_type != 'human':
+            if method == 'objective' or method == 'subjective':
+                identical_filters['myModel_id'] = my_model_id
+                existing_task = EvaluationTask.objects.filter(**identical_filters).first()
+            
+            elif method == 'adversarial':
+                # 对抗评测支持镜像匹配 (A vs B == B vs A)
+                existing_task = EvaluationTask.objects.filter(
+                    **identical_filters
+                ).filter(
+                    (Q(myModel_id=my_model_id) & Q(myModel_2_id=my_model_2_id)) |
+                    (Q(myModel_id=my_model_2_id) & Q(myModel_2_id=my_model_id))
+                ).first()
 
         if existing_task:
             existing_task.authorized_viewers.add(user)

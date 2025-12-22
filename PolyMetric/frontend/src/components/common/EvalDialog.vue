@@ -124,6 +124,7 @@ import { ElMessage } from 'element-plus'
 import { createEvaluationTask, runEvaluationTask } from '@/api/tasks.js'
 import { getAllDatasets } from '@/api/datasets.js'
 import { getAllModels } from '@/api/models.js' 
+import { getUserInfo } from '@/api/users.js'
 
 // 存储从 API 获取的模型和数据集列表
 const modelsList = ref([])
@@ -137,6 +138,17 @@ const modelSearchQuery2 = ref('')
 const judgeModelSearchQuery = ref('')
 const datasetSearchQuery = ref('') 
 const router = useRouter()
+const currentUserId = ref(null)
+
+const fetchUserID = async () => {
+    try {
+        const response = await getUserInfo();
+        const data = response.data.data;
+        currentUserId.value = data.id;
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+    }
+}
 
 // 1. 接收 props：接收父组件 v-model:showDialog 传入的属性
 const props = defineProps({
@@ -339,16 +351,27 @@ const submitEval = async() => {
         const existingTaskId = response.data.task_id;
         ElMessage.info(response.data.msg || "检测到近期已有相同任务，正在为您跳转到报告...");
         
+        // 【关键修复】必须在 handleClose 之前获取 method，否则 handleClose 会重置表单为 objective
+        const method = form.value.method;
+        
         handleClose();
         
         // 根据评测类型跳转到不同的结果页
-        const method = form.value.method;
         if (method === 'objective') {
           router.push({ name: 'EvalReport', params: { taskId: existingTaskId } });
         } else if (method === 'subjective') {
           router.push({ name: 'SubjectResult', params: { taskId: existingTaskId } });
         } else if (method === 'adversarial') {
-          router.push({ name: 'AdversarialResult', params: { taskId: existingTaskId } });
+          router.push({ 
+            name: 'AdversarialEval', 
+            params: { 
+              taskId: existingTaskId,
+              reviewerId: currentUserId.value,
+              modelId: selectedModel.id,
+              model2Id: selectedModel2.id,
+              datasetId: selectedDataset.id
+            } 
+          });
         }
         
       } else {
@@ -365,6 +388,7 @@ const submitEval = async() => {
 onMounted(() => {
     fetchModels();
     fetchDatasets();
+    fetchUserID();
 });
 </script>
 

@@ -259,6 +259,7 @@ def normalize_content(text: str) -> str:
 def find_existing_answer(model_id, dataset_id, content):
     """
     精准复用：在同一个数据集 ID 下寻找该模型对该特定内容的回答
+    【新增】排除以 [Error] 开头的无效报错记录
     """
     if not content:
         return None
@@ -270,25 +271,28 @@ def find_existing_answer(model_id, dataset_id, content):
 
     from django.db.models import Q
     
-    # 2. 模糊匹配：使用 __contains 缩小范围（去掉所有空格后再取前50个字符可能不准，所以还用原始的前50）
-    # 为了保险，这里只用 content 的一部分做索引扫描
+    # 2. 模糊匹配并排除 Error
     clean_content_prefix = content.strip()[:20] 
 
     match = EvaluationItem.objects.filter(
         task__dataset_id=dataset_id,
         content__contains=clean_content_prefix 
     ).filter(
-        (Q(task__myModel_id=model_id) & Q(predicted_answer__isnull=False)) |
-        (Q(task__myModel_2_id=model_id) & Q(predicted_answer_2__isnull=False))
+        (Q(task__myModel_id=model_id) & Q(predicted_answer__isnull=False) & ~Q(predicted_answer__startswith="[Error]")) |
+        (Q(task__myModel_2_id=model_id) & Q(predicted_answer_2__isnull=False) & ~Q(predicted_answer_2__startswith="[Error]"))
     )
     
     # 3. 在内存中做【归一化】精确匹配
     for it in match:
         if normalize_content(it.content) == norm_content:
             if it.task.myModel_id == model_id:
-                return it.predicted_answer
+                ans = it.predicted_answer
             else:
-                return it.predicted_answer_2
+                ans = it.predicted_answer_2
+            
+            # 双重保险：再次检查
+            if ans and not ans.startswith("[Error]"):
+                return ans
             
     return None
 
@@ -296,7 +300,7 @@ def find_existing_answer(model_id, dataset_id, content):
 def reuse_task_items_model_aware(old_task, new_task):
     """
     模型感知型复用：从旧任务中精准提取新任务需要的模型回复。
-    支持：A+B 复用 B+A, A+B 提取 A 给 A+C, 单模 A 提取给 A+B 等全场景。
+    【新增】排除 [Error] 报错。
     """
     from .models import EvaluationItem
     
@@ -315,16 +319,24 @@ def reuse_task_items_model_aware(old_task, new_task):
         if old_item:
             # 1. 为新任务的第一个模型寻找回复
             if old_task.myModel_id == new_task.myModel_id:
-                pred_1 = old_item.predicted_answer
+                val = old_item.predicted_answer
+                if val and not val.startswith("[Error]"):
+                    pred_1 = val
             elif old_task.myModel_2_id == new_task.myModel_id:
-                pred_1 = old_item.predicted_answer_2
+                val = old_item.predicted_answer_2
+                if val and not val.startswith("[Error]"):
+                    pred_1 = val
             
             # 2. 如果是新任务是对抗任务，为第二个模型寻找回复
             if new_task.method == 'adversarial':
                 if old_task.myModel_id == new_task.myModel_2_id:
-                    pred_2 = old_item.predicted_answer
+                    val = old_item.predicted_answer
+                    if val and not val.startswith("[Error]"):
+                        pred_2 = val
                 elif old_task.myModel_2_id == new_task.myModel_2_id:
-                    pred_2 = old_item.predicted_answer_2
+                    val = old_item.predicted_answer_2
+                    if val and not val.startswith("[Error]"):
+                        pred_2 = val
         
         new_items_to_create.append(EvaluationItem(
             task=new_task,
