@@ -25,7 +25,9 @@
             <template #header>
               <span class="section-title model-a-title">左侧：模型 A (V1.0)</span>
             </template>
-            <div class="model-response" v-if="currentItem.itemID" v-html="currentItem.item_content.myModel1_response"></div>
+            <div class="model-response" v-if="currentItem.itemID">
+                <div class="markdown-body" v-html="renderedResponse1"></div>
+            </div>
             <div v-else class="content-placeholder">请等待模型 A 输出加载...</div>
           </el-card>
         </el-col>
@@ -35,7 +37,9 @@
             <template #header>
               <span class="section-title model-b-title">右侧：模型 B (V2.0)</span>
             </template>
-            <div class="model-response" v-if="currentItem.itemID" v-html="currentItem.item_content.myModel2_response"></div>
+            <div class="model-response" v-if="currentItem.itemID">
+                <div class="markdown-body" v-html="renderedResponse2"></div>
+            </div>
             <div v-else class="content-placeholder">请等待模型 B 输出加载...</div>
           </el-card>
         </el-col>
@@ -140,6 +144,9 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
 import { Tickets } from '@element-plus/icons-vue';
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 import { getPendingItems, getItemDetail, submitSubjectiveScore } from '@/api/tasks.js';
 
 const props = defineProps({
@@ -180,6 +187,46 @@ const isLastItem = computed(() => {
   if (!pendingItemIds.value.length) return false;
   // 逻辑：如果待测列表只剩一个，且就是当前 ID
   return pendingItemIds.value.length === 1 && pendingItemIds.value.includes(currentItemId.value);
+});
+
+const md = new MarkdownIt({
+  html: true,         // 允许 HTML 标签
+  linkify: true,      // 自动转换 URL
+  typographer: true,
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return '<pre class="hljs"><code>' +
+               hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+               '</code></pre>';
+      } catch (__) {}
+    }
+    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+  }
+});
+
+const renderedResponse1 = computed(() => {
+  if (currentItem.value && currentItem.value.item_content.myModel1_response) {
+    let content = currentItem.value.item_content.myModel1_response;
+    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
+    let htmlContent = md.render(currentItem.value.item_content.myModel1_response);
+    htmlContent = htmlContent.replace(/>\s+</g, '><');
+    return htmlContent;
+  }
+  return '';
+});
+
+const renderedResponse2 = computed(() => {
+  if (currentItem.value && currentItem.value.item_content.myModel2_response) {
+    let content = currentItem.value.item_content.myModel2_response;
+    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
+    let htmlContent = md.render(currentItem.value.item_content.myModel2_response);
+    htmlContent = htmlContent.replace(/>\s+</g, '><');
+    return htmlContent;
+  }
+  return '';
 });
 
 // --- 核心方法 ---
@@ -485,9 +532,124 @@ onMounted(initData);
     gap: 10px;
     font-size: 14px;
 }
+
 .current-tag {
     background-color: transparent !important;
     border: 1px solid var(--el-color-success);
     color: var(--el-color-success);
+}
+
+/* 容器基础设置 */
+.markdown-body {
+  font-size: 18px;            /* 调大字号 */
+  line-height: 1.75;          /* 黄金行高 */
+  color: #2c3e50;             /* 深灰色文字，比纯黑更柔和 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  word-wrap: break-word;
+  user-select: text !important; /* 核心：确保全文可选 */
+  overflow-wrap: break-word; /* 确保长单词能换行，不至于撑破容器 */
+}
+
+/* 表格容器：这是最容易超出宽度的地方 */
+.markdown-body :deep(table) {
+  display: block;
+  width: 100% !important;
+  overflow-x: auto;
+  border-spacing: 0;
+  border-collapse: collapse;
+  word-break: normal;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 单元格边框与内边距 */
+.markdown-body :deep(table th),
+.markdown-body :deep(table td) {
+  /* 1. 设置最小宽度，防止内容被挤压成一竖排 */
+  min-width: 120px; 
+  
+  /* 2. 允许内容折行（如果你不希望它一直横向延伸） */
+  /* 或者保持 white-space: nowrap; 如果你想要整行显示并触发滚动条 */
+  white-space: normal; 
+  
+  word-break: break-all;
+  padding: 10px 15px;
+  line-height: 1.5;
+}
+
+/* 解决加粗文字与文本间隙的同时，允许其在极长情况下不撑破布局 */
+.markdown-body :deep(strong) {
+  display: inline; /* 改回 inline 配合 word-break */
+  white-space: normal; 
+}
+
+/* 1. 段落间距控制：这是消除“大空行”的关键 */
+.markdown-body :deep(p) {
+  margin-top: 0;
+  margin-bottom: 12px;        /* 限制段落间距 */
+}
+
+/* 2. 列表样式：模拟 AI 的缩进感并确保标号可选 */
+.markdown-body :deep(ol), 
+.markdown-body :deep(ul) {
+  padding-left: 2em;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 6px;         /* 列表项之间的微小间距 */
+  list-style-position: outside; 
+}
+
+/* 3. 解决标号选中问题 */
+.markdown-body :deep(li::marker) {
+  font-weight: 600;
+  color: #409eff;             /* 标号使用主题色，视觉更清晰 */
+  user-select: text;          /* 允许选中标号 */
+}
+
+.markdown-body :deep(li) {
+  white-space: normal !important; /* 列表项通常不需要保留原始换行 */
+}
+
+.markdown-body :deep(li p) {
+  display: inline; /* 让 p 标签不作为块级撑开，紧随标号 */
+  white-space: normal;
+}
+
+.markdown-body :deep(hr) {
+  height: 1px;
+  background-color: #e1e4e8;
+  border: none;
+  margin: 20px 0;
+}
+
+.markdown-body :deep(pre) {
+    display: block;          /* 确保是块级元素 */
+    width: 100%;             /* 占据全宽 */
+    overflow-x: auto;        /* 关键：宽度不足时显示横向滚动条 */
+    overflow-y: hidden;      /* 隐藏纵向滚动条 */
+    background-color: #f6f8fa;
+    padding: 16px;
+    border-radius: 6px;
+    
+    /* 强制代码不换行，这样才能触发横向滚动条 */
+    white-space: pre;        
+    word-break: normal;
+    word-wrap: normal;
+}
+
+/* 针对代码块内部的 code 标签 */
+.markdown-body :deep(pre code) {
+    display: inline;         /* 保持内联以便在 pre 中横向延伸 */
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    white-space: pre;        /* 再次确保不换行 */
+}
+
+.markdown-body {
+  white-space: pre-wrap;      /* 保留原始缩进（如 \t），但允许自动换行 */
 }
 </style>

@@ -9,9 +9,15 @@
       </el-form-item>
       <el-form-item label="评测类型">
         <el-radio-group v-model="form.method">
-          <el-radio label="objective">客观评测</el-radio>
-          <el-radio label="subjective">主观评测</el-radio>
-          <el-radio label="adversarial">对抗评测</el-radio>
+          <el-radio 
+            v-for="opt in methodOptions" 
+            :key="opt.value"
+            :label="opt.value"
+            :disabled="isMethodDisabled(opt.value)"
+            @click.prevent="handleRadioClick(opt.value)"
+          >
+            {{ opt.label }}
+          </el-radio>
         </el-radio-group>
       </el-form-item>
       <el-form-item label="模型选择">
@@ -89,15 +95,38 @@
       <el-form-item label="数据集" >
         <div style="display: flex; width: 100%;">
           
-          <el-select v-model="form.selectedDatasetName" 
-                     placeholder="选择数据集" 
-                     :loading="datasetLoading"
-                     style="flex: 1;"> <el-option
+          <el-select 
+            v-model="form.selectedDatasetName" 
+            placeholder="选择数据集" 
+            :loading="datasetLoading"
+            style="flex: 1;"
+            popper-class="dataset-select-popper" 
+          >
+            <el-option value="" label="清除选择" @click="handleClearDataset">
+              <div class="option-item clear-item">
+                <el-icon><CircleClose /></el-icon>
+                <span>清除当前选择</span>
+              </div>
+            </el-option>
+            
+            <el-option
               v-for="dataset in filteredDatasetsList"
               :key="dataset.id"
               :label="dataset.name"
               :value="dataset.name"
-            />
+            >
+              <div class="option-item" :title="dataset.name">
+                <span class="dataset-name-text">{{ dataset.name }}</span>
+                <el-tag 
+                  :type="getMethodTag(dataset.evaluation_type)" 
+                  size="small" 
+                  effect="plain"
+                  class="type-tag"
+                >
+                  {{ formatMethodName(dataset.evaluation_type) }}
+                </el-tag>
+              </div>
+            </el-option>
           </el-select>
 
           <el-input 
@@ -121,7 +150,8 @@
 import { ref, defineProps, defineEmits, computed, onMounted, watch} from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { createEvaluationTask, runEvaluationTask } from '@/api/tasks.js'
+import { Search, CircleClose } from '@element-plus/icons-vue'
+import { createEvaluationTask } from '@/api/tasks.js'
 import { getAllDatasets } from '@/api/datasets.js'
 import { getAllModels } from '@/api/models.js' 
 import { getUserInfo } from '@/api/users.js'
@@ -253,14 +283,94 @@ const fetchDatasets = async () => {
 
 // 筛选后的数据集列表 (计算属性)
 const filteredDatasetsList = computed(() => {
+    let list = datasetsList.value;
+
+    if (form.value.method) {
+        list = list.filter(dataset => dataset.evaluation_type === form.value.method);
+    }
+
     if (!datasetSearchQuery.value) {
-        return datasetsList.value;
+        return list;
     }
     const query = datasetSearchQuery.value.toLowerCase();
-    return datasetsList.value.filter(dataset => 
+    return list.filter(dataset => 
         dataset.name.toLowerCase().includes(query)
     );
 })
+
+// 监听数据集选择的变化
+watch(() => form.value.selectedDatasetName, (newDatasetName) => {
+    if (!newDatasetName) return;
+
+    // 找到当前选中的数据集对象
+    const selectedDataset = datasetsList.value.find(d => d.name === newDatasetName);
+    
+    if (selectedDataset && selectedDataset.evaluation_type) {
+        // 如果当前选中的类型和数据集类型不符，或者还没选类型，则自动切换类型
+        if (form.value.method !== selectedDataset.evaluation_type) {
+            form.value.method = selectedDataset.evaluation_type;
+        }
+    }
+});
+
+// 清除数据集的选择
+const handleClearDataset = () => {
+  form.value.selectedDatasetName = '';
+};
+
+const methodOptions = [
+  { label: '客观评测', value: 'objective' },
+  { label: '主观评测', value: 'subjective' },
+  { label: '对抗评测', value: 'adversarial' }
+]
+
+// 处理单选框点击：实现再次点击取消
+const handleRadioClick = (val) => {
+  // 如果该项已被禁用（受数据集锁定），则不响应点击
+  if (isMethodDisabled(val)) return;
+
+  if (form.value.method === val) {
+    form.value.method = ''; // 再次点击已选中的，设为空
+  } else {
+    form.value.method = val; // 点击未选中的，正常赋值
+  }
+}
+
+// 判定评测类型是否应该被禁用
+const isMethodDisabled = (methodType) => {
+    // 如果还没选数据集，则都不禁用
+    if (!form.value.selectedDatasetName) {
+        return false;
+    }
+    // 找到当前选中的数据集对象
+    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+    
+    // 如果数据集存在且有类型，则禁用掉所有不属于该类型的选项
+    if (selectedDataset && selectedDataset.evaluation_type) {
+        return selectedDataset.evaluation_type !== methodType;
+    }
+    return false;
+};
+
+// 获取标签颜色类型
+const getMethodTag = (method) => {
+  const map = {
+    objective: 'success',
+    subjective: 'warning',
+    adversarial: 'danger',
+  };
+  return map[method] || 'info';
+};
+
+// 格式化名称显示
+const formatMethodName = (method) => {
+  const map = {
+    objective: '客观',
+    subjective: '主观',
+    adversarial: '对抗',
+  };
+  return map[method] || method;
+};
 
 /**
  * 统一处理关闭逻辑，通知父组件更新 showEvalDialog 为 false
@@ -393,6 +503,51 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 下拉项容器 */
+.option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px; /* 间距固定 */
+}
+
+/* 数据集名称样式：自动截断 */
+.dataset-name-text {
+  flex: 1; /* 占据剩余空间 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+
+/* 标签样式：固定宽度不收缩 */
+.type-tag {
+  flex-shrink: 0; /* 防止名称长时标签被挤压 */
+  min-width: 42px;
+  text-align: center;
+}
+
+/* 清空选项样式 */
+.clear-item {
+  color: var(--el-color-info);
+  font-weight: 500;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+/* 深度调整 Element 原生样式 */
+:deep(.el-select-dropdown__item) {
+  padding: 0 12px;
+  height: 38px;
+  line-height: 38px;
+}
+
+/* 提高鼠标悬停时的区分度 */
+:deep(.el-select-dropdown__item.hover) {
+  background-color: var(--bg-hover);
+}
+
 /* Dialog Theme Overrides */
 :deep(.el-dialog) {
   background-color: var(--bg-secondary);
