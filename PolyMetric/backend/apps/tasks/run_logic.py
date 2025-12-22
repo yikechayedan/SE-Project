@@ -72,7 +72,7 @@ def build_subjective_answer_prompt(item: EvaluationItem) -> str:
 问题：
 {item.content}
 
-请直接给出你的回答，不要自我评价，不要打分。
+请直接给出你的回答，不要自我评价，不要打分，字数限制在300以内。
 """.strip()
 
 
@@ -162,6 +162,37 @@ def clean_choice_answer(raw_text: str) -> str:
         return match.group(0)
 
     return text
+
+
+def parse_adversarial_judge(raw_text: str) -> str:
+    """
+    解析对抗评测裁判模型的输出。
+    目标：从一段话中提取出 'left', 'right' 或 'tie'。
+    """
+    if not raw_text:
+        return "tie"
+
+    # 特殊情况：如果是 API 报错，直接返回 error (之前逻辑已有处理，这里做兜底)
+    if raw_text.startswith("[Error]"):
+        return "error"
+
+    text = raw_text.lower().strip()
+
+    # 优先级匹配：
+    # 1. 明确的关键词匹配
+    if "left" in text:
+        return "left"
+    if "right" in text:
+        return "right"
+    if "tie" in text or "equal" in text or "draw" in text or "平局" in text:
+        return "tie"
+
+    # 2. 如果都没有找到，尝试正则匹配单词
+    if re.search(r"\bleft\b", text): return "left"
+    if re.search(r"\bright\b", text): return "right"
+    
+    # 3. 实在找不到，默认平局
+    return "tie"
 
 
 def normalize_answer(text: str) -> str:
