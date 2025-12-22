@@ -248,6 +248,14 @@ def load_dataset_entries(dataset: Dataset):
     return data
 
 
+def normalize_content(text: str) -> str:
+    """
+    归一化内容：去除所有空白字符，用于比对
+    """
+    if not text:
+        return ""
+    return "".join(text.split())
+
 def find_existing_answer(model_id, dataset_id, content):
     """
     精准复用：在同一个数据集 ID 下寻找该模型对该特定内容的回答
@@ -255,21 +263,28 @@ def find_existing_answer(model_id, dataset_id, content):
     if not content:
         return None
         
-    clean_content = content.strip()
+    # 1. 归一化输入内容
+    norm_content = normalize_content(content)
+    if not norm_content:
+        return None
+
     from django.db.models import Q
     
-    # 模糊匹配：使用 __contains 或者处理过的 content
+    # 2. 模糊匹配：使用 __contains 缩小范围（去掉所有空格后再取前50个字符可能不准，所以还用原始的前50）
+    # 为了保险，这里只用 content 的一部分做索引扫描
+    clean_content_prefix = content.strip()[:20] 
+
     match = EvaluationItem.objects.filter(
         task__dataset_id=dataset_id,
-        content__icontains=clean_content[:50] # 先缩小范围
+        content__contains=clean_content_prefix 
     ).filter(
         (Q(task__myModel_id=model_id) & Q(predicted_answer__isnull=False)) |
         (Q(task__myModel_2_id=model_id) & Q(predicted_answer_2__isnull=False))
     )
     
-    # 在内存中做精确匹配，防止 icontains 误伤
+    # 3. 在内存中做【归一化】精确匹配
     for it in match:
-        if it.content.strip() == clean_content:
+        if normalize_content(it.content) == norm_content:
             if it.task.myModel_id == model_id:
                 return it.predicted_answer
             else:
