@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
-from .run_logic import run_evaluation
+from .run_logic import run_evaluation, reuse_task_items_model_aware
 from .tasks import init_evaluation_task
 from .models import EvaluationTask, EvaluationItem
 from .serializers import (
@@ -22,23 +22,9 @@ User = get_user_model()
 
 def _reuse_task_items(old_task, new_task):
     """
-    从旧任务复制条目到新任务（保留模型回答，重置评分）
+    Legacy wrapper for existing calls.
     """
-    old_items = EvaluationItem.objects.filter(task=old_task)
-    new_items = []
-    for item in old_items:
-        new_items.append(EvaluationItem(
-            task=new_task,
-            content=item.content,
-            correct_answer=item.correct_answer,
-            predicted_answer=item.predicted_answer,
-            predicted_answer_2=item.predicted_answer_2,
-            # 重置评分相关字段
-            score=None,
-            preference=None,
-            is_correct=None
-        ))
-    EvaluationItem.objects.bulk_create(new_items)
+    reuse_task_items_model_aware(old_task, new_task)
 
 
 class EvaluationTaskViewSet(viewsets.ModelViewSet):
@@ -86,107 +72,46 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
              return Response({"error": "Missing required fields"}, status=400)
 
         one_hour_ago = timezone.now() - timedelta(hours=1)
-        
-        # 只复用已经有结果的任务
         reuse_status_list = ['completed', 'awaiting_human_judge']
 
-        # 1. 客观评测 (Objective)
-        if method == 'objective':
-            existing_task = EvaluationTask.objects.filter(
-                method='objective',
-                myModel_id=my_model_id,
-                dataset_id=dataset_id,
-                created_at__gt=one_hour_ago,
-                status__in=reuse_status_list
-            ).first()
+        # -----------------------------------------------------------
+        # 【精准去重：四元组匹配 (A, B, D, J)】
+        # 只要 模型、数据集、裁判方式 全都一致，直接跳转
+        # -----------------------------------------------------------
+        from django.db.models import Q
+        
+        identical_filters = {
+            'method': method,
+            'dataset_id': dataset_id,
+            'judge_type': judge_type,
+            'judge_model_id': judge_model_id,
+            'created_at__gt': one_hour_ago,
+            'status__in': reuse_status_list
+        }
 
-            if existing_task:
-                existing_task.authorized_viewers.add(user)
-                return Response({
-                    "msg": "检测到近期已有完成的评测任务，已为您自动跳转。",
-                    "code": 200,
-                    "task_id": existing_task.id,
-                    "is_duplicate": True
-                }, status=status.HTTP_200_OK)
-
-        # 2. 主观评测 (Subjective)
-        elif method == 'subjective':
-            existing_task = EvaluationTask.objects.filter(
-                method='subjective',
-                myModel_id=my_model_id,
-                dataset_id=dataset_id,
-                created_at__gt=one_hour_ago,
-                status__in=reuse_status_list
-            ).first()
-
-            if existing_task:
-                if judge_type == 'human':
-                    serializer = self.get_serializer(data=data)
-                    if serializer.is_valid():
-                        # 肯定是完成的，直接复用
-                        serializer.save(creator=user, status='awaiting_human_judge', shared_from=existing_task)
-                        new_task = serializer.instance
-                        _reuse_task_items(existing_task, new_task)
-                        return Response(serializer.data, status=status.HTTP_201_CREATED)
-                
-                elif judge_type == 'model':
-                    if existing_task.judge_type == 'model' and str(existing_task.judge_model_id) == str(judge_model_id):
-                        existing_task.authorized_viewers.add(user)
-                        return Response({
-                            "msg": "检测到近期已有完全相同的评测任务，已为您自动跳转。",
-                            "code": 200,
-                            "task_id": existing_task.id,
-                            "is_duplicate": True
-                        }, status=status.HTTP_200_OK)
-                    else:
-                        serializer = self.get_serializer(data=data)
-                        if serializer.is_valid():
-                            serializer.save(creator=user, shared_from=existing_task)
-                            new_task = serializer.instance
-                            # 肯定是完成的，直接复用并触发打分
-                            _reuse_task_items(existing_task, new_task)
-                            from .tasks import init_evaluation_task
-                            init_evaluation_task.delay(new_task.id)
-                            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        # 3. 对抗评测 (Adversarial)
+        if method == 'objective' or method == 'subjective':
+            identical_filters['myModel_id'] = my_model_id
+            existing_task = EvaluationTask.objects.filter(**identical_filters).first()
+        
         elif method == 'adversarial':
+            # 对抗评测支持镜像匹配 (A vs B == B vs A)
             existing_task = EvaluationTask.objects.filter(
-                method='adversarial',
-                myModel_id=my_model_id,
-                myModel_2_id=my_model_2_id,
-                dataset_id=dataset_id,
-                created_at__gt=one_hour_ago,
-                status__in=reuse_status_list
+                **identical_filters
+            ).filter(
+                (Q(myModel_id=my_model_id) & Q(myModel_2_id=my_model_2_id)) |
+                (Q(myModel_id=my_model_2_id) & Q(myModel_2_id=my_model_id))
             ).first()
 
-            if existing_task:
-                if judge_type == 'human':
-                    serializer = self.get_serializer(data=data)
-                    if serializer.is_valid():
-                        serializer.save(creator=user, status='awaiting_human_judge', shared_from=existing_task)
-                        new_task = serializer.instance
-                        _reuse_task_items(existing_task, new_task)
-                        return Response(serializer.data, status=status.HTTP_201_CREATED)
-                
-                elif judge_type == 'model':
-                    if existing_task.judge_type == 'model' and str(existing_task.judge_model_id) == str(judge_model_id):
-                        existing_task.authorized_viewers.add(user)
-                        return Response({
-                            "msg": "检测到近期已有完全相同的评测任务，已为您自动跳转。",
-                            "code": 200,
-                            "task_id": existing_task.id,
-                            "is_duplicate": True
-                        }, status=status.HTTP_200_OK)
-                    else:
-                        serializer = self.get_serializer(data=data)
-                        if serializer.is_valid():
-                            serializer.save(creator=user, shared_from=existing_task)
-                            new_task = serializer.instance
-                            _reuse_task_items(existing_task, new_task)
-                            from .tasks import init_evaluation_task
-                            init_evaluation_task.delay(new_task.id)
-                            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if existing_task:
+            existing_task.authorized_viewers.add(user)
+            return Response({
+                "msg": "检测到完全一致的评测任务，已为您自动跳转。",
+                "code": 200,
+                "task_id": existing_task.id,
+                "is_duplicate": True
+            }, status=status.HTTP_200_OK)
+
+        # --- 默认流程：正常创建 ---
 
         # --- 默认流程：正常创建 ---
         serializer = self.get_serializer(data=request.data)
@@ -494,78 +419,99 @@ def get_item_detail(request):
 @permission_classes([IsAuthenticated])
 def run_task(request):
     task_id = request.data.get("task_id")
+    from .tasks import init_evaluation_task
 
     try:
         from django.db import transaction
         with transaction.atomic():
             task = EvaluationTask.objects.select_for_update().get(id=task_id)
             
+            if task.status != 'pending':
+                return Response({"msg": "Task is already running or completed", "status": task.status})
+
             # -----------------------------------------------------------
-            # 【核心逻辑：任务级等待与复用】
-            # 目标：寻找是否有“相同模型 A 对相同数据集 D”的回复生成任务正在运行
+            # 【高级优化：寻找生产者任务 (Producers)】
+            # 只有正在运行或已完成的任务才能作为“生产者”供别人挂载
             # -----------------------------------------------------------
             one_hour_ago = timezone.now() - timedelta(hours=1)
-            # 活跃状态包括：正在跑(running/pending) 或 已有结果(completed/awaiting)
-            active_statuses = ['running', 'pending', 'completed', 'awaiting_human_judge']
+            # 排除 'pending'，因为未启动的任务无法提供回答
+            active_statuses = ['running', 'completed', 'awaiting_human_judge']
             
-            # 寻找上游任务：
-            # 只要 myModel 和 dataset 一致，且该任务是会产生回答的（不是客观题去蹭主观题）
-            # 注意：对抗评测产生的回答也可以被单模评测复用
-            upstream_filters = {
-                'myModel': task.myModel,
-                'dataset': task.dataset,
-                'created_at__gt': one_hour_ago,
-                'status__in': active_statuses
-            }
+            from django.db.models import Q
             
-            # 排除掉自己，按时间倒序拿最近的一个
-            existing_runner = EvaluationTask.objects.filter(**upstream_filters).exclude(id=task.id).order_by('-created_at').first()
+            # 搜索策略：
+            # 1. 必须是同一个数据集
+            # 2. 模型重合
+            # 3. 必须是比自己早创建的任务 (ID 更小)，确保单向依赖
+            upstream_search = EvaluationTask.objects.filter(
+                dataset_id=task.dataset_id,
+                created_at__gt=one_hour_ago,
+                status__in=active_statuses,
+                id__lt=task.id
+            )
+
+            model_q = Q(myModel_id=task.myModel_id) | Q(myModel_2_id=task.myModel_id)
+            if task.method == 'adversarial':
+                model_q |= Q(myModel_id=task.myModel_2_id) | Q(myModel_2_id=task.myModel_2_id)
+            
+            # 优先找完成的，次之找正在跑的
+            existing_runner = upstream_search.filter(model_q).order_by('status').first()
             
             if existing_runner:
-                # 1. 发现上游任务已完成：直接同步数据
+                # 1. 发现上游任务已完成：立即复用并分流
                 if existing_runner.status in ['completed', 'awaiting_human_judge']:
-                    # 确保上游确实有 items（防御性检查）
-                    if EvaluationItem.objects.filter(task=existing_runner).exists():
-                        _reuse_task_items(existing_runner, task)
-                        
-                        # 同步后，根据自己的 judge_type 决定下一步
-                        if task.judge_type == 'human':
-                            task.status = 'awaiting_human_judge'
-                            task.save(update_fields=['status'])
-                            return Response({"msg": "已复用现有模型回答，请开始人工评分。", "status": "awaiting_human_judge"})
-                        else:
-                            # 自动化评分：触发评分 Worker
+                    reuse_task_items_model_aware(existing_runner, task)
+                    
+                    if task.judge_type == 'human':
+                        # 检查是否复用后还有缺口
+                        if task.items.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True)).exists():
                             task.status = 'running'
                             task.save(update_fields=['status'])
-                            from .tasks import init_evaluation_task
                             init_evaluation_task.delay(task.id)
-                            return Response({"msg": "已复用现有回答，正在启动自动评分...", "status": "running"})
+                            return Response({"msg": "已复用部分回答，正在补全其余模型回答...", "status": "running"})
+                        else:
+                            task.status = 'awaiting_human_judge'
+                            task.save(update_fields=['status'])
+                            return Response({"msg": "所有回答已复用，请开始人工评分。", "status": "awaiting_human_judge"})
+                    else:
+                        task.status = 'running'
+                        task.save(update_fields=['status'])
+                        init_evaluation_task.delay(task.id)
+                        return Response({"msg": "已复用相关回答，正在进行补全与评分...", "status": "running"})
 
-                # 2. 发现上游任务正在运行：进入“任务级等待”
+                # 2. 发现上游任务正在运行：建立“任务级等待”
                 else:
                     task.shared_from = existing_runner
-                    task.status = 'running' # 标记为运行中，前端显示“正在处理”，实际上在等 upstream
+                    task.status = 'running' 
                     task.save(update_fields=['shared_from', 'status'])
                     return Response({
-                        "msg": f"检测到相同模型的评测任务(ID:{existing_runner.id})正在运行，本任务将自动复用其结果，请稍候。",
+                        "msg": f"检测到重合任务(ID:{existing_runner.id})正在生成回答，本任务将排队等待其结果以节省开销。",
                         "status": "running"
                     })
 
-            # 3. 无任何可复用任务：正常启动
+            # 3. 彻底无重合：正常启动
             task.status = "running"
             task.save()
             
-            from .tasks import init_evaluation_task
             init_evaluation_task.delay(task_id)
             
             return Response({
-                "msg": "任务已启动", 
+                "msg": "Task submitted to background queue", 
                 "status": "running",
                 "task_id": task_id
             })
 
     except EvaluationTask.DoesNotExist:
         return Response({"error": "task not found"}, status=404)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in run_task: {error_details}")
+        return Response({
+            "error": "Internal Server Error",
+            "details": str(e),
+            "traceback": error_details
+        }, status=500)
 
 
 @api_view(["POST"])

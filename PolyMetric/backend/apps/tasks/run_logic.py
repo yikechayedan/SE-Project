@@ -248,18 +248,115 @@ def load_dataset_entries(dataset: Dataset):
     return data
 
 
+def find_existing_answer(model_id, dataset_id, content):
+    """
+    精准复用：在同一个数据集 ID 下寻找该模型对该特定内容的回答
+    """
+    if not content:
+        return None
+        
+    clean_content = content.strip()
+    from django.db.models import Q
+    
+    # 模糊匹配：使用 __contains 或者处理过的 content
+    match = EvaluationItem.objects.filter(
+        task__dataset_id=dataset_id,
+        content__icontains=clean_content[:50] # 先缩小范围
+    ).filter(
+        (Q(task__myModel_id=model_id) & Q(predicted_answer__isnull=False)) |
+        (Q(task__myModel_2_id=model_id) & Q(predicted_answer_2__isnull=False))
+    )
+    
+    # 在内存中做精确匹配，防止 icontains 误伤
+    for it in match:
+        if it.content.strip() == clean_content:
+            if it.task.myModel_id == model_id:
+                return it.predicted_answer
+            else:
+                return it.predicted_answer_2
+            
+    return None
+
+
+def reuse_task_items_model_aware(old_task, new_task):
+    """
+    模型感知型复用：从旧任务中精准提取新任务需要的模型回复。
+    支持：A+B 复用 B+A, A+B 提取 A 给 A+C, 单模 A 提取给 A+B 等全场景。
+    """
+    from .models import EvaluationItem
+    
+    # 建立旧任务内容的索引
+    old_items = {it.content: it for it in EvaluationItem.objects.filter(task=old_task)}
+    new_items_to_create = []
+    
+    entries = load_dataset_entries(new_task.dataset)
+    for entry in entries:
+        content = entry.get("input") or entry.get("question") or entry.get("prompt")
+        old_item = old_items.get(content)
+        
+        pred_1 = None
+        pred_2 = None
+        
+        if old_item:
+            # 1. 为新任务的第一个模型寻找回复
+            if old_task.myModel_id == new_task.myModel_id:
+                pred_1 = old_item.predicted_answer
+            elif old_task.myModel_2_id == new_task.myModel_id:
+                pred_1 = old_item.predicted_answer_2
+            
+            # 2. 如果是新任务是对抗任务，为第二个模型寻找回复
+            if new_task.method == 'adversarial':
+                if old_task.myModel_id == new_task.myModel_2_id:
+                    pred_2 = old_item.predicted_answer
+                elif old_task.myModel_2_id == new_task.myModel_2_id:
+                    pred_2 = old_item.predicted_answer_2
+        
+        new_items_to_create.append(EvaluationItem(
+            task=new_task,
+            content=content,
+            correct_answer=entry.get("answer") or entry.get("label"),
+            predicted_answer=pred_1,
+            predicted_answer_2=pred_2
+        ))
+    
+    EvaluationItem.objects.bulk_create(new_items_to_create)
+
+
 @transaction.atomic
 def prepare_evaluation_items(task: EvaluationTask):
     """
-    如果 EvaluationItem 不存在 → 由 Dataset 自动生成
-    返回所有关联的 Item IDs (供 Dispatcher 使用)
+    增强版：创建条目时自动跨任务复用模型回答
     """
     if task.items.exists():
-        # 即使已经存在，也返回 IDs，防止重试时拿不到 ID
-        return list(task.items.values_list("id", flat=True))
+        # --- 补齐逻辑：针对已存在的条目，尝试全库搜刮缺失的回答 ---
+        all_items = list(task.items.all())
+        updated_items = []
+        for item in all_items:
+            changed = False
+            if not item.predicted_answer:
+                ans = find_existing_answer(task.myModel_id, task.dataset_id, item.content)
+                if ans:
+                    item.predicted_answer = ans
+                    changed = True
+            
+            if task.method == 'adversarial' and task.myModel_2_id and not item.predicted_answer_2:
+                ans = find_existing_answer(task.myModel_2_id, task.dataset_id, item.content)
+                if ans:
+                    item.predicted_answer_2 = ans
+                    changed = True
+            
+            if changed:
+                updated_items.append(item)
+        
+        if updated_items:
+            EvaluationItem.objects.bulk_update(updated_items, ['predicted_answer', 'predicted_answer_2'])
+            
+        return [it.id for it in all_items]
 
+    from .models import EvaluationItem
+    from django.db.models import Q
     entries = load_dataset_entries(task.dataset)
-    items = []
+    items_to_create = []
 
     for entry in entries:
         content = (
@@ -267,8 +364,7 @@ def prepare_evaluation_items(task: EvaluationTask):
             or entry.get("question")
             or entry.get("prompt")
         )
-
-        answer = (
+        gold_answer = (
             entry.get("answer")
             or entry.get("label")
             or entry.get("target")
@@ -277,17 +373,23 @@ def prepare_evaluation_items(task: EvaluationTask):
         if not content:
             continue
 
-        items.append(
+        # 核心：尝试搜刮已有的回答
+        pred_1 = find_existing_answer(task.myModel_id, task.dataset_id, content)
+        pred_2 = None
+        if task.method == 'adversarial' and task.myModel_2_id:
+            pred_2 = find_existing_answer(task.myModel_2_id, task.dataset_id, content)
+
+        items_to_create.append(
             EvaluationItem(
                 task=task,
                 content=content,
-                correct_answer=answer,
+                correct_answer=gold_answer,
+                predicted_answer=pred_1,
+                predicted_answer_2=pred_2
             )
         )
 
-    created_items = EvaluationItem.objects.bulk_create(items)
-    # bulk_create 在 Django (某些 DB 后端) 返回的对象可能没有 ID，
-    # 但通常 Postgres/SQLite 支持。为了保险，重新查一次。
+    created_items = EvaluationItem.objects.bulk_create(items_to_create)
     return list(task.items.values_list("id", flat=True))
 
 
@@ -337,10 +439,10 @@ def get_pending_item_ids(task: EvaluationTask, limit: int = 100):
 # Single Item Logic (Granular Execution)
 # =========================================================
 
-def run_single_item_logic(item_id: int):
+def run_single_item_logic(item_id: int, phase='both'):
     """
     执行单个 Item 的评测逻辑 (Worker 核心逻辑)
-    根据 Task Method 分发
+    phase: 'generation', 'judging', 'both'
     """
     try:
         # 必须 select_related task，以便访问 task.method 等配置
@@ -357,8 +459,9 @@ def run_single_item_logic(item_id: int):
         task = item.task
         method = task.method
 
-        # 1. 客观评测
-        if method == "objective":
+        # 1. 客观评测 (不分阶段，因为生成即判定)
+        if method == "objective" and phase in ['generation', 'both']:
+            # ... (客观评测逻辑不变)
             # 幂等性检查：如果已经有值（包括错误信息），直接跳过
             if item.predicted_answer: 
                 return
@@ -381,17 +484,17 @@ def run_single_item_logic(item_id: int):
         # 2. 主观评测
         elif method == "subjective":
             # (A) 生成回答
-            if not item.predicted_answer:
-                answer = call_llm_api(
-                    build_subjective_answer_prompt(item), 
-                    task.myModel.name
-                )
-                item.predicted_answer = answer
-                item.save(update_fields=["predicted_answer"])
+            if phase in ['generation', 'both']:
+                if not item.predicted_answer:
+                    answer = call_llm_api(
+                        build_subjective_answer_prompt(item), 
+                        task.myModel.name
+                    )
+                    item.predicted_answer = answer
+                    item.save(update_fields=["predicted_answer"])
 
             # (B) 如果是模型裁判，紧接着打分
-            # 注意：如果回答生成失败（[Error]），则跳过打分或给最低分
-            if task.judge_type == "model":
+            if phase in ['judging', 'both'] and task.judge_type == "model":
                 # 只有当回答正常且尚未打分时才打分
                 if item.predicted_answer and not item.predicted_answer.startswith("[Error]") and item.score is None:
                     judge_model_name = task.judge_model.name if task.judge_model else task.myModel.name
@@ -417,24 +520,22 @@ def run_single_item_logic(item_id: int):
         # 3. 对抗评测
         elif method == "adversarial":
             # (A) 生成 A/B 回答
-            updated = False
-            
-            # Model 1
-            if not item.predicted_answer:
-                item.predicted_answer = call_llm_api(item.content, task.myModel.name)
-                updated = True
-                
-            # Model 2
-            if not item.predicted_answer_2:
-                if task.myModel_2:
-                    item.predicted_answer_2 = call_llm_api(item.content, task.myModel_2.name)
+            if phase in ['generation', 'both']:
+                updated = False
+                # Model 1
+                if not item.predicted_answer:
+                    item.predicted_answer = call_llm_api(item.content, task.myModel.name)
                     updated = True
-            
-            if updated:
-                item.save(update_fields=["predicted_answer", "predicted_answer_2"])
+                # Model 2
+                if not item.predicted_answer_2:
+                    if task.myModel_2:
+                        item.predicted_answer_2 = call_llm_api(item.content, task.myModel_2.name)
+                        updated = True
+                if updated:
+                    item.save(update_fields=["predicted_answer", "predicted_answer_2"])
 
             # (B) 如果是模型裁判，紧接着判胜负
-            if task.judge_type == "model":
+            if phase in ['judging', 'both'] and task.judge_type == "model":
                 if item.preference is None:
                     # 必须保证两者都已生成且无 Error
                     ans1 = item.predicted_answer
@@ -497,81 +598,34 @@ def sync_downstream_tasks(upstream_task):
     """
     当上游任务生成完毕后，同步数据到下游挂起的任务
     """
-    # 查找所有挂起的下游任务 (包括 pending 和 running/waiting 的)
+    # 查找所有挂起的下游任务
     downstream_tasks = upstream_task.downstream_tasks.filter(status__in=['pending', 'running'])
     
     if not downstream_tasks.exists():
         return
 
-    # 预加载上游 items
-    upstream_items = upstream_task.items.all()
-    
     for dt in downstream_tasks:
         # 防御性检查：如果下游任务已经有 items 了（异常情况），跳过复制
         if dt.items.exists():
             continue
 
-        # 1. Copy Items
-        new_items = []
-        is_obj = (dt.method == 'objective')
+        # 1. 使用模型感知型复制 (可能只复制了部分模型回答)
+        reuse_task_items_model_aware(upstream_task, dt)
         
-        for item in upstream_items:
-            new_items.append(EvaluationItem(
-                task=dt,
-                content=item.content,
-                correct_answer=item.correct_answer,
-                predicted_answer=item.predicted_answer,
-                predicted_answer_2=item.predicted_answer_2,
-                # For objective, we reuse the result (is_correct)
-                is_correct=item.is_correct if is_obj else None,
-                # Reset scores for subjective/adversarial
-                score=None,
-                preference=None
-            ))
-        EvaluationItem.objects.bulk_create(new_items)
-        
-        # 2. Update Status & Trigger
-        if dt.method == 'objective':
-             # 客观评测：直接结算
-             total = len(new_items)
-             
-             # 统计准确率 (在内存中统计即可，不需要重查 DB)
-             valid_count = 0
-             correct_count = 0
-             for it in new_items:
-                 if it.predicted_answer and not it.predicted_answer.startswith("[Error]"):
-                     valid_count += 1
-                     if it.is_correct == 1:
-                         correct_count += 1
-             
-             acc = round(correct_count / total, 4) if total > 0 else 0
-             
-             dt.accuracy = acc
-             dt.status = 'completed'
-             dt.time_used = timezone.now() - dt.created_at
-             dt.save(update_fields=['accuracy', 'status', 'time_used'])
-             
-             EvaluationSummary.objects.update_or_create(
-                task=dt,
-                defaults={
-                    "model_name": dt.myModel.name,
-                    "total": total,
-                    "correct": correct_count,
-                    "accuracy": acc,
-                }
-            )
-             
-             # Trigger Ranking Update
-             from apps.rankings.services import update_model_rankings
-             update_model_rankings(dt.dataset_id)
+        # 2. 检查同步后的状态，决定下一步
+        from django.db.models import Q
+        has_missing_answers = dt.items.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True)).exists()
 
-        elif dt.judge_type == 'human':
+        if dt.method == 'objective' and not has_missing_answers:
+             # 客观评测且回答全了：直接结算
+             try_finalize_task(dt.id, from_dispatcher=True)
+
+        elif dt.judge_type == 'human' and not has_missing_answers:
             dt.status = 'awaiting_human_judge'
             dt.save(update_fields=['status'])
 
-        elif dt.judge_type == 'model':
-            # 如果是模型裁判，现在数据有了，触发打分逻辑
-            # 注意：这里需要 lazy import 避免循环依赖
+        else:
+            # 需要补全回答或进行模型打分
             from .tasks import init_evaluation_task
             init_evaluation_task.delay(dt.id)
 
@@ -713,17 +767,33 @@ def try_finalize_task(task_id: int, from_dispatcher: bool = False):
 # =========================================================
 
 def run_evaluation(task_id: int):
-    # 同步测试入口 (Legacy Wrapper)
+    """
+    执行评测全流程 (双阶段执行以优化复用)
+    1. 生成阶段: 获取所有模型回答
+    2. 同步点: 通知下游任务
+    3. 判定阶段: 进行模型打分
+    """
     task = EvaluationTask.objects.get(id=task_id)
     item_ids = prepare_evaluation_items(task)
     task.status = "running"
     task.save()
     
+    # --- 阶段 1: 仅生成回答 ---
+    # 我们通过向 run_single_item_logic 传递 flag 来只跑生成
     for iid in item_ids:
-        run_single_item_logic(iid)
+        run_single_item_logic(iid, phase='generation')
+        
+    # --- 阶段 2: 同步下游 (关键优化点) ---
+    sync_downstream_tasks(task)
+    
+    # --- 阶段 3: 进行打分 (如果是模型评测) ---
+    if task.judge_type == 'model':
+        from .tasks import init_evaluation_task
+        for iid in item_ids:
+            run_single_item_logic(iid, phase='judging')
         
     try_finalize_task(task_id, from_dispatcher=True)
-    return {"status": "submitted_sync"}
+    return {"status": "completed"}
 
 
 
