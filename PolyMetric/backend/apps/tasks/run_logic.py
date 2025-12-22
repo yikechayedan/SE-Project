@@ -301,11 +301,64 @@ def reuse_task_items_model_aware(old_task, new_task):
     """
     模型感知型复用：从旧任务中精准提取新任务需要的模型回复。
     【新增】排除 [Error] 报错。
+    【新增】客观题自动计算 is_correct。
+    【修复】防止重复创建 Item。
     """
     from .models import EvaluationItem
     
     # 建立旧任务内容的索引
     old_items = {it.content: it for it in EvaluationItem.objects.filter(task=old_task)}
+    
+    # --- 场景 A: 任务已初始化，执行 Update 逻辑 ---
+    if new_task.items.exists():
+        updates = []
+        for item in new_task.items.all():
+            old_item = old_items.get(item.content)
+            if not old_item:
+                continue
+            
+            changed = False
+            
+            # 复用 Model 1
+            if not item.predicted_answer:
+                val = None
+                if old_task.myModel_id == new_task.myModel_id:
+                    val = old_item.predicted_answer
+                elif old_task.myModel_2_id == new_task.myModel_id:
+                    val = old_item.predicted_answer_2
+                
+                if val and not val.startswith("[Error]"):
+                    item.predicted_answer = val
+                    changed = True
+                    # 客观题立即判分
+                    if new_task.method == 'objective':
+                        pred = normalize_answer(clean_choice_answer(val))
+                        gold = normalize_answer(item.correct_answer)
+                        item.is_correct = 1 if pred == gold else 0
+            
+            # 复用 Model 2 (对抗)
+            if new_task.method == 'adversarial' and new_task.myModel_2_id and not item.predicted_answer_2:
+                val = None
+                if old_task.myModel_id == new_task.myModel_2_id:
+                    val = old_item.predicted_answer
+                elif old_task.myModel_2_id == new_task.myModel_2_id:
+                    val = old_item.predicted_answer_2
+                
+                if val and not val.startswith("[Error]"):
+                    item.predicted_answer_2 = val
+                    changed = True
+            
+            if changed:
+                updates.append(item)
+        
+        if updates:
+            fields = ['predicted_answer', 'predicted_answer_2']
+            if new_task.method == 'objective':
+                fields.append('is_correct')
+            EvaluationItem.objects.bulk_update(updates, fields)
+        return
+
+    # --- 场景 B: 任务未初始化，执行 Create 逻辑 ---
     new_items_to_create = []
     
     entries = load_dataset_entries(new_task.dataset)
@@ -315,7 +368,10 @@ def reuse_task_items_model_aware(old_task, new_task):
         
         pred_1 = None
         pred_2 = None
+        is_correct = None
         
+        gold_answer = entry.get("answer") or entry.get("label")
+
         if old_item:
             # 1. 为新任务的第一个模型寻找回复
             if old_task.myModel_id == new_task.myModel_id:
@@ -327,6 +383,12 @@ def reuse_task_items_model_aware(old_task, new_task):
                 if val and not val.startswith("[Error]"):
                     pred_1 = val
             
+            # 客观题立即判分
+            if new_task.method == 'objective' and pred_1:
+                pred = normalize_answer(clean_choice_answer(pred_1))
+                gold = normalize_answer(gold_answer)
+                is_correct = 1 if pred == gold else 0
+
             # 2. 如果是新任务是对抗任务，为第二个模型寻找回复
             if new_task.method == 'adversarial':
                 if old_task.myModel_id == new_task.myModel_2_id:
@@ -341,9 +403,10 @@ def reuse_task_items_model_aware(old_task, new_task):
         new_items_to_create.append(EvaluationItem(
             task=new_task,
             content=content,
-            correct_answer=entry.get("answer") or entry.get("label"),
+            correct_answer=gold_answer,
             predicted_answer=pred_1,
-            predicted_answer_2=pred_2
+            predicted_answer_2=pred_2,
+            is_correct=is_correct  # 写入判分结果
         ))
     
     EvaluationItem.objects.bulk_create(new_items_to_create)
@@ -788,21 +851,24 @@ def try_finalize_task(task_id: int, from_dispatcher: bool = False):
         log_task_complete(task, task.creator)
         
         from apps.rankings.services import update_model_rankings
-        update_model_rankings(task.dataset_id)
-
         
+        # 【新增】防刷分机制：如果是纯复用任务（耗时极短），不更新排行榜
+        should_update_rankings = True
+        
+        # 对所有类型的评测都生效
+        if task.time_used:
+            total_cnt = task.items.count()
+            if total_cnt > 0:
+                avg_time = task.time_used.total_seconds() / total_cnt
+                # 如果每题平均耗时 < 0.5秒，认为是全复用（正常 API 至少 1-2秒/题）
+                if avg_time < 0.5:
+                    should_update_rankings = False
+                    print(f"Task {task_id} ({method}) completed via full reuse (avg {avg_time:.2f}s/item), skipping ranking update.")
 
-def parse_adversarial_judge(text: str) -> str:
-    if not text:
-        return "tie"
-    t = text.strip().lower()
-    if t == "left":
-        return "left"
-    if t == "right":
-        return "right"
-    if t == "tie":
-        return "tie"
-    return "tie"
+        if should_update_rankings:
+            update_model_rankings(task.dataset_id)
+
+
 # =========================================================
 # 对外统一入口
 # =========================================================

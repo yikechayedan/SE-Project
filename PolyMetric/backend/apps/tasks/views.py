@@ -107,16 +107,21 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
                     (Q(myModel_id=my_model_2_id) & Q(myModel_2_id=my_model_id))
                 ).first()
 
+        # 【优化】如果老任务虽然完成了，但里面有 Error，就不应该跳转，而应该允许用户新建任务去重试
         if existing_task:
-            existing_task.authorized_viewers.add(user)
-            return Response({
-                "msg": "检测到完全一致的评测任务，已为您自动跳转。",
-                "code": 200,
-                "task_id": existing_task.id,
-                "is_duplicate": True
-            }, status=status.HTTP_200_OK)
-
-        # --- 默认流程：正常创建 ---
+            has_errors = existing_task.items.filter(
+                Q(predicted_answer__startswith="[Error]") | 
+                Q(predicted_answer_2__startswith="[Error]")
+            ).exists()
+            
+            if not has_errors:
+                existing_task.authorized_viewers.add(user)
+                return Response({
+                    "msg": "检测到完全一致的评测任务，已为您自动跳转。",
+                    "code": 200,
+                    "task_id": existing_task.id,
+                    "is_duplicate": True
+                }, status=status.HTTP_200_OK)
 
         # --- 默认流程：正常创建 ---
         serializer = self.get_serializer(data=request.data)
