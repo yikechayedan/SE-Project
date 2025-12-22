@@ -932,7 +932,3 @@ def run_evaluation(task_id: int):
         
     try_finalize_task(task_id, from_dispatcher=True)
     return {"status": "completed"}
-
-
-
-
