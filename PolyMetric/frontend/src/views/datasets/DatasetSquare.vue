@@ -97,6 +97,7 @@
           class="filter-checkbox" 
         />
         <el-button :icon="Refresh" @click="resetFilter">重置</el-button>
+        <el-button type="primary" :icon="Upload" @click="showUploadDialog = true">上传数据集</el-button>
       </div>
     </div>
 
@@ -123,6 +124,7 @@
               <el-icon><Folder /></el-icon>
               <span class="name">{{ item.name }}</span>
               <el-tag size="small" :type="getCategoryType(item.category)">{{ getCategoryLabel(item.category) }}</el-tag>
+              <el-tag size="small" :type="getEvaluationTypeType(item.evaluation_type)">{{ getEvaluationTypeLabel(item.evaluation_type) }}</el-tag>
             </div>
             <div class="meta-sub">
               <span>上传者: 
@@ -229,6 +231,11 @@
                   {{ getCategoryLabel(datasetDetail.category) }}
                 </el-tag>
               </el-descriptions-item>
+              <el-descriptions-item label="评测类型">
+                <el-tag :type="getEvaluationTypeType(datasetDetail.evaluation_type)" size="small">
+                  {{ getEvaluationTypeLabel(datasetDetail.evaluation_type) }}
+                </el-tag>
+              </el-descriptions-item>
               <el-descriptions-item label="文件格式">{{ datasetDetail.file_format || '未知' }}</el-descriptions-item>
               <el-descriptions-item label="文件大小">{{ formatFileSize(datasetDetail.file_size) }}</el-descriptions-item>
               <el-descriptions-item label="状态">
@@ -332,6 +339,87 @@
       </template>
     </el-dialog>
 
+    <!-- 上传数据集弹窗 -->
+    <el-dialog v-model="showUploadDialog" title="上传数据集" width="550px" @close="resetUploadForm">
+      <el-form :model="uploadForm" :rules="uploadRules" ref="uploadFormRef" label-width="100px">
+        <el-form-item label="数据集名称" prop="name">
+          <el-input v-model="uploadForm.name" placeholder="请输入数据集名称" maxlength="50" show-word-limit />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input 
+            type="textarea" 
+            v-model="uploadForm.description" 
+            placeholder="请输入数据集描述"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="分类" prop="category">
+          <el-select v-model="uploadForm.category" placeholder="请选择分类" style="width: 100%;">
+            <el-option label="图像数据 (image)" value="image" />
+            <el-option label="文本数据 (text)" value="text" />
+            <el-option label="多模态数据 (multimodal)" value="multimodal" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="测评类型" prop="evaluation_type">
+          <el-select v-model="uploadForm.evaluation_type" placeholder="请选择测评类型" style="width: 100%;">
+            <el-option label="主观测评 (Subjective)" value="subjective" />
+            <el-option label="客观测评 (Objective)" value="objective" />
+            <el-option label="对抗测评 (Adversarial)" value="adversarial" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="能力维度" prop="capability_dimension">
+          <el-select v-model="uploadForm.capability_dimension" placeholder="请选择能力维度（用于排行榜）" style="width: 100%;">
+            <el-option label="语言理解" value="language" />
+            <el-option label="数学推理" value="math" />
+            <el-option label="代码能力" value="code" />
+            <el-option label="多模态" value="multimodal" />
+            <el-option label="其他" value="other" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文件格式" prop="file_format">
+          <el-select v-model="uploadForm.file_format" placeholder="请选择文件格式" style="width: 100%;">
+            <el-option label="CSV 文件" value="csv" />
+            <el-option label="JSON 文件" value="json" />
+            <el-option label="ZIP 压缩包" value="zip" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="数据集文件" prop="file">
+          <el-upload
+            ref="uploadRef"
+            class="dataset-uploader"
+            :auto-upload="false"
+            :limit="1"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            :accept="acceptFileTypes"
+            drag
+          >
+            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            <div class="el-upload__text">
+              拖拽文件到此处，或 <em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 CSV、JSON、ZIP 格式，文件大小不超过 100MB
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="是否公开" prop="is_public">
+          <el-switch v-model="uploadForm.is_public" />
+          <span class="tip">{{ uploadForm.is_public ? '其他用户可以浏览和下载' : '仅自己可见' }}</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showUploadDialog = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" @click="submitUpload">
+          {{ uploading ? '上传中...' : '确认上传' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 评论组件 -->
     <CommentSection
       v-model="showCommentDialog"
@@ -341,11 +429,11 @@
   </div>
 </template>
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Folder, Download, Loading, Star, StarFilled, Document, User, Opportunity, ChatDotRound } from '@element-plus/icons-vue'
+import { Search, Refresh, Folder, Download, Loading, Star, StarFilled, Document, User, Opportunity, ChatDotRound, UploadFilled } from '@element-plus/icons-vue'
 import UserPopover from '@/components/common/UserPopover.vue'
-import { getAllDatasets, getDatasetDetail, downloadDataset, followDataset, unfollowDataset, getDatasetEntries, starDataset, unstarDataset } from '@/api/datasets'
+import { getAllDatasets, getDatasetDetail, downloadDataset, followDataset, unfollowDataset, getDatasetEntries, starDataset, unstarDataset, createDataset } from '@/api/datasets'
 import CommentSection from '@/components/common/CommentSection.vue'
 
 // 状态
@@ -371,6 +459,125 @@ const activeCollapse = ref(['info'])  // 默认展开基本信息
 // 评论弹窗
 const showCommentDialog = ref(false)
 const currentCommentDatasetId = ref(null)
+
+// 上传相关状态
+const showUploadDialog = ref(false)
+const uploading = ref(false)
+const uploadRef = ref(null)
+const uploadFormRef = ref(null)
+
+const uploadForm = reactive({
+  name: '',
+  description: '',
+  category: '',
+  evaluation_type: 'subjective',
+  capability_dimension: 'language', // 默认语言理解
+  file_format: '',
+  file: null,
+  is_public: true
+})
+
+// 接受的文件类型 (为了防止浏览器拖拽限制，这里允许所有支持的格式)
+const acceptFileTypes = '.csv,.json,.zip'
+
+const uploadRules = {
+  name: [
+    { required: true, message: '请输入数据集名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
+  file_format: [{ required: true, message: '请选择文件格式', trigger: 'change' }]
+}
+
+// 智能文件处理：拖拽文件后自动识别格式
+const handleFileChange = (file) => {
+  if (file.raw.size > 100 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 100MB')
+    uploadRef.value?.clearFiles()
+    return
+  }
+  
+  uploadForm.file = file.raw
+  
+  // 自动识别格式
+  const name = file.name.toLowerCase()
+  if (name.endsWith('.csv')) {
+    uploadForm.file_format = 'csv'
+  } else if (name.endsWith('.json')) {
+    uploadForm.file_format = 'json'
+  } else if (name.endsWith('.zip')) {
+    uploadForm.file_format = 'zip'
+  }
+  
+  // 如果还没填名称，自动填入文件名(去后缀)
+  if (!uploadForm.name) {
+    const fileName = file.name.substring(0, file.name.lastIndexOf('.'))
+    uploadForm.name = fileName.substring(0, 50) // 限制长度
+  }
+}
+
+const handleFileRemove = () => {
+  uploadForm.file = null
+}
+
+const resetUploadForm = () => {
+  uploadForm.name = ''
+  uploadForm.description = ''
+  uploadForm.category = ''
+  uploadForm.evaluation_type = 'subjective'
+  uploadForm.capability_dimension = 'language'
+  uploadForm.file_format = ''
+  uploadForm.file = null
+  uploadForm.is_public = true
+  uploadFormRef.value?.resetFields()
+  uploadRef.value?.clearFiles()
+}
+
+const submitUpload = async () => {
+  const valid = await uploadFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  
+  if (!uploadForm.file) {
+    ElMessage.warning('请上传数据集文件')
+    return
+  }
+  
+  uploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('name', uploadForm.name)
+    formData.append('description', uploadForm.description || '')
+    formData.append('category', uploadForm.category)
+    formData.append('evaluation_type', uploadForm.evaluation_type)
+    formData.append('capability_dimension', uploadForm.capability_dimension)
+    formData.append('file_format', uploadForm.file_format)
+    formData.append('is_public', uploadForm.is_public)
+    formData.append('file_path', uploadForm.file)
+    
+    const res = await createDataset(formData)
+    
+    if (res.data?.code === 201 || res.data?.code === 200) {
+      ElMessage.success(res.data.msg || '上传成功')
+      showUploadDialog.value = false
+      resetUploadForm()
+      // 刷新列表
+      fetchAllDatasets()
+    } else {
+      console.error('Upload failed with response:', res.data)
+      ElMessage.error(res.data?.msg || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    if (error.response) {
+       console.error('Error response data:', error.response.data)
+       ElMessage.error(JSON.stringify(error.response.data) || '上传失败')
+    } else {
+       ElMessage.error('上传失败，请稍后重试')
+    }
+  } finally {
+    uploading.value = false
+  }
+}
 
 // 显示评论
 const handleShowComments = (row) => {
@@ -464,8 +671,20 @@ const handlePageChange = (val) => {
 
 // 格式化文件大小
 const formatFileSize = (size) => {
+  if (size === 0) return '0 B'
   if (!size) return '未知'
-  return typeof size === 'number' ? `${size.toFixed(2)} MB` : size
+  
+  // size is in MB from backend
+  if (size < 0.001) {
+    // Less than 1KB -> Bytes
+    return (size * 1024 * 1024).toFixed(0) + ' B'
+  } else if (size < 1) {
+    // Less than 1MB -> KB
+    return (size * 1024).toFixed(2) + ' KB'
+  } else {
+    // MB
+    return size.toFixed(2) + ' MB'
+  }
 }
 
 // 格式化日期
@@ -492,6 +711,24 @@ const getCategoryType = (category) => {
     'multimodal': 'warning'
   }
   return types[category] || ''
+}
+
+const getEvaluationTypeLabel = (type) => {
+  const labels = {
+    'subjective': '主观测评',
+    'objective': '客观测评',
+    'adversarial': '对抗测评'
+  }
+  return labels[type] || '未知类型'
+}
+
+const getEvaluationTypeType = (type) => {
+  const types = {
+    'subjective': 'success',
+    'objective': 'primary', 
+    'adversarial': 'danger'
+  }
+  return types[type] || 'info'
 }
 
 // 根据字段名获取列宽度

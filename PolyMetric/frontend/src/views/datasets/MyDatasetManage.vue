@@ -43,6 +43,13 @@
             <el-tag size="small">{{ getCategoryLabel(row.category) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="evaluation_type" label="评测类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getEvaluationTypeType(row.evaluation_type)">
+              {{ getEvaluationTypeLabel(row.evaluation_type) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="file_format" label="格式" width="70" align="center">
           <template #default="{ row }">
             {{ row.file_format?.toUpperCase() || '-' }}
@@ -124,6 +131,22 @@
             <el-option label="图像数据 (image)" value="image" />
             <el-option label="文本数据 (text)" value="text" />
             <el-option label="多模态数据 (multimodal)" value="multimodal" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="测评类型" prop="evaluation_type">
+          <el-select v-model="uploadForm.evaluation_type" placeholder="请选择测评类型" style="width: 100%;">
+            <el-option label="主观测评 (Subjective)" value="subjective" />
+            <el-option label="客观测评 (Objective)" value="objective" />
+            <el-option label="对抗测评 (Adversarial)" value="adversarial" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="能力维度" prop="capability_dimension">
+          <el-select v-model="uploadForm.capability_dimension" placeholder="请选择能力维度（用于排行榜）" style="width: 100%;">
+            <el-option label="语言理解" value="language" />
+            <el-option label="数学推理" value="math" />
+            <el-option label="代码能力" value="code" />
+            <el-option label="多模态" value="multimodal" />
+            <el-option label="其他" value="other" />
           </el-select>
         </el-form-item>
         <el-form-item label="文件格式" prop="file_format">
@@ -304,6 +327,8 @@ const uploadForm = reactive({
   name: '',
   description: '',
   category: '',
+  evaluation_type: 'subjective',
+  capability_dimension: 'language',
   file_format: '',
   file: null,
   is_public: true
@@ -317,15 +342,8 @@ const editForm = reactive({
   is_public: true
 })
 
-// 接受的文件类型
-const acceptFileTypes = computed(() => {
-  const formatMap = {
-    csv: '.csv',
-    json: '.json',
-    zip: '.zip'
-  }
-  return formatMap[uploadForm.file_format] || '.csv,.json,.zip'
-})
+// 接受的文件类型 (为了防止浏览器拖拽限制，这里允许所有支持的格式)
+const acceptFileTypes = '.csv,.json,.zip'
 
 // 表单验证规则
 const uploadRules = {
@@ -350,9 +368,35 @@ const getCategoryLabel = (category) => {
   return map[category] || category || '未分类'
 }
 
+const getEvaluationTypeLabel = (type) => {
+  const labels = {
+    'subjective': '主观测评',
+    'objective': '客观测评',
+    'adversarial': '对抗测评'
+  }
+  return labels[type] || '未知类型'
+}
+
+const getEvaluationTypeType = (type) => {
+  const types = {
+    'subjective': 'success',
+    'objective': 'primary', 
+    'adversarial': 'danger'
+  }
+  return types[type] || 'info'
+}
+
 const formatFileSize = (size) => {
+  if (size === 0) return '0 B'
   if (!size) return '-'
-  return typeof size === 'number' ? size.toFixed(2) + ' MB' : size
+  
+  if (size < 0.001) {
+    return (size * 1024 * 1024).toFixed(0) + ' B'
+  } else if (size < 1) {
+    return (size * 1024).toFixed(2) + ' KB'
+  } else {
+    return size.toFixed(2) + ' MB'
+  }
 }
 
 const formatDate = (dateStr) => {
@@ -412,6 +456,22 @@ const handleFileChange = (file) => {
     return
   }
   uploadForm.file = file.raw
+  
+  // 自动识别格式
+  const name = file.name.toLowerCase()
+  if (name.endsWith('.csv')) {
+    uploadForm.file_format = 'csv'
+  } else if (name.endsWith('.json')) {
+    uploadForm.file_format = 'json'
+  } else if (name.endsWith('.zip')) {
+    uploadForm.file_format = 'zip'
+  }
+  
+  // 如果还没填名称，自动填入文件名(去后缀)
+  if (!uploadForm.name) {
+    const fileName = file.name.substring(0, file.name.lastIndexOf('.'))
+    uploadForm.name = fileName.substring(0, 50) // 限制长度
+  }
 }
 
 const handleFileRemove = () => {
@@ -423,6 +483,8 @@ const resetUploadForm = () => {
   uploadForm.name = ''
   uploadForm.description = ''
   uploadForm.category = ''
+  uploadForm.evaluation_type = 'subjective'
+  uploadForm.capability_dimension = 'language'
   uploadForm.file_format = ''
   uploadForm.file = null
   uploadForm.is_public = true
@@ -441,6 +503,8 @@ const submitUpload = async () => {
     formData.append('name', uploadForm.name)
     formData.append('description', uploadForm.description || '')
     formData.append('category', uploadForm.category)
+    formData.append('evaluation_type', uploadForm.evaluation_type)
+    formData.append('capability_dimension', uploadForm.capability_dimension)
     formData.append('file_format', uploadForm.file_format)
     formData.append('is_public', uploadForm.is_public)
     

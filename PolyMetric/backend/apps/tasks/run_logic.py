@@ -175,6 +175,57 @@ def normalize_answer(text: str) -> str:
     return re.sub(r"\s+", "", str(text)).lower()
 
 
+def generate_adversarial_summary(task):
+    """
+    根据人类裁判 preference，生成对抗评测汇总结果
+    preference:
+        - left  : Model A 胜
+        - right : Model B 胜
+        - tie   : 平局
+    """
+
+    items = EvaluationItem.objects.filter(task=task)
+
+    total = items.count()
+    if total == 0:
+        # 避免报错，如果还没生成 items，直接返回 None
+        return None
+
+    win_a = items.filter(preference="left").count()
+    win_b = items.filter(preference="right").count()
+    tie = items.filter(preference="tie").count()
+
+    # 防止除 0
+    # 胜率计算：(胜场 + 0.5 * 平局) / 总场次
+    win_rate_a = round((win_a + 0.5 * tie) / total, 4) if total > 0 else 0.0
+
+    model_a_name = task.myModel.name
+    model_b_name = task.myModel_2.name if task.myModel_2 else "Unknown"
+
+    summary_text = (
+        f"对抗评测结果：\n"
+        f"模型 A（{model_a_name}） vs 模型 B（{model_b_name}）\n"
+        f"总题数：{total}\n"
+        f"模型 A 胜：{win_a}\n"
+        f"模型 B 胜：{win_b}\n"
+        f"平局：{tie}\n"
+        f"模型 A 胜率：{win_rate_a * 100:.2f}%\n"
+    )
+
+    summary, _ = EvaluationSummary.objects.update_or_create(
+        task=task,
+        defaults={
+            "model_name": f"{model_a_name} vs {model_b_name}",
+            "total": total,
+            "correct": win_a,        # A 胜场
+            "accuracy": win_rate_a,  # A 胜率
+            "summary": summary_text,
+        },
+    )
+
+    return summary
+
+
 # =========================================================
 # Dataset → EvaluationItem
 # =========================================================
@@ -199,13 +250,144 @@ def load_dataset_entries(dataset: Dataset):
     return data
 
 
+def normalize_content(text: str) -> str:
+    """
+    归一化内容：去除所有空白字符，用于比对
+    """
+    if not text:
+        return ""
+    return "".join(text.split())
+
+def find_existing_answer(model_id, dataset_id, content):
+    """
+    精准复用：在同一个数据集 ID 下寻找该模型对该特定内容的回答
+    【新增】排除以 [Error] 开头的无效报错记录
+    """
+    if not content:
+        return None
+        
+    # 1. 归一化输入内容
+    norm_content = normalize_content(content)
+    if not norm_content:
+        return None
+
+    from django.db.models import Q
+    
+    # 2. 模糊匹配并排除 Error
+    clean_content_prefix = content.strip()[:20] 
+
+    match = EvaluationItem.objects.filter(
+        task__dataset_id=dataset_id,
+        content__contains=clean_content_prefix 
+    ).filter(
+        (Q(task__myModel_id=model_id) & Q(predicted_answer__isnull=False) & ~Q(predicted_answer__startswith="[Error]")) |
+        (Q(task__myModel_2_id=model_id) & Q(predicted_answer_2__isnull=False) & ~Q(predicted_answer_2__startswith="[Error]"))
+    )
+    
+    # 3. 在内存中做【归一化】精确匹配
+    for it in match:
+        if normalize_content(it.content) == norm_content:
+            if it.task.myModel_id == model_id:
+                ans = it.predicted_answer
+            else:
+                ans = it.predicted_answer_2
+            
+            # 双重保险：再次检查
+            if ans and not ans.startswith("[Error]"):
+                return ans
+            
+    return None
+
+
+def reuse_task_items_model_aware(old_task, new_task):
+    """
+    模型感知型复用：从旧任务中精准提取新任务需要的模型回复。
+    【新增】排除 [Error] 报错。
+    """
+    from .models import EvaluationItem
+    
+    # 建立旧任务内容的索引
+    old_items = {it.content: it for it in EvaluationItem.objects.filter(task=old_task)}
+    new_items_to_create = []
+    
+    entries = load_dataset_entries(new_task.dataset)
+    for entry in entries:
+        content = entry.get("input") or entry.get("question") or entry.get("prompt")
+        old_item = old_items.get(content)
+        
+        pred_1 = None
+        pred_2 = None
+        
+        if old_item:
+            # 1. 为新任务的第一个模型寻找回复
+            if old_task.myModel_id == new_task.myModel_id:
+                val = old_item.predicted_answer
+                if val and not val.startswith("[Error]"):
+                    pred_1 = val
+            elif old_task.myModel_2_id == new_task.myModel_id:
+                val = old_item.predicted_answer_2
+                if val and not val.startswith("[Error]"):
+                    pred_1 = val
+            
+            # 2. 如果是新任务是对抗任务，为第二个模型寻找回复
+            if new_task.method == 'adversarial':
+                if old_task.myModel_id == new_task.myModel_2_id:
+                    val = old_item.predicted_answer
+                    if val and not val.startswith("[Error]"):
+                        pred_2 = val
+                elif old_task.myModel_2_id == new_task.myModel_2_id:
+                    val = old_item.predicted_answer_2
+                    if val and not val.startswith("[Error]"):
+                        pred_2 = val
+        
+        new_items_to_create.append(EvaluationItem(
+            task=new_task,
+            content=content,
+            correct_answer=entry.get("answer") or entry.get("label"),
+            predicted_answer=pred_1,
+            predicted_answer_2=pred_2
+        ))
+    
+    EvaluationItem.objects.bulk_create(new_items_to_create)
+
+
 @transaction.atomic
 def prepare_evaluation_items(task: EvaluationTask):
-    if task.items.exists():
-        return
+    """
+    增强版：创建条目时自动跨任务复用模型回答
+    """
+    from .models import EvaluationItem  # Ensure import is available for the whole function
 
+    if task.items.exists():
+        # --- 补齐逻辑：针对已存在的条目，尝试全库搜刮缺失的回答 ---
+        all_items = list(task.items.all())
+        updated_items = []
+        for item in all_items:
+            changed = False
+            if not item.predicted_answer:
+                ans = find_existing_answer(task.myModel_id, task.dataset_id, item.content)
+                if ans:
+                    item.predicted_answer = ans
+                    changed = True
+            
+            if task.method == 'adversarial' and task.myModel_2_id and not item.predicted_answer_2:
+                ans = find_existing_answer(task.myModel_2_id, task.dataset_id, item.content)
+                if ans:
+                    item.predicted_answer_2 = ans
+                    changed = True
+            
+            if changed:
+                updated_items.append(item)
+        
+        if updated_items:
+            EvaluationItem.objects.bulk_update(updated_items, ['predicted_answer', 'predicted_answer_2'])
+            
+        return [it.id for it in all_items]
+
+    from .models import EvaluationItem
+    from django.db.models import Q
     entries = load_dataset_entries(task.dataset)
-    items = []
+    items_to_create = []
 
     for idx, entry in enumerate(entries):
         content = (
@@ -213,8 +395,7 @@ def prepare_evaluation_items(task: EvaluationTask):
             or entry.get("question")
             or entry.get("prompt")
         )
-
-        answer = (
+        gold_answer = (
             entry.get("answer")
             or entry.get("label")
             or entry.get("target")
@@ -223,401 +404,429 @@ def prepare_evaluation_items(task: EvaluationTask):
         if not content:
             continue
 
-        items.append(
+        # 核心：尝试搜刮已有的回答
+        pred_1 = find_existing_answer(task.myModel_id, task.dataset_id, content)
+        pred_2 = None
+        if task.method == 'adversarial' and task.myModel_2_id:
+            pred_2 = find_existing_answer(task.myModel_2_id, task.dataset_id, content)
+
+        items_to_create.append(
             EvaluationItem(
                 task=task,
                 dataset_item_index=idx,   
                 content=content,
-                correct_answer=answer,
+                correct_answer=gold_answer,
+                predicted_answer=pred_1,
+                predicted_answer_2=pred_2
             )
         )
 
-    EvaluationItem.objects.bulk_create(items)
+    created_items = EvaluationItem.objects.bulk_create(items_to_create)
+    return list(task.items.values_list("id", flat=True))
 
 
-
-# =========================================================
-# 客观评测主逻辑
-# =========================================================
-
-def run_objective_evaluation(task: EvaluationTask):
+def get_pending_item_ids(task: EvaluationTask, limit: int = 100):
     """
-    客观评测完整流程（Step 1–3）
+    高效获取待处理条目的 ID 列表（用于分批调度）
+    不仅检查预测结果，还要检查模型评分状态
     """
-    prepare_evaluation_items(task)
-    reuse_model_answers(task)
-    items = task.items.all()
-    total = items.count()
-
-    if total == 0:
-        raise ValueError("No evaluation items found")
-
-    model_name = task.myModel.name
-    correct = 0
-
-    for item in items:
-        # 已跑过的不重复跑
-        if item.predicted_answer:
-            if item.is_correct:
-                correct += 1
-            continue
-
-        # ✅ Step 3：使用工业级 Prompt
-        prompt = build_objective_prompt(item)
-
-        raw_prediction = call_llm_api(
-            prompt=prompt,
-            model_name=model_name
-        )
-
-        item.predicted_answer = raw_prediction
-
-        # ✅ Step 3：清洗 + 判分
-        pred = normalize_answer(clean_choice_answer(raw_prediction))
-        gold = normalize_answer(item.correct_answer)
-
-        item.is_correct = 1 if pred == gold else 0
-        correct += item.is_correct
-
-        item.save()
-
-    task.accuracy = round(correct / total, 4)
-    task.status = "completed"
-    task.time_used = timezone.now() - task.created_at
-    task.save()
+    from django.db.models import Q
+    qs = task.items.all().order_by("id")
     
-    # 记录系统事件：评测完成
-    log_task_complete(task, task.creator)
-
-    # ✅ 写入 / 更新 Summary（幂等）
-    EvaluationSummary.objects.update_or_create(
-        task=task,
-        defaults={
-            "model_name": model_name,
-            "total": total,
-            "correct": correct,
-            "accuracy": task.accuracy,
-        }
-    )
-
-    # 触发排行榜更新
-    from apps.rankings.services import update_model_rankings
-    update_model_rankings(task.dataset_id)
-
-    return {
-        "task_id": task.id,
-        "method": task.method,
-        "model": model_name,
-        "total": total,
-        "correct": correct,
-        "accuracy": task.accuracy,
-    }
-
-
-def run_subjective_evaluation(task: EvaluationTask):
-    prepare_evaluation_items(task)
-    reuse_model_answers(task)
-    items = task.items.all()
-
-    need_answer = items.filter(predicted_answer__isnull=True).count()
-    print(f"🧪 need model answer: {need_answer}/{items.count()}")   
-    if not items.exists():
-        raise ValueError("No evaluation items found")
-
-    # ① 先统一生成模型回答（永远是 myModel）
-    answer_model = task.myModel.name
-
-    for item in items:
-        if not item.predicted_answer:
-            item.predicted_answer = call_llm_api(
-                prompt=build_subjective_answer_prompt(item),
-                model_name=answer_model,
+    if task.method == "adversarial":
+        if task.judge_type == "model":
+            # 只要缺一个回答，或者 (两个回答都有但缺偏好 且 无 Error)
+            qs = qs.filter(
+                Q(predicted_answer__isnull=True) | 
+                Q(predicted_answer_2__isnull=True) |
+                (Q(preference__isnull=True) & 
+                 ~Q(predicted_answer__startswith="[Error]") & 
+                 ~Q(predicted_answer_2__startswith="[Error]"))
             )
-            item.save(update_fields=["predicted_answer"])
-
-    # ② 人类裁判：直接返回，等人工打分
-    if task.judge_type == "human":
-        task.status = "awaiting_human_judge"
-        task.save(update_fields=["status"])
-        return {
-            "task_id": task.id,
-            "method": "subjective",
-            "judge_type": "human",
-            "total": items.count(),
-            "status": "awaiting_human_judge",
-        }
-
-    # ③ 模型裁判（第三方 or 自评）
-    judge_model = task.judge_model.name if task.judge_model else answer_model
-    scores = []
-
-    for item in items:
-        if item.score is not None:
-            scores.append(item.score)
-            continue
-
-        prompt = build_subjective_judge_prompt(item)
-        raw_score = call_llm_api(
-            prompt=prompt,
-            model_name=judge_model,
-        )
-
-        try:
-            score = int(raw_score.strip())
-            score = max(1, min(10, score))
-        except:
-            score = 1
-
-        item.score = score
-        item.save(update_fields=["score"])
-        scores.append(score)
-
-    avg_score = round(sum(scores) / len(scores), 4)
-
-    task.score = avg_score
-    task.status = "completed"
-    task.save(update_fields=["score", "status"])
-
-    log_task_complete(task, task.creator)
-
-    EvaluationSummary.objects.update_or_create(
-        task=task,
-        defaults={
-            "model_name": f"{answer_model} (judge={judge_model})",
-            "total": len(scores),
-            "avg_score": avg_score,
-        }
-    )
-
-    # 触发排行榜更新
-    from apps.rankings.services import update_model_rankings
-    update_model_rankings(task.dataset_id)
-
-    return {
-        "task_id": task.id,
-        "method": "subjective",
-        "judge_type": "model",
-        "judge_model": judge_model,
-        "avg_score": avg_score,
-    }
-
-
-def run_adversarial_generation(task: EvaluationTask):
-    prepare_evaluation_items(task)
-
-    items = task.items.all()
-    if not items.exists():
-        raise ValueError("No evaluation items found")
-
-    # ⭐ 从 task 中取模型（而不是从参数传）
-    if not task.myModel_2:
-        raise ValueError("Adversarial task requires myModel_2 (Model B)")
-
-    model_a = task.myModel.name
-    model_b = task.myModel_2.name
-
-    for item in items:
-        if item.predicted_answer and item.predicted_answer_2:
-            continue
-
-        answer_a = call_llm_api(
-            prompt=item.content,
-            model_name=model_a,
-        )
-
-        answer_b = call_llm_api(
-            prompt=item.content,
-            model_name=model_b,
-        )
-
-        item.predicted_answer = answer_a
-        item.predicted_answer_2 = answer_b
-        item.save()
-
-    return {
-        "task_id": task.id,
-        "method": "adversarial",
-        "model_a": model_a,
-        "model_b": model_b,
-        "total": items.count(),
-    }
-
-
-
-
-def generate_adversarial_summary(task):
-    """
-    根据人类裁判 preference，生成对抗评测汇总结果
-    preference:
-        - left  : Model A 胜
-        - right : Model B 胜
-        - tie   : 平局
-    """
-
-    items = EvaluationItem.objects.filter(task=task)
-
-    total = items.count()
-    if total == 0:
-        raise ValueError("No evaluation items found")
-
-    win_a = items.filter(preference="left").count()
-    win_b = items.filter(preference="right").count()
-    tie = items.filter(preference="tie").count()
-
-    # 防止除 0
-    # 胜率计算：(胜场 + 0.5 * 平局) / 总场次
-    win_rate_a = round((win_a + 0.5 * tie) / total, 4) if total > 0 else 0.0
-
-    model_a_name = task.myModel.name
-    model_b_name = task.myModel_2.name if task.myModel_2 else "Unknown"
-
-    summary_text = (
-        f"对抗评测结果（人类裁判）：\n"
-        f"模型 A（{model_a_name}） vs 模型 B（{model_b_name}）\n"
-        f"总题数：{total}\n"
-        f"模型 A 胜：{win_a}\n"
-        f"模型 B 胜：{win_b}\n"
-        f"平局：{tie}\n"
-        f"模型 A 胜率：{win_rate_a * 100:.2f}%\n"
-    )
-
-    summary, _ = EvaluationSummary.objects.update_or_create(
-        task=task,
-        defaults={
-            "model_name": f"{model_a_name} vs {model_b_name}",
-            "total": total,
-            "correct": win_a,        # A 胜场
-            "accuracy": win_rate_a,  # A 胜率
-            "summary": summary_text,
-        },
-    )
-
-    return summary
-
-def run_adversarial_auto_judge(task: EvaluationTask):
-    """
-    使用 LLM 作为裁判，对对抗评测结果进行自动裁决
-    """
-    items = task.items.all()
-    if not items.exists():
-        raise ValueError("No evaluation items found")
-
-    # 裁判模型（可以和 A/B 不同）
-    if not task.judge_model:
-        raise ValueError("Model-judged adversarial task requires judge_model")
-
-    judge_model = task.judge_model.name
-
-    for item in items:
-        # 已有人工裁判结果的不覆盖
-        if item.preference is not None:
-            continue
-
-        # 防御：必须有双方回答
-        if not item.predicted_answer or not item.predicted_answer_2:
-            continue
-
-        prompt = build_adversarial_judge_prompt(item)
-
-        raw_judge = call_llm_api(
-            prompt=prompt,
-            model_name=judge_model,
-        )
-
-        if not raw_judge:
-            item.preference = "tie"
         else:
-            result = raw_judge.strip().lower()
-            if "left" in result:
-                item.preference = "left"
-            elif "right" in result:
-                item.preference = "right"
-            elif "tie" in result:
-                item.preference = "tie"
+            # 人工判定，只需生成回答
+            qs = qs.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True))
+            
+    elif task.method == "objective":
+        # 客观评测，只需生成回答
+        qs = qs.filter(predicted_answer__isnull=True)
+        
+    elif task.method == "subjective":
+        if task.judge_type == "model":
+            # 只要缺回答，或者 (有回答但缺分数 且 无 Error)
+            qs = qs.filter(
+                Q(predicted_answer__isnull=True) | 
+                (Q(score__isnull=True) & ~Q(predicted_answer__startswith="[Error]"))
+            )
+        else:
+            # 人工判定，只需生成回答
+            qs = qs.filter(predicted_answer__isnull=True)
+        
+    return list(qs.values_list("id", flat=True)[:limit])
+
+
+# ... (imports remain similar, assume existing context)
+
+# =========================================================
+# Single Item Logic (Granular Execution)
+# =========================================================
+
+def run_single_item_logic(item_id: int, phase='both'):
+    """
+    执行单个 Item 的评测逻辑 (Worker 核心逻辑)
+    phase: 'generation', 'judging', 'both'
+    """
+    try:
+        # 必须 select_related task，以便访问 task.method 等配置
+        try:
+            item = EvaluationItem.objects.select_related(
+                "task", 
+                "task__myModel", 
+                "task__myModel_2", 
+                "task__judge_model"
+            ).get(id=item_id)
+        except EvaluationItem.DoesNotExist:
+            return
+
+        task = item.task
+        method = task.method
+
+        # 1. 客观评测 (不分阶段，因为生成即判定)
+        if method == "objective" and phase in ['generation', 'both']:
+            # ... (客观评测逻辑不变)
+            # 幂等性检查：如果已经有值（包括错误信息），直接跳过
+            if item.predicted_answer: 
+                return
+
+            prompt = build_objective_prompt(item)
+            raw_prediction = call_llm_api(prompt, task.myModel.name)
+            
+            item.predicted_answer = raw_prediction
+            
+            # 如果是报错信息，不计算 is_correct，直接保存
+            if raw_prediction.startswith("[Error]"):
+                item.is_correct = 0 # 视为错误
             else:
-                # 兜底：无法解析 → 平局
-                item.preference = "tie"
+                pred = normalize_answer(clean_choice_answer(raw_prediction))
+                gold = normalize_answer(item.correct_answer)
+                item.is_correct = 1 if pred == gold else 0
+                
+            item.save(update_fields=["predicted_answer", "is_correct"])
 
-        item.save()
+        # 2. 主观评测
+        elif method == "subjective":
+            # (A) 生成回答
+            if phase in ['generation', 'both']:
+                if not item.predicted_answer:
+                    answer = call_llm_api(
+                        build_subjective_answer_prompt(item), 
+                        task.myModel.name
+                    )
+                    item.predicted_answer = answer
+                    item.save(update_fields=["predicted_answer"])
 
-    return {
-        "task_id": task.id,
-        "method": "adversarial",
-        "judge_model": judge_model,
-        "total": items.count(),
-    }
+            # (B) 如果是模型裁判，紧接着打分
+            if phase in ['judging', 'both'] and task.judge_type == "model":
+                # 只有当回答正常且尚未打分时才打分
+                if item.predicted_answer and not item.predicted_answer.startswith("[Error]") and item.score is None:
+                    judge_model_name = task.judge_model.name if task.judge_model else task.myModel.name
+                    raw_score = call_llm_api(
+                        build_subjective_judge_prompt(item), 
+                        judge_model_name
+                    )
+                    
+                    if raw_score.startswith("[Error]"):
+                        # [修复死循环] 打分失败，必须写入一个值，不能留 None
+                        # 这里写入 -1 表示评分失败
+                        item.score = -1
+                    else:
+                        try:
+                            score = int(raw_score.strip())
+                            score = max(1, min(10, score))
+                        except:
+                            score = 1
+                        item.score = score
+                        
+                    item.save(update_fields=["score"])
 
-def parse_adversarial_judge(text: str) -> str:
-    if not text:
-        return "tie"
-    t = text.strip().lower()
-    if t == "left":
-        return "left"
-    if t == "right":
-        return "right"
-    if t == "tie":
-        return "tie"
-    return "tie"
+        # 3. 对抗评测
+        elif method == "adversarial":
+            # (A) 生成 A/B 回答
+            if phase in ['generation', 'both']:
+                updated = False
+                # Model 1
+                if not item.predicted_answer:
+                    item.predicted_answer = call_llm_api(item.content, task.myModel.name)
+                    updated = True
+                # Model 2
+                if not item.predicted_answer_2:
+                    if task.myModel_2:
+                        item.predicted_answer_2 = call_llm_api(item.content, task.myModel_2.name)
+                        updated = True
+                if updated:
+                    item.save(update_fields=["predicted_answer", "predicted_answer_2"])
+
+            # (B) 如果是模型裁判，紧接着判胜负
+            if phase in ['judging', 'both'] and task.judge_type == "model":
+                if item.preference is None:
+                    # 必须保证两者都已生成且无 Error
+                    ans1 = item.predicted_answer
+                    ans2 = item.predicted_answer_2
+                    
+                    valid_1 = ans1 and not ans1.startswith("[Error]")
+                    valid_2 = ans2 and not ans2.startswith("[Error]")
+                    
+                    if valid_1 and valid_2:
+                        judge_model_name = task.judge_model.name if task.judge_model else task.myModel.name
+                        raw_judge = call_llm_api(
+                            build_adversarial_judge_prompt(item),
+                            judge_model_name
+                        )
+                        
+                        if raw_judge.startswith("[Error]"):
+                            # [修复死循环] 判题失败，写入 "error"
+                            item.preference = "error"
+                        else:
+                            item.preference = parse_adversarial_judge(raw_judge)
+                            
+                        item.save(update_fields=["preference"])
+                    elif (ans1 and ans1.startswith("[Error]")) or (ans2 and ans2.startswith("[Error]")):
+                         # 如果回答生成本身就 Error 了，preference 也直接标记 error，防止永久等待
+                         item.preference = "error"
+                         item.save(update_fields=["preference"])
+
+    except Exception as outer_e:
+        # [Ultimate Fail-Safe] 兜底异常捕获
+        # 如果发生任何未捕获异常，强制将 predicted_answer 标记为 Error，
+        # 防止该条目无限期卡在 pending 状态导致死循环。
+        try:
+            if 'item' in locals() and item:
+                error_msg = f"[Error] System Failure: {str(outer_e)}"
+                # 只有当字段为空时才覆盖，保留部分结果
+                if not item.predicted_answer:
+                    item.predicted_answer = error_msg
+                if item.task.method == "adversarial" and not item.predicted_answer_2:
+                    item.predicted_answer_2 = error_msg
+                
+                # 针对打分字段也要兜底
+                if item.task.method == "subjective" and item.score is None:
+                    item.score = -1
+                if item.task.method == "adversarial" and item.preference is None:
+                    item.preference = "error"
+                    
+                item.save()
+        except:
+            # 如果连 save 都失败（例如 DB 挂了），那确实没办法了，
+            # 但至少 Worker 不会崩溃，Log 会记录下来。
+            pass
+        print(f"Critical error in run_single_item_logic: {outer_e}")
+
+
+# =========================================================
+# Task Finalizer (Thread-Safe & Optimized)
+# =========================================================
+
+def sync_downstream_tasks(upstream_task):
+    """
+    当上游任务生成完毕后，同步数据到下游挂起的任务
+    """
+    # 查找所有挂起的下游任务
+    downstream_tasks = upstream_task.downstream_tasks.filter(status__in=['pending', 'running'])
+    
+    if not downstream_tasks.exists():
+        return
+
+    for dt in downstream_tasks:
+        # 防御性检查：如果下游任务已经有 items 了（异常情况），跳过复制
+        if dt.items.exists():
+            continue
+
+        # 1. 使用模型感知型复制 (可能只复制了部分模型回答)
+        reuse_task_items_model_aware(upstream_task, dt)
+        
+        # 2. 检查同步后的状态，决定下一步
+        from django.db.models import Q
+        has_missing_answers = dt.items.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True)).exists()
+
+        if dt.method == 'objective' and not has_missing_answers:
+             # 客观评测且回答全了：直接结算
+             try_finalize_task(dt.id, from_dispatcher=True)
+
+        elif dt.judge_type == 'human' and not has_missing_answers:
+            dt.status = 'awaiting_human_judge'
+            dt.save(update_fields=['status'])
+
+        else:
+            # 需要补全回答或进行模型打分
+            from .tasks import init_evaluation_task
+            init_evaluation_task.delay(dt.id)
+
+
+def try_finalize_task(task_id: int, from_dispatcher: bool = False):
+    """
+    检查任务是否全部完成，如果是，执行汇总逻辑。
+    
+    优化逻辑：
+    - 如果 from_dispatcher=True，说明调度器已经发完了所有任务。
+      此时如果发现还有 pending items，不再只是 return，而是安排一个延时检查 (reschedule)。
+      这避免了 Worker 每次都 select_for_update 的开销。
+    """
+    from apps.tasks.tasks import try_finalize_task_delayed # 避免循环引用，lazy import
+    
+    with transaction.atomic():
+        try:
+            task = EvaluationTask.objects.select_related("dataset", "myModel").select_for_update().get(id=task_id)
+        except EvaluationTask.DoesNotExist:
+            return
+
+        if task.status != "running":
+            return
+
+        method = task.method
+        has_pending = False
+        
+        # 判定 pending 逻辑 (包含 [Error] 视为已处理)
+        # 注意：这里我们只看“是否还有没填值的”。[Error] 也是值，所以不算 pending。
+        
+        if method == "objective":
+            # 只要有 predicted_answer 为空的，就算没完
+            has_pending = task.items.filter(predicted_answer__isnull=True).exists()
+            
+        elif method == "subjective":
+            # 1. 必须都有 predicted_answer
+            # 2. 如果是 model judge，还必须都有 score (前提是 predicted_answer 正常)
+            if task.items.filter(predicted_answer__isnull=True).exists():
+                has_pending = True
+            elif task.judge_type == "model":
+                # 复杂的 pending 检查：
+                # 还有“预测成功(非Error) 但 分数为空”的吗？
+                # 如果预测失败([Error])，score 可以为空，不算 pending
+                has_pending = task.items.exclude(predicted_answer__startswith="[Error]").filter(score__isnull=True).exists()
+                
+        elif method == "adversarial":
+            if task.items.filter(predicted_answer__isnull=True).exists() or \
+               task.items.filter(predicted_answer_2__isnull=True).exists():
+                has_pending = True
+            elif task.judge_type == "model":
+                has_pending = task.items.exclude(predicted_answer__startswith="[Error]") \
+                                        .exclude(predicted_answer_2__startswith="[Error]") \
+                                        .filter(preference__isnull=True).exists()
+
+        if has_pending:
+            if from_dispatcher:
+                # 调度器说发完了，但数据库说没做完 -> 可能是 Worker 还在跑
+                # 触发“延时最终检查”，过 5 秒再来看看
+                try_finalize_task_delayed.apply_async(args=[task_id], countdown=5)
+            return
+
+        # === 到这里说明所有条目都已处理完毕 ===
+        
+        # 1. 特殊情况：如果是 人类裁判，状态转为 awaiting
+        if method in ["subjective", "adversarial"] and task.judge_type == "human":
+            task.status = "awaiting_human_judge"
+            task.save(update_fields=["status"])
+            
+            # --- Sync Downstream Tasks (For Human Judge path) ---
+            sync_downstream_tasks(task)
+            
+            return
+
+        # 2. 正常情况：计算统计数据 & 标记 Completed
+        if method == "objective":
+            # 聚合计算
+            total = task.items.count()
+            # 排除 [Error]
+            valid_items = task.items.exclude(predicted_answer__startswith="[Error]")
+            correct = valid_items.filter(is_correct=1).count()
+            
+            # 分母用 total 还是 valid_total？通常用 total 统计完成率，但准确率可能仅针对 valid
+            # 这里简单起见，[Error] 算错
+            acc = round(correct / total, 4) if total > 0 else 0
+            
+            task.accuracy = acc
+            task.status = "completed"
+            task.time_used = timezone.now() - task.created_at
+            task.save(update_fields=["accuracy", "status", "time_used"])
+            
+            EvaluationSummary.objects.update_or_create(
+                task=task,
+                defaults={
+                    "model_name": task.myModel.name,
+                    "total": total,
+                    "correct": correct,
+                    "accuracy": acc,
+                }
+            )
+
+        elif method == "subjective":
+            from django.db.models import Avg
+            valid_items = task.items.exclude(predicted_answer__startswith="[Error]")
+            avg = valid_items.aggregate(Avg("score"))["score__avg"] or 0
+            avg = round(avg, 4)
+            
+            task.score = avg
+            task.status = "completed"
+            task.time_used = timezone.now() - task.created_at
+            task.save(update_fields=["score", "status", "time_used"])
+            
+            EvaluationSummary.objects.update_or_create(
+                task=task,
+                defaults={
+                    "model_name": f"{task.myModel.name} (judge=Model)",
+                    "total": task.items.count(),
+                    "avg_score": avg,
+                }
+            )
+
+        elif method == "adversarial":
+            summary_obj = generate_adversarial_summary(task)
+            task.status = "completed"
+            task.time_used = timezone.now() - task.created_at
+            task.save(update_fields=["status", "time_used"])
+
+        # --- Sync Downstream Tasks (For Model Judge / Objective path) ---
+        sync_downstream_tasks(task)
+
+        # 3. 通用收尾
+        log_task_complete(task, task.creator)
+        
+        from apps.rankings.services import update_model_rankings
+        update_model_rankings(task.dataset_id)
+
 
 # =========================================================
 # 对外统一入口
 # =========================================================
 
 def run_evaluation(task_id: int):
-    try:
-        task = EvaluationTask.objects.select_related(
-            "dataset", "myModel"
-        ).get(id=task_id)
-    except EvaluationTask.DoesNotExist:
-        return {"error": "task not found"}
-
+    """
+    执行评测全流程 (双阶段执行以优化复用)
+    1. 生成阶段: 获取所有模型回答
+    2. 同步点: 通知下游任务
+    3. 判定阶段: 进行模型打分
+    """
+    task = EvaluationTask.objects.get(id=task_id)
+    item_ids = prepare_evaluation_items(task)
     task.status = "running"
-    task.save(update_fields=["status"])
+    task.save()
+    
+    # --- 阶段 1: 仅生成回答 ---
+    # 我们通过向 run_single_item_logic 传递 flag 来只跑生成
+    for iid in item_ids:
+        run_single_item_logic(iid, phase='generation')
+        
+    # --- 阶段 2: 同步下游 (关键优化点) ---
+    sync_downstream_tasks(task)
+    
+    # --- 阶段 3: 进行打分 (如果是模型评测) ---
+    if task.judge_type == 'model':
+        from .tasks import init_evaluation_task
+        for iid in item_ids:
+            run_single_item_logic(iid, phase='judging')
+        
+    try_finalize_task(task_id, from_dispatcher=True)
+    return {"status": "completed"}
 
-    if task.method == "objective":
-        return run_objective_evaluation(task)
 
-    elif task.method == "subjective":
-        return run_subjective_evaluation(task)
-
-    elif task.method == "adversarial":
-        # ① 先生成 A / B 回答
-        run_adversarial_generation(task)
-
-        # ② 模型裁判：直接判完 + 生成 summary
-        if task.judge_type == "model":
-            run_adversarial_auto_judge(task)
-            summary = generate_adversarial_summary(task)
-
-            # 触发排行榜更新
-            from apps.rankings.services import update_model_rankings
-            update_model_rankings(task.dataset_id)
-
-            task.status = "completed"
-            task.save(update_fields=["status"])
-
-            return {
-                "task_id": task.id,
-                "method": "adversarial",
-                "judge_type": "model",
-                "model_a": task.myModel.name,
-                "model_b": task.myModel_2.name,
-                "total": summary.total,
-                "win_a": summary.correct,
-                "win_rate_a": summary.accuracy,
-            }
-
-        # ③ 人类裁判：只进入“等待人工打分”状态
-        else:
-            task.status = "awaiting_human_judge"
-            task.save(update_fields=["status"])
-
-            return {
-                "task_id": task.id,
-                "method": "adversarial",
-                "judge_type": "human",
-                "total": task.items.count(),
-                "status": "awaiting_human_judge",
-            }
 
 

@@ -21,6 +21,21 @@ class Dataset(models.Model):
         verbose_name="数据集类型",
         choices=[("image", "图像"), ("text", "文本"), ("multimodal", "多模态")]
     )
+    # 新增：能力维度，用于排行榜聚合计算
+    CAPABILITY_CHOICES = [
+        ('language', '语言理解'),
+        ('math', '数学推理'),
+        ('code', '代码能力'),
+        ('multimodal', '多模态'),
+        ('other', '其他'),
+    ]
+    capability_dimension = models.CharField(
+        max_length=20,
+        verbose_name="能力维度",
+        choices=CAPABILITY_CHOICES,
+        default='other',
+        help_text="用于排行榜各维度得分计算"
+    )
     evaluation_type = models.CharField(
         max_length=20,
         verbose_name="测评类型",
@@ -39,13 +54,17 @@ class Dataset(models.Model):
     
     # 文件信息
     file_path = models.FileField(
-        upload_to="datasets/%Y/%m/%d/", 
+        upload_to="datasets/%Y/%m/%d/",
         verbose_name="数据集文件",
         blank=True,
         null=True
     )
     file_size = models.FloatField(verbose_name="文件大小(MB)", default=0.0)
     sample_count = models.IntegerField(verbose_name="样本数量", null=True, blank=True, default=0)
+    
+    # 图片相关字段
+    has_images = models.BooleanField(default=False, verbose_name="是否包含图片")
+    image_count = models.IntegerField(verbose_name="图片数量", null=True, blank=True, default=0)
 
     # 权限与关联
     creator = models.ForeignKey(

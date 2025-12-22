@@ -191,17 +191,17 @@ class DatasetViewSet(viewsets.ModelViewSet):
         # 检查文件是否存在
         if not dataset.has_file():
             return Response(
-                {"code": 404, "msg": "该数据集没有上传文件"}, 
+                {"code": 404, "msg": "该数据集没有上传文件"},
                 status=404
-            )
+                )
         
         try:
             file_path = dataset.file_path.path
             if not os.path.exists(file_path):
                 return Response(
-                    {"code": 404, "msg": "文件不存在"}, 
+                    {"code": 404, "msg": "文件不存在"},
                     status=404
-                )
+                    )
             
             # 获取原始文件名
             original_name = os.path.basename(dataset.file_path.name)
@@ -218,9 +218,144 @@ class DatasetViewSet(viewsets.ModelViewSet):
             
         except Exception as e:
             return Response(
-                {"code": 500, "msg": f"下载失败: {str(e)}"}, 
+                {"code": 500, "msg": f"下载失败: {str(e)}"},
                 status=500
-            )
+                )
+
+    @action(detail=True, methods=["get"])
+    def image(self, request, pk=None):
+        """获取数据集中的图片文件"""
+        dataset = self.get_object()
+        
+        # 检查数据集是否有文件
+        if not dataset.has_file():
+            return Response(
+                {"code": 404, "msg": "该数据集没有上传文件"},
+                status=404
+                )
+        
+        # 检查数据集是否包含图片
+        if not dataset.has_images:
+            return Response(
+                {"code": 404, "msg": "该数据集不包含图片"},
+                status=404
+                )
+        
+        # 获取图片文件名
+        image_filename = request.query_params.get("filename")
+        if not image_filename:
+            return Response(
+                {"code": 400, "msg": "缺少filename参数"},
+                status=400
+                )
+        
+        try:
+            file_path = dataset.file_path.path
+            if not os.path.exists(file_path):
+                return Response(
+                    {"code": 404, "msg": "数据集文件不存在"},
+                    status=404
+                    )
+            
+            # 从ZIP文件中提取图片
+            with zipfile.ZipFile(file_path, 'r') as zf:
+                if image_filename not in zf.namelist():
+                    return Response(
+                        {"code": 404, "msg": f"图片文件 {image_filename} 不存在"},
+                        status=404
+                        )
+                
+                # 检查文件是否为图片
+                image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
+                if not any(image_filename.lower().endswith(ext) for ext in image_extensions):
+                    return Response(
+                        {"code": 400, "msg": "请求的文件不是图片文件"},
+                        status=400
+                        )
+                
+                # 读取图片文件
+                with zf.open(image_filename) as img_file:
+                    img_data = img_file.read()
+                    
+                # 根据文件扩展名确定Content-Type
+                ext = os.path.splitext(image_filename)[1].lower()
+                content_type = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.gif': 'image/gif',
+                    '.bmp': 'image/bmp',
+                    '.webp': 'image/webp',
+                    '.svg': 'image/svg+xml'
+                }.get(ext, 'application/octet-stream')
+                
+                return FileResponse(
+                    io.BytesIO(img_data),
+                    content_type=content_type
+                )
+                
+        except Exception as e:
+            return Response(
+                {"code": 500, "msg": f"获取图片失败: {str(e)}"},
+                status=500
+                )
+
+    @action(detail=True, methods=["get"])
+    def images(self, request, pk=None):
+        """获取数据集中的所有图片文件列表"""
+        dataset = self.get_object()
+        
+        # 检查数据集是否有文件
+        if not dataset.has_file():
+            return Response(
+                {"code": 404, "msg": "该数据集没有上传文件"},
+                status=404
+                )
+        
+        # 检查数据集是否包含图片
+        if not dataset.has_images:
+            return Response(
+                {"code": 404, "msg": "该数据集不包含图片"},
+                status=404
+                )
+        
+        try:
+            file_path = dataset.file_path.path
+            if not os.path.exists(file_path):
+                return Response(
+                    {"code": 404, "msg": "数据集文件不存在"},
+                    status=404
+                    )
+            
+            # 从ZIP文件中获取所有图片文件
+            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
+            image_files = []
+            
+            with zipfile.ZipFile(file_path, 'r') as zf:
+                for filename in zf.namelist():
+                    if any(filename.lower().endswith(ext) for ext in image_extensions) and not filename.endswith('/'):
+                        # 生成图片访问URL
+                        image_url = request.build_absolute_uri(f"/api/datasets/{dataset.id}/image/?filename={filename}")
+                        image_files.append({
+                            "filename": filename,
+                            "url": image_url,
+                            "size": zf.getinfo(filename).file_size
+                        })
+            
+            return Response({
+                "code": 200,
+                "msg": "获取图片列表成功",
+                "data": {
+                    "images": image_files,
+                    "total": len(image_files)
+                }
+            })
+            
+        except Exception as e:
+            return Response(
+                {"code": 500, "msg": f"获取图片列表失败: {str(e)}"},
+                status=500
+                )
 
     @action(detail=True, methods=["get"])
     def preview(self, request, pk=None):

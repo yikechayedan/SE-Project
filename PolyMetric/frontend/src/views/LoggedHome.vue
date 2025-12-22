@@ -125,17 +125,23 @@
             <!-- 综合得分 -->
             <el-table-column 
               label="综合得分" 
-              width="120" 
+              width="140" 
               align="center"
               :class-name="selectedDataset === 'comprehensive' ? 'highlight-col' : ''"
             >
               <template #default="{ row }">
-                <el-progress 
-                  :percentage="row.overallScore" 
-                  :stroke-width="8"
-                  :color="getScoreColor(row.overallScore)"
-                  :format="() => row.overallScore.toFixed(1)"
-                />
+                <div class="score-with-trend">
+                  <div style="flex: 1; min-width: 80px;">
+                    <el-progress 
+                      :percentage="row.overallScore" 
+                      :stroke-width="8"
+                      :color="getScoreColor(row.overallScore)"
+                      :format="() => row.overallScore.toFixed(1)"
+                    />
+                  </div>
+                  <el-icon v-if="row.trends.overall > 0" class="mini-trend-up"><Top /></el-icon>
+                  <el-icon v-else-if="row.trends.overall < 0" class="mini-trend-down"><Bottom /></el-icon>
+                </div>
               </template>
             </el-table-column>
 
@@ -143,16 +149,20 @@
             <el-table-column 
               prop="languageScore" 
               label="语言理解" 
-              width="90" 
+              width="100" 
               align="center"
               :class-name="selectedDataset === 'language' ? 'highlight-col' : ''"
             >
               <template #default="{ row }">
-                <span :style="{ 
-                  color: getScoreColor(row.languageScore),
-                  fontWeight: selectedDataset === 'language' ? 'bold' : 'normal',
-                  fontSize: selectedDataset === 'language' ? '16px' : '14px'
-                }">{{ row.languageScore.toFixed(1) }}</span>
+                <div class="score-with-trend">
+                  <span :style="{ 
+                    color: getScoreColor(row.languageScore),
+                    fontWeight: selectedDataset === 'language' ? 'bold' : 'normal',
+                    fontSize: selectedDataset === 'language' ? '16px' : '14px'
+                  }">{{ row.languageScore.toFixed(1) }}</span>
+                  <el-icon v-if="row.trends.language > 0" class="mini-trend-up"><Top /></el-icon>
+                  <el-icon v-else-if="row.trends.language < 0" class="mini-trend-down"><Bottom /></el-icon>
+                </div>
               </template>
             </el-table-column>
 
@@ -160,16 +170,20 @@
             <el-table-column 
               prop="reasoningScore" 
               label="推理能力" 
-              width="90" 
+              width="100" 
               align="center"
               :class-name="selectedDataset === 'math' ? 'highlight-col' : ''"
             >
               <template #default="{ row }">
-                <span :style="{ 
-                  color: getScoreColor(row.reasoningScore),
-                  fontWeight: selectedDataset === 'math' ? 'bold' : 'normal',
-                  fontSize: selectedDataset === 'math' ? '16px' : '14px'
-                }">{{ row.reasoningScore.toFixed(1) }}</span>
+                <div class="score-with-trend">
+                  <span :style="{ 
+                    color: getScoreColor(row.reasoningScore),
+                    fontWeight: selectedDataset === 'math' ? 'bold' : 'normal',
+                    fontSize: selectedDataset === 'math' ? '16px' : '14px'
+                  }">{{ row.reasoningScore.toFixed(1) }}</span>
+                  <el-icon v-if="row.trends.math > 0" class="mini-trend-up"><Top /></el-icon>
+                  <el-icon v-else-if="row.trends.math < 0" class="mini-trend-down"><Bottom /></el-icon>
+                </div>
               </template>
             </el-table-column>
 
@@ -177,24 +191,20 @@
             <el-table-column 
               prop="codeScore" 
               label="代码能力" 
-              width="90" 
+              width="100" 
               align="center"
               :class-name="selectedDataset === 'code' ? 'highlight-col' : ''"
             >
               <template #default="{ row }">
-                <span :style="{ 
-                  color: getScoreColor(row.codeScore),
-                  fontWeight: selectedDataset === 'code' ? 'bold' : 'normal',
-                  fontSize: selectedDataset === 'code' ? '16px' : '14px'
-                }">{{ row.codeScore.toFixed(1) }}</span>
-              </template>
-            </el-table-column>
-
-            <el-table-column label="趋势" width="80" align="center">
-              <template #default="{ row }">
-                <el-icon v-if="row.trend > 0" class="trend-up"><Top /></el-icon>
-                <el-icon v-else-if="row.trend < 0" class="trend-down"><Bottom /></el-icon>
-                <span v-else class="trend-stable">-</span>
+                <div class="score-with-trend">
+                  <span :style="{ 
+                    color: getScoreColor(row.codeScore),
+                    fontWeight: selectedDataset === 'code' ? 'bold' : 'normal',
+                    fontSize: selectedDataset === 'code' ? '16px' : '14px'
+                  }">{{ row.codeScore.toFixed(1) }}</span>
+                  <el-icon v-if="row.trends.code > 0" class="mini-trend-up"><Top /></el-icon>
+                  <el-icon v-else-if="row.trends.code < 0" class="mini-trend-down"><Bottom /></el-icon>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -646,7 +656,12 @@ const fetchRankings = async () => {
         languageScore: item.scores?.language || 0,
         reasoningScore: item.scores?.math || 0,
         codeScore: item.scores?.code || 0,
-        trend: trendMap[item.trends?.overall] || 0
+        trends: {
+            overall: trendMap[item.trends?.overall] || 0,
+            language: trendMap[item.trends?.language] || 0,
+            math: trendMap[item.trends?.math] || 0,
+            code: trendMap[item.trends?.code] || 0
+        }
       }
     })
   } catch (error) {
@@ -987,6 +1002,17 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--text-secondary);
 }
+
+/* 分数+趋势布局 */
+.score-with-trend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.mini-trend-up { color: var(--success-color); font-size: 12px; transform: scale(0.9); }
+.mini-trend-down { color: var(--danger-color); font-size: 12px; transform: scale(0.9); }
 
 /* 趋势图标 */
 .trend-up { color: var(--success-color); font-size: 18px; }
