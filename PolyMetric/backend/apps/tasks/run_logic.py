@@ -5,11 +5,13 @@ import re
 from django.utils import timezone
 from django.db import transaction
 
-from .services import call_llm_api
+from .services import call_llm_api, reuse_model_answers
+
 from .models import EvaluationTask, EvaluationItem
 from apps.datasets.models import Dataset
 from .models import EvaluationSummary
 from apps.system.services import log_task_complete
+
 
 # =========================================================
 # Step 3 核心：Prompt 工业级约束 + 输出清洗
@@ -199,16 +201,13 @@ def load_dataset_entries(dataset: Dataset):
 
 @transaction.atomic
 def prepare_evaluation_items(task: EvaluationTask):
-    """
-    如果 EvaluationItem 不存在 → 由 Dataset 自动生成
-    """
     if task.items.exists():
         return
 
     entries = load_dataset_entries(task.dataset)
     items = []
 
-    for entry in entries:
+    for idx, entry in enumerate(entries):
         content = (
             entry.get("input")
             or entry.get("question")
@@ -227,12 +226,14 @@ def prepare_evaluation_items(task: EvaluationTask):
         items.append(
             EvaluationItem(
                 task=task,
+                dataset_item_index=idx,   # ⭐⭐⭐ 就是这一行
                 content=content,
                 correct_answer=answer,
             )
         )
 
     EvaluationItem.objects.bulk_create(items)
+
 
 
 # =========================================================
@@ -244,7 +245,7 @@ def run_objective_evaluation(task: EvaluationTask):
     客观评测完整流程（Step 1–3）
     """
     prepare_evaluation_items(task)
-
+    reuse_model_answers(task)
     items = task.items.all()
     total = items.count()
 
@@ -315,8 +316,11 @@ def run_objective_evaluation(task: EvaluationTask):
 
 def run_subjective_evaluation(task: EvaluationTask):
     prepare_evaluation_items(task)
+    reuse_model_answers(task)
     items = task.items.all()
 
+    need_answer = items.filter(predicted_answer__isnull=True).count()
+    print(f"🧪 need model answer: {need_answer}/{items.count()}")   
     if not items.exists():
         raise ValueError("No evaluation items found")
 

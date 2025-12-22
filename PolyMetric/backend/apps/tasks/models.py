@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from apps.datasets.models import Dataset
 from apps.models.models import My_Model  # 大模型表
+
 User = get_user_model()
 
 
@@ -128,6 +129,9 @@ class EvaluationItem(models.Model):
         verbose_name="标准答案",
     )
 
+    dataset_item_index = models.IntegerField(
+        verbose_name="数据集条目索引"
+    )
     # ===== Model A 回答 =====
     predicted_answer = models.TextField(
         null=True,
