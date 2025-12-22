@@ -100,6 +100,26 @@ class EvaluationTaskSerializer(serializers.ModelSerializer):
                     "judge_model": "模型裁判模式下必须指定裁判模型"
                 })
 
+        # ⭐ 新增：验证任务的 method 与数据集的 evaluation_type 是否匹配
+        dataset = data.get("dataset")
+        if dataset and method:
+            # 如果是更新操作且没有提供新的 dataset，则使用现有的
+            if self.instance and not data.get("dataset"):
+                dataset = self.instance.dataset
+            
+            # 验证评测类型匹配
+            if dataset.evaluation_type != method:
+                evaluation_type_map = {
+                    "subjective": "主观评测",
+                    "objective": "客观评测",
+                    "adversarial": "对抗评测"
+                }
+                dataset_type = evaluation_type_map.get(dataset.evaluation_type, dataset.evaluation_type)
+                task_type = evaluation_type_map.get(method, method)
+                raise serializers.ValidationError({
+                    "dataset_format_error": f"数据集格式错误：当前数据集为{dataset_type}格式，但创建的评测任务为{task_type}类型，两者不匹配。请选择正确的评测类型或使用匹配的数据集。"
+                })
+
         return data
 
 

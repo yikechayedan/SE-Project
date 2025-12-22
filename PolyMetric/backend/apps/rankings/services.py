@@ -4,7 +4,14 @@ from apps.system.services import log_rank_change
 
 
 def _get_dataset_dimension(dataset):
-    """根据数据集自动推断评测维度"""
+    """根据数据集配置获取评测维度"""
+    # 优先使用数据库中明确配置的维度
+    if hasattr(dataset, 'capability_dimension') and dataset.capability_dimension:
+        # 如果是 'other'，尝试回退到旧的推断逻辑（兼容旧数据）
+        if dataset.capability_dimension != 'other':
+            return dataset.capability_dimension
+            
+    # --- 旧的兼容逻辑 (Fallback) ---
     cat = dataset.category
     name = dataset.name.lower()
     
@@ -34,22 +41,38 @@ def update_model_rankings(dataset_id):
     except Dataset.DoesNotExist:
         return {"error": f"Dataset with id {dataset_id} not found"}
     
-    # 1. 获取所有评测结果（这里先按时间排，确保最新任务在前）
+    # 1. 获取所有评测结果（按时间排）
     all_summaries = EvaluationSummary.objects.filter(
         task__dataset=dataset
     ).select_related('task__myModel').order_by('-task__created_at')
 
-    # 2. 逻辑去重：每个模型只保留“最近一次”的评测对象
-    latest_summaries_dict = {}
+    # 2. 逻辑聚合：每个模型取最近 N 次评测的平均值（防恶意打分/刷分）
+    # 策略：不再只取最新的一条，而是取最近 5 条的平均分
+    WINDOW_SIZE = 5
+    model_groups = {}
     for s in all_summaries:
         model_id = s.task.myModel_id
-        if model_id not in latest_summaries_dict:
-            latest_summaries_dict[model_id] = s
+        if model_id not in model_groups:
+            model_groups[model_id] = []
+        if len(model_groups[model_id]) < WINDOW_SIZE:
+            model_groups[model_id].append(s)
 
-    # 3. 第二次排序：按分数对这些“最新表现”进行大排队
-    # 这样确保了 index 1 是最新表现里最强的，index 2 是次强的
-    final_sorted_summaries = sorted(
-        latest_summaries_dict.values(),
+    # 3. 计算聚合表现
+    final_sorted_summaries = []
+    for model_id, summaries in model_groups.items():
+        # 计算该模型在该数据集上的平均表现
+        count = len(summaries)
+        avg_acc = sum((s.accuracy or 0) for s in summaries) / count
+        avg_score_val = sum((s.avg_score or 0) for s in summaries) / count
+        
+        # 构造一个虚拟的聚合对象用于排序（借用第一个 summary 的信息）
+        rep = summaries[0]
+        rep.accuracy = avg_acc
+        rep.avg_score = avg_score_val
+        final_sorted_summaries.append(rep)
+
+    # 4. 第二次排序：按聚合后的分数进行排名
+    final_sorted_summaries.sort(
         key=lambda x: (x.accuracy or 0, x.avg_score or 0),
         reverse=True
     )
@@ -62,7 +85,7 @@ def update_model_rankings(dataset_id):
             ModelRanking.objects.filter(dataset=dataset)
         }
         
-        # 4. 此时的 index 才是真正的“最新战力排名”
+        # 5. 此时的 index 才是真正的“战力排名”
         for index, summary in enumerate(final_sorted_summaries, 1):
             model = summary.task.myModel
             old_rank = None
@@ -133,9 +156,13 @@ def update_model_rankings(dataset_id):
                 avg_val = sum(dim_scores) / len(dim_scores)
                 
                 mds, _ = ModelDimensionScore.objects.get_or_create(model=model, dimension=target_dim)
-                mds.previous_score = mds.score
-                mds.score = avg_val
-                mds.save()
+                
+                # Sticky Trend Logic: 只有当分数发生实质性变化时，才更新 previous_score
+                # 这样可以保持趋势箭头的状态，直到下一次变化
+                if abs(mds.score - avg_val) > 0.001:
+                    mds.previous_score = mds.score
+                    mds.score = avg_val
+                    mds.save()
                 
             # 2. 更新 Overall 综合分数
             existing_dims = ModelDimensionScore.objects.filter(model=model).exclude(dimension='overall')
@@ -143,9 +170,12 @@ def update_model_rankings(dataset_id):
                 overall_avg = existing_dims.aggregate(Avg('score'))['score__avg']
                 
                 mds_all, _ = ModelDimensionScore.objects.get_or_create(model=model, dimension='overall')
-                mds_all.previous_score = mds_all.score
-                mds_all.score = overall_avg
-                mds_all.save()
+                
+                # Sticky Trend Logic for Overall
+                if abs(mds_all.score - overall_avg) > 0.001:
+                    mds_all.previous_score = mds_all.score
+                    mds_all.score = overall_avg
+                    mds_all.save()
     
     return {
         "success": True,
