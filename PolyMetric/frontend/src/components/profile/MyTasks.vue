@@ -17,7 +17,6 @@
       style="width: 100%;" 
       v-loading="isTableLoading"
     >
-      <el-table-column prop="id" label="ID" width="60" show-overflow-tooltip/>
       <el-table-column prop="name" label="任务名称" show-overflow-tooltip />
       
       <el-table-column prop="model" label="模型" show-overflow-tooltip>
@@ -37,10 +36,18 @@
             </template>
       </el-table-column>
       
-      <el-table-column prop="method" label="评测方法" width="100">
+      <el-table-column prop="method" label="评测类型" width="100">
         <template #default="scope">
           <el-tag :type="getMethodTag(scope.row.method)" size="small">
             {{ formatMethod(scope.row.method) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="judge_type" label="评测方式" width="100">
+        <template #default="scope">
+          <el-tag :type="getTypeTag(scope.row.judge_type)" size="small">
+            {{ formatType(scope.row.judge_type) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -133,9 +140,21 @@
       </el-form-item>
       <el-form-item label="评测类型" v-if="form.status === 'pending'">
         <el-radio-group v-model="form.method" >
-          <el-radio label="objective">客观评测</el-radio>
-          <el-radio label="subjective">主观评测</el-radio>
-          <el-radio label="adversarial">对抗评测</el-radio>
+          <el-radio 
+            label="objective" 
+            :disabled="isMethodDisabled('objective')"
+            @click.prevent="handleRadioClick('objective')"
+          >客观评测</el-radio>
+          <el-radio 
+            label="subjective" 
+            :disabled="isMethodDisabled('subjective')"
+            @click.prevent="handleRadioClick('subjective')"
+          >主观评测</el-radio>
+          <el-radio 
+            label="adversarial" 
+            :disabled="isMethodDisabled('adversarial')"
+            @click.prevent="handleRadioClick('adversarial')"
+          >对抗评测</el-radio>
         </el-radio-group>
       </el-form-item>
       <el-form-item label="模型选择" v-if="form.status === 'pending'">
@@ -213,15 +232,38 @@
       <el-form-item label="数据集" v-if="form.status === 'pending'">
         <div style="display: flex; width: 100%;">
           
-          <el-select v-model="form.selectedDatasetName" 
-                     placeholder="选择数据集" 
-                     :loading="datasetLoading"
-                     style="flex: 1;"> <el-option
+          <el-select 
+            v-model="form.selectedDatasetName" 
+            placeholder="选择数据集" 
+            :loading="datasetLoading"
+            style="flex: 1;"
+            popper-class="dataset-select-popper" 
+          > 
+            <el-option value="" label="清除选择" @click="handleClearDataset">
+              <div class="option-item clear-item">
+                <el-icon><CircleClose /></el-icon>
+                <span>清除当前选择</span>
+              </div>
+            </el-option>
+            
+            <el-option
               v-for="dataset in filteredDatasetsList"
               :key="dataset.id"
               :label="dataset.name"
               :value="dataset.name"
-            />
+            >
+              <div class="option-item" :title="dataset.name">
+                <span class="dataset-name-text">{{ dataset.name }}</span>
+                <el-tag 
+                  :type="getMethodTag(dataset.evaluation_type)" 
+                  size="small" 
+                  effect="plain"
+                  class="type-tag"
+                >
+                  {{ formatMethodName(dataset.evaluation_type) }}
+                </el-tag>
+              </div>
+            </el-option>
           </el-select>
 
           <el-input 
@@ -377,15 +419,31 @@ const fetchDatasets = async () => {
 
 // 筛选后的数据集列表 (计算属性)
 const filteredDatasetsList = computed(() => {
+    let list = datasetsList.value;
+
+    // 如果已经选择了评测类型，则只展示该类型的数据集
+    if (form.method) {
+        list = list.filter(dataset => dataset.evaluation_type === form.method);
+    }
+
     if (!datasetSearchQuery.value) {
-        return datasetsList.value;
+        return list;
     }
     const query = datasetSearchQuery.value.toLowerCase();
-    return datasetsList.value.filter(dataset => 
+    return list.filter(dataset => 
         dataset.name.toLowerCase().includes(query)
     );
 })
 
+watch(() => form.selectedDatasetName, (newDatasetName) => {
+    if (!newDatasetName) return;
+    const selectedDataset = datasetsList.value.find(d => d.name === newDatasetName);
+    if (selectedDataset && selectedDataset.evaluation_type) {
+        if (form.method !== selectedDataset.evaluation_type) {
+            form.method = selectedDataset.evaluation_type;
+        }
+    }
+});
 // ------------------------------------
 // 数据加载
 // ------------------------------------
@@ -411,6 +469,16 @@ const fetchTasks = async (isSilent = false) => {
 // ------------------------------------
 // 计算属性
 // ------------------------------------
+const isMethodDisabled = (methodType) => {
+    if (!form.selectedDatasetName) return false;
+    
+    const selectedDataset = datasetsList.value.find(d => d.name === form.selectedDatasetName);
+    if (selectedDataset && selectedDataset.evaluation_type) {
+        return selectedDataset.evaluation_type !== methodType;
+    }
+    return false;
+};
+
 // 过滤任务列表
 const filteredTasks = computed(() => {
   const query = searchQuery.value.toLowerCase();
@@ -479,6 +547,22 @@ const getMethodTag = (method) => {
   return map[method] || '';
 };
 
+const formatType = (type) => {
+  const map = {
+    human: '人工评测',
+    model: '模型评测',
+  };
+  return map[type] || type;
+};
+
+const getTypeTag = (type) => {
+  const map = {
+    human: 'warning',
+    model: 'success',
+  };
+  return map[type] || '';
+};
+
 const formatStatus = (status) => {
   const map = {
     pending: '待启动',
@@ -501,12 +585,37 @@ const getStatusTag = (status) => {
   return map[status] || '';
 };
 
+// 格式化名称显示
+const formatMethodName = (method) => {
+  const map = {
+    objective: '客观',
+    subjective: '主观',
+    adversarial: '对抗',
+  };
+  return map[method] || method;
+};
+
 
 // ------------------------------------
 // 动作处理函数
 // ------------------------------------
 
 // 处理每页条数变化
+// 1. 处理单选框点击：实现再次点击取消，并拦截被禁用的选项
+const handleRadioClick = (val) => {
+  if (isMethodDisabled(val)) return;
+  
+  if (form.method === val) {
+    form.method = ''; // 再次点击取消选择
+  } else {
+    form.method = val;
+  }
+}
+
+const handleClearDataset = () => {
+  form.selectedDatasetName = '';
+};
+
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1  // 切换每页条数时回到第一页
@@ -689,6 +798,52 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 下拉项容器 */
+:deep(.option-item) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 这一行负责把文字和标签推向两端 */
+  width: 100%;
+  gap: 12px; /* 这一行确保即使文字很短，也会有最小间距 */
+}
+
+/* 确保数据集名称占据剩余空间 */
+:deep(.dataset-name-text) {
+  flex: 1; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+
+/* 确保标签不被压缩且有固定边距 */
+:deep(.type-tag) {
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: center;
+  margin-left: 8px; /* 额外增加一个左边距保险 */
+}
+
+/* 清空选项样式 */
+:deep(.clear-item) {
+  color: var(--el-color-info);
+  font-weight: 500;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+/* 深度调整 Element 原生样式 */
+:deep(.el-select-dropdown__item) {
+  padding: 0 12px;
+  height: 38px;
+  line-height: 38px;
+}
+
+/* 提高鼠标悬停时的区分度 */
+:deep(.el-select-dropdown__item.hover) {
+  background-color: var(--bg-hover);
+}
+
 .my-tasks-container {
   padding: 20px;
   background: transparent;
