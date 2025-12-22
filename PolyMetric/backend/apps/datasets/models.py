@@ -21,6 +21,21 @@ class Dataset(models.Model):
         verbose_name="数据集类型",
         choices=[("image", "图像"), ("text", "文本"), ("multimodal", "多模态")]
     )
+    # 新增：能力维度，用于排行榜聚合计算
+    CAPABILITY_CHOICES = [
+        ('language', '语言理解'),
+        ('math', '数学推理'),
+        ('code', '代码能力'),
+        ('multimodal', '多模态'),
+        ('other', '其他'),
+    ]
+    capability_dimension = models.CharField(
+        max_length=20,
+        verbose_name="能力维度",
+        choices=CAPABILITY_CHOICES,
+        default='other',
+        help_text="用于排行榜各维度得分计算"
+    )
     evaluation_type = models.CharField(
         max_length=20,
         verbose_name="测评类型",

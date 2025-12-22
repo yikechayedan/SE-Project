@@ -125,13 +125,12 @@ def leaderboard(request):
                 scores[dimension] = score
                 
                 # 计算趋势
-                if previous_score == 0:
-                    trends[dimension] = 'stable'
-                elif score > previous_score:
+                if score > previous_score:
                     trends[dimension] = 'up'
                 elif score < previous_score:
                     trends[dimension] = 'down'
                 else:
+                    # 分数相等或者是初始状态(score=0, previous=0)
                     trends[dimension] = 'stable'
             
             # 获取模型的点赞数
