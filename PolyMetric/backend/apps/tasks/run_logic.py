@@ -475,6 +475,85 @@ def run_single_item_logic(item_id: int):
 # Task Finalizer (Thread-Safe & Optimized)
 # =========================================================
 
+def sync_downstream_tasks(upstream_task):
+    """
+    当上游任务生成完毕后，同步数据到下游挂起的任务
+    """
+    # 查找所有挂起的下游任务 (包括 pending 和 running/waiting 的)
+    downstream_tasks = upstream_task.downstream_tasks.filter(status__in=['pending', 'running'])
+    
+    if not downstream_tasks.exists():
+        return
+
+    # 预加载上游 items
+    upstream_items = upstream_task.items.all()
+    
+    for dt in downstream_tasks:
+        # 防御性检查：如果下游任务已经有 items 了（异常情况），跳过复制
+        if dt.items.exists():
+            continue
+
+        # 1. Copy Items
+        new_items = []
+        is_obj = (dt.method == 'objective')
+        
+        for item in upstream_items:
+            new_items.append(EvaluationItem(
+                task=dt,
+                content=item.content,
+                correct_answer=item.correct_answer,
+                predicted_answer=item.predicted_answer,
+                predicted_answer_2=item.predicted_answer_2,
+                # For objective, we reuse the result (is_correct)
+                is_correct=item.is_correct if is_obj else None,
+                # Reset scores for subjective/adversarial
+                score=None,
+                preference=None
+            ))
+        EvaluationItem.objects.bulk_create(new_items)
+        
+        # 2. Update Status & Trigger
+        if dt.method == 'objective':
+             # 客观评测：直接结算
+             total = len(new_items)
+             
+             # 统计准确率 (在内存中统计即可，不需要重查 DB)
+             valid_count = 0
+             correct_count = 0
+             for it in new_items:
+                 if it.predicted_answer and not it.predicted_answer.startswith("[Error]"):
+                     valid_count += 1
+                     if it.is_correct == 1:
+                         correct_count += 1
+             
+             acc = round(correct_count / total, 4) if total > 0 else 0
+             
+             dt.accuracy = acc
+             dt.status = 'completed'
+             dt.time_used = timezone.now() - dt.created_at
+             dt.save(update_fields=['accuracy', 'status', 'time_used'])
+             
+             EvaluationSummary.objects.update_or_create(
+                task=dt,
+                defaults={
+                    "model_name": dt.myModel.name,
+                    "total": total,
+                    "correct": correct_count,
+                    "accuracy": acc,
+                }
+            )
+
+        elif dt.judge_type == 'human':
+            dt.status = 'awaiting_human_judge'
+            dt.save(update_fields=['status'])
+
+        elif dt.judge_type == 'model':
+            # 如果是模型裁判，现在数据有了，触发打分逻辑
+            # 注意：这里需要 lazy import 避免循环依赖
+            from .tasks import init_evaluation_task
+            init_evaluation_task.delay(dt.id)
+
+
 def try_finalize_task(task_id: int, from_dispatcher: bool = False):
     """
     检查任务是否全部完成，如果是，执行汇总逻辑。
@@ -538,6 +617,10 @@ def try_finalize_task(task_id: int, from_dispatcher: bool = False):
         if method in ["subjective", "adversarial"] and task.judge_type == "human":
             task.status = "awaiting_human_judge"
             task.save(update_fields=["status"])
+            
+            # --- Sync Downstream Tasks (For Human Judge path) ---
+            sync_downstream_tasks(task)
+            
             return
 
         # 2. 正常情况：计算统计数据 & 标记 Completed
@@ -592,6 +675,9 @@ def try_finalize_task(task_id: int, from_dispatcher: bool = False):
             task.status = "completed"
             task.time_used = timezone.now() - task.created_at
             task.save(update_fields=["status", "time_used"])
+
+        # --- Sync Downstream Tasks (For Model Judge / Objective path) ---
+        sync_downstream_tasks(task)
 
         # 3. 通用收尾
         log_task_complete(task, task.creator)

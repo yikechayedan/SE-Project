@@ -140,6 +140,15 @@
             <el-option label="对抗测评 (Adversarial)" value="adversarial" />
           </el-select>
         </el-form-item>
+        <el-form-item label="能力维度" prop="capability_dimension">
+          <el-select v-model="uploadForm.capability_dimension" placeholder="请选择能力维度（用于排行榜）" style="width: 100%;">
+            <el-option label="语言理解" value="language" />
+            <el-option label="数学推理" value="math" />
+            <el-option label="代码能力" value="code" />
+            <el-option label="多模态" value="multimodal" />
+            <el-option label="其他" value="other" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="文件格式" prop="file_format">
           <el-select v-model="uploadForm.file_format" placeholder="请选择文件格式" style="width: 100%;">
             <el-option label="CSV 文件" value="csv" />
@@ -319,6 +328,7 @@ const uploadForm = reactive({
   description: '',
   category: '',
   evaluation_type: 'subjective',
+  capability_dimension: 'language',
   file_format: '',
   file: null,
   is_public: true
@@ -474,6 +484,7 @@ const resetUploadForm = () => {
   uploadForm.description = ''
   uploadForm.category = ''
   uploadForm.evaluation_type = 'subjective'
+  uploadForm.capability_dimension = 'language'
   uploadForm.file_format = ''
   uploadForm.file = null
   uploadForm.is_public = true
@@ -493,6 +504,7 @@ const submitUpload = async () => {
     formData.append('description', uploadForm.description || '')
     formData.append('category', uploadForm.category)
     formData.append('evaluation_type', uploadForm.evaluation_type)
+    formData.append('capability_dimension', uploadForm.capability_dimension)
     formData.append('file_format', uploadForm.file_format)
     formData.append('is_public', uploadForm.is_public)
     

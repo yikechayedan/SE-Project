@@ -26,10 +26,12 @@ def init_evaluation_task(self, task_id):
         task = EvaluationTask.objects.get(id=task_id)
         
         # 1. 首次运行时，确保所有 Item 已创建
-        if task.status == "pending":
+        # 修正：检查 items 是否存在，而不是状态。因为 run_task 可能已将其设为 running
+        if not task.items.exists():
             prepare_evaluation_items(task)
-            task.status = "running"
-            task.save(update_fields=["status"])
+            if task.status != "running":
+                task.status = "running"
+                task.save(update_fields=["status"])
         
         # 2. 捞取一小批待处理的 ID
         pending_ids = get_pending_item_ids(task, limit=DISPATCH_LIMIT)

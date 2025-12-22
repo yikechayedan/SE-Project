@@ -119,6 +119,7 @@
 
 <script setup>
 import { ref, defineProps, defineEmits, computed, onMounted, watch} from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createEvaluationTask, runEvaluationTask } from '@/api/tasks.js'
 import { getAllDatasets } from '@/api/datasets.js'
@@ -135,6 +136,7 @@ const modelSearchQuery = ref('')
 const modelSearchQuery2 = ref('')
 const judgeModelSearchQuery = ref('')
 const datasetSearchQuery = ref('') 
+const router = useRouter()
 
 // 1. 接收 props：接收父组件 v-model:showDialog 传入的属性
 const props = defineProps({
@@ -331,6 +333,23 @@ const submitEval = async() => {
         
         emit('task-submitted', result); 
         handleClose();
+        
+      } else if (response.status === 200 && response.data.is_duplicate) {
+        // --- 处理重复任务 ---
+        const existingTaskId = response.data.task_id;
+        ElMessage.info(response.data.msg || "检测到近期已有相同任务，正在为您跳转到报告...");
+        
+        handleClose();
+        
+        // 根据评测类型跳转到不同的结果页
+        const method = form.value.method;
+        if (method === 'objective') {
+          router.push({ name: 'EvalReport', params: { taskId: existingTaskId } });
+        } else if (method === 'subjective') {
+          router.push({ name: 'SubjectResult', params: { taskId: existingTaskId } });
+        } else if (method === 'adversarial') {
+          router.push({ name: 'AdversarialResult', params: { taskId: existingTaskId } });
+        }
         
       } else {
         const errorData = response.data;

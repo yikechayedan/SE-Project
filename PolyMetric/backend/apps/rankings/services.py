@@ -4,7 +4,14 @@ from apps.system.services import log_rank_change
 
 
 def _get_dataset_dimension(dataset):
-    """根据数据集自动推断评测维度"""
+    """根据数据集配置获取评测维度"""
+    # 优先使用数据库中明确配置的维度
+    if hasattr(dataset, 'capability_dimension') and dataset.capability_dimension:
+        # 如果是 'other'，尝试回退到旧的推断逻辑（兼容旧数据）
+        if dataset.capability_dimension != 'other':
+            return dataset.capability_dimension
+            
+    # --- 旧的兼容逻辑 (Fallback) ---
     cat = dataset.category
     name = dataset.name.lower()
     

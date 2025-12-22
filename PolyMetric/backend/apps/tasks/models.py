@@ -100,6 +100,24 @@ class EvaluationTask(models.Model):
         verbose_name="对抗评测裁判类型",
     )
 
+    # 权限控制：允许非创建者查看报告（用于去重复用场景）
+    authorized_viewers = models.ManyToManyField(
+        User,
+        related_name="authorized_tasks",
+        blank=True,
+        verbose_name="授权查看的用户"
+    )
+
+    # 任务复用链：指向“上游任务”
+    shared_from = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="downstream_tasks",
+        verbose_name="复用自任务"
+    )
+
     class Meta:
         ordering = ["-created_at"]
         verbose_name = "评测任务"

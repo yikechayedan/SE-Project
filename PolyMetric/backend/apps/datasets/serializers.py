@@ -28,7 +28,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
         fields = [
-            "id", "name", "description", "category", "evaluation_type", "file_format",
+            "id", "name", "description", "category", "capability_dimension", "evaluation_type", "file_format",
             "file_size", "sample_count", "creator", "creator_id", "creator_username",
             "is_public", "is_verified", "is_followed", "has_file", "star_count", "is_starred",
             "created_at", "updated_at", "file_url", "file_path"
