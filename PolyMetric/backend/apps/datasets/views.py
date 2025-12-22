@@ -45,6 +45,11 @@ class DatasetViewSet(viewsets.ModelViewSet):
     search_fields = ["name", "description", "creator__username"]
     ordering_fields = ["created_at", "updated_at", "sample_count", "file_size"]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
     def get_serializer_class(self):
         if self.action == "retrieve":
             return DatasetDetailSerializer

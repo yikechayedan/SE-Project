@@ -226,7 +226,7 @@ def prepare_evaluation_items(task: EvaluationTask):
         items.append(
             EvaluationItem(
                 task=task,
-                dataset_item_index=idx,   # ⭐⭐⭐ 就是这一行
+                dataset_item_index=idx,   
                 content=content,
                 correct_answer=answer,
             )

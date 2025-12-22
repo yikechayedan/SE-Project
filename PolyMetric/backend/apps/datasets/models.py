@@ -57,6 +57,18 @@ class Dataset(models.Model):
     is_public = models.BooleanField(default=True, verbose_name="是否公开")
     is_verified = models.BooleanField(default=False, verbose_name="是否通过管理员审核")
 
+    capability_tag = models.CharField(
+        max_length=20,
+        choices=[
+            ("language", "语言分析"),
+            ("reasoning", "逻辑推理"),
+            ("coding", "代码能力"),
+        ],
+        null=True,
+        blank=True,
+        verbose_name="能力评测标签"
+    )
+
     # 时间戳
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
