@@ -327,6 +327,8 @@ def prepare_evaluation_items(task: EvaluationTask):
     """
     增强版：创建条目时自动跨任务复用模型回答
     """
+    from .models import EvaluationItem  # Ensure import is available for the whole function
+
     if task.items.exists():
         # --- 补齐逻辑：针对已存在的条目，尝试全库搜刮缺失的回答 ---
         all_items = list(task.items.all())
