@@ -294,21 +294,39 @@ def prepare_evaluation_items(task: EvaluationTask):
 def get_pending_item_ids(task: EvaluationTask, limit: int = 100):
     """
     高效获取待处理条目的 ID 列表（用于分批调度）
-    优先获取还没有 predicted_answer 的条目
+    不仅检查预测结果，还要检查模型评分状态
     """
-    # 针对不同 Method，"待处理"定义略有不同，但通常是 predicted_answer 为空
-    # 简单起见，只要 predicted_answer 为空就需要跑 LLM
-    # 如果是 adversarial，需要 predicted_answer_2 为空
-    
+    from django.db.models import Q
     qs = task.items.all().order_by("id")
     
     if task.method == "adversarial":
-        from django.db.models import Q
-        # 只要缺一个回答，就算待处理
-        qs = qs.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True))
-    else:
-        # objective / subjective
+        if task.judge_type == "model":
+            # 只要缺一个回答，或者 (两个回答都有但缺偏好 且 无 Error)
+            qs = qs.filter(
+                Q(predicted_answer__isnull=True) | 
+                Q(predicted_answer_2__isnull=True) |
+                (Q(preference__isnull=True) & 
+                 ~Q(predicted_answer__startswith="[Error]") & 
+                 ~Q(predicted_answer_2__startswith="[Error]"))
+            )
+        else:
+            # 人工判定，只需生成回答
+            qs = qs.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True))
+            
+    elif task.method == "objective":
+        # 客观评测，只需生成回答
         qs = qs.filter(predicted_answer__isnull=True)
+        
+    elif task.method == "subjective":
+        if task.judge_type == "model":
+            # 只要缺回答，或者 (有回答但缺分数 且 无 Error)
+            qs = qs.filter(
+                Q(predicted_answer__isnull=True) | 
+                (Q(score__isnull=True) & ~Q(predicted_answer__startswith="[Error]"))
+            )
+        else:
+            # 人工判定，只需生成回答
+            qs = qs.filter(predicted_answer__isnull=True)
         
     return list(qs.values_list("id", flat=True)[:limit])
 

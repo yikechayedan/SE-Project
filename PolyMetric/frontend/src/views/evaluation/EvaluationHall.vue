@@ -403,10 +403,14 @@ const handlePageChange = (val) => {
 }
 
 const handleViewReport = (task) => {
-  router.push({ 
-    name: 'EvalReport', 
-    params: { taskId: task.id }
-  })
+  if (task.method === 'objective') {
+    router.push({ 
+      name: 'EvalReport', 
+      params: { taskId: task.id }
+    })
+  } else {
+    handleViewEvaluation(task);
+  }
 }
 
 const handleStartEvaluation = (task) => {
@@ -436,7 +440,6 @@ const handleViewEvaluation = (task) => {
     })
   }
 }
-
 const handleRunEvaluation = async (task) => {
    isTableLoading.value = true;
    try {
