@@ -34,7 +34,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         file_obj.seek(0)
         content = file_obj.read()
 
-        import json, csv, io
+        import  csv, io
 
         if file_format == "json":
             try:
@@ -401,7 +401,6 @@ class DatasetSerializer(serializers.ModelSerializer):
                 # ZIP: 返回JSON文件中的数据条目数量，如果没有JSON则返回文件数量
                 import zipfile
                 import io
-                import json
                 try:
                     with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
                         # 查找JSON文件
@@ -467,6 +466,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             if samples:
                 capability = ai_judge_capability(samples)
                 validated_data["capability_tag"] = capability
+                validated_data["capability_dimension"] = capability
 
                         # 统计样本数量
             file_format = validated_data.get("file_format", "").lower()

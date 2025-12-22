@@ -5,13 +5,11 @@ import re
 from django.utils import timezone
 from django.db import transaction
 
-from .services import call_llm_api, reuse_model_answers
-
+from .services import call_llm_api
 from .models import EvaluationTask, EvaluationItem
 from apps.datasets.models import Dataset
 from .models import EvaluationSummary
 from apps.system.services import log_task_complete
-
 
 # =========================================================
 # Step 3 核心：Prompt 工业级约束 + 输出清洗
@@ -452,7 +450,7 @@ def prepare_evaluation_items(task: EvaluationTask):
     entries = load_dataset_entries(task.dataset)
     items_to_create = []
 
-    for idx, entry in enumerate(entries):
+    for entry in entries:
         content = (
             entry.get("input")
             or entry.get("question")
@@ -476,7 +474,6 @@ def prepare_evaluation_items(task: EvaluationTask):
         items_to_create.append(
             EvaluationItem(
                 task=task,
-                dataset_item_index=idx,   
                 content=content,
                 correct_answer=gold_answer,
                 predicted_answer=pred_1,
@@ -904,7 +901,3 @@ def run_evaluation(task_id: int):
         
     try_finalize_task(task_id, from_dispatcher=True)
     return {"status": "completed"}
-
-
-
-

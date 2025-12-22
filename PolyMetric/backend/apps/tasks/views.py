@@ -16,8 +16,6 @@ from .serializers import (
 )
 from .benchmark import run_benchmark
 
-from .services import find_reusable_task, reuse_model_answers
-from .tasks import run_evaluation_task
 
 User = get_user_model()
 
@@ -128,57 +126,14 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
         # --- 默认流程：正常创建 ---
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            return Response({"error": serializer.errors}, status=400)
+            return Response({"error": str(serializer.errors)}, status=400)
 
-        data = serializer.validated_data
+        # creator 固定为当前登录用户
+        serializer.save(creator=request.user)
+        task = serializer.instance
+        data = self.get_serializer(task).data
+        return Response(data, status=status.HTTP_201_CREATED)
 
-        # ① 查找是否有可复用任务
-        reusable_task = find_reusable_task(
-            dataset_id=data["dataset"].id,
-            method=data["method"],
-            myModel_id=data["myModel"].id,
-            myModel_2_id=data.get("myModel_2").id if data.get("myModel_2") else None,
-            judge_type=data.get("judge_type", "human"),
-            judge_model_id=data.get("judge_model").id if data.get("judge_model") else None,
-        )
-
-        if reusable_task:
-            # 已完成 → 直接返回
-            if reusable_task.status == "completed":
-                return Response({
-                    "reuse": True,
-                    "task_id": reusable_task.id,
-                    "status": "completed",
-                    "summary": getattr(reusable_task, "summary", None),
-                }, status=200)
-
-            # 进行中 → 返回 task_id 等待
-            return Response({
-                "reuse": True,
-                "task_id": reusable_task.id,
-                "status": reusable_task.status,
-            }, status=200)
-
-        # ② 没有可复用 → 新建任务
-        task = serializer.save(creator=request.user)
-
-        # ③ 生成 items（如果你还没自动生成）
-        from .run_logic import prepare_evaluation_items
-        prepare_evaluation_items(task)
-
-        # ④ 尝试复用模型回答
-        reuse_model_answers(task)
-
-        # ⑤ 提交 Celery
-        run_evaluation_task.delay(task.id)
-
-        return Response({
-            "reuse": False,
-            "task_id": task.id,
-            "status": "pending",
-        }, status=201)
-    
-    
     # -----------------------------
     # 2 列表：GET /api/tasks/evaluation-tasks/
     # -----------------------------
@@ -363,9 +318,6 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
 
         # 此处暂不记录 reviewer / time_stamp，可根据需要扩展模型
         return Response({}, status=200)
-
-
-
 
 
 # --------------------------------------------------
