@@ -8,7 +8,7 @@ class SystemEventSerializer(serializers.ModelSerializer):
     """
     id = serializers.IntegerField(read_only=True)
     content = serializers.CharField(source='message', read_only=True)
-    time = serializers.DateTimeField(source='created_at', read_only=True, format='%Y-%m-%dT%H:%M:%SZ')
+    time = serializers.DateTimeField(source='created_at', read_only=True, format='%Y-%m-%dT%H:%M:%S+08:00')
     
     # 根据事件类型映射到前端需要的类型
     type = serializers.SerializerMethodField()
