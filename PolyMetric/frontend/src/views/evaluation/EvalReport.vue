@@ -80,7 +80,7 @@
                 class="option-item"
                 :class="{ 
                   'is-correct-option': optKey === scope.row.correct_answer,
-                  'is-wrong-prediction': scope.row.is_correct === 0 && optKey === scope.row.predicted_answer
+                  'is-wrong-prediction': scope.row.is_correct !== 1 && optKey === scope.row.predicted_answer
                 }"
               >
                 <span class="option-key">{{ optKey }}.</span>
@@ -94,7 +94,7 @@
                   正确答案
                 </el-tag>
                 <el-tag 
-                  v-if="scope.row.is_correct === 0 && optKey === scope.row.predicted_answer" 
+                  v-if="scope.row.is_correct !== 1 && optKey === scope.row.predicted_answer" 
                   size="small" 
                   type="danger" 
                   effect="plain" 
@@ -102,6 +102,12 @@
                   模型选择
                 </el-tag>
               </div>
+            </div>
+
+            <!-- 【新增】如果模型回答不在选项中（如 Error 或 输出格式错误），显式展示 -->
+            <div v-if="scope.row.predicted_answer && !parseContent(scope.row.content).options[scope.row.predicted_answer]" class="raw-prediction-box">
+              <span class="raw-label">模型原始回答：</span>
+              <el-tag type="warning" size="small">{{ scope.row.predicted_answer }}</el-tag>
             </div>
           </template>
         </el-table-column>
@@ -207,7 +213,8 @@ const filteredItems = computed(() => {
   
   let filtered = reportData.value.data;
   if (filterStatus.value === 'wrong') {
-    filtered = reportData.value.data.filter(item => item.is_correct === 0);
+    // 【修复】包括 0 和 null (兼容旧数据)
+    filtered = reportData.value.data.filter(item => item.is_correct !== 1);
   }
   return filtered;
 });
@@ -577,6 +584,21 @@ onMounted(() => {
 .option-key {
   font-weight: bold;
   margin-right: 10px;
+}
+
+.raw-prediction-box {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px dashed var(--warning-color);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+.raw-label {
+  color: var(--text-secondary);
+  margin-right: 8px;
 }
 
 .navigation-footer {
