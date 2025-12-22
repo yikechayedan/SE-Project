@@ -542,6 +542,10 @@ def sync_downstream_tasks(upstream_task):
                     "accuracy": acc,
                 }
             )
+             
+             # Trigger Ranking Update
+             from apps.rankings.services import update_model_rankings
+             update_model_rankings(dt.dataset_id)
 
         elif dt.judge_type == 'human':
             dt.status = 'awaiting_human_judge'
