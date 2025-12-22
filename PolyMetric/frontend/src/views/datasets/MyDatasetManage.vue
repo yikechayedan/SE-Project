@@ -50,6 +50,13 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="capability_dimension" label="能力维度" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getCapabilityType(row.capability_dimension)" effect="plain">
+              {{ getCapabilityLabel(row.capability_dimension) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="file_format" label="格式" width="70" align="center">
           <template #default="{ row }">
             {{ row.file_format?.toUpperCase() || '-' }}
@@ -140,15 +147,6 @@
             <el-option label="对抗测评 (Adversarial)" value="adversarial" />
           </el-select>
         </el-form-item>
-        <el-form-item label="能力维度" prop="capability_dimension">
-          <el-select v-model="uploadForm.capability_dimension" placeholder="请选择能力维度（用于排行榜）" style="width: 100%;">
-            <el-option label="语言理解" value="language" />
-            <el-option label="数学推理" value="math" />
-            <el-option label="代码能力" value="code" />
-            <el-option label="多模态" value="multimodal" />
-            <el-option label="其他" value="other" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="文件格式" prop="file_format">
           <el-select v-model="uploadForm.file_format" placeholder="请选择文件格式" style="width: 100%;">
             <el-option label="CSV 文件" value="csv" />
@@ -184,10 +182,17 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showUploadDialog = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="submitUpload">
-          {{ uploading ? '上传中...' : '确认上传' }}
-        </el-button>
+        <div class="dialog-footer-actions">
+           <el-button type="warning" plain link :icon="QuestionFilled" @click="showInstructionsDialog = true" style="float: left;">
+            查看上传须知
+          </el-button>
+          <span>
+            <el-button @click="showUploadDialog = false">取消</el-button>
+            <el-button type="primary" :loading="uploading" @click="submitUpload">
+              {{ uploading ? '上传中...' : '确认上传' }}
+            </el-button>
+          </span>
+        </div>
       </template>
     </el-dialog>
 
@@ -284,6 +289,89 @@
         <el-button @click="showPreviewDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 上传须知弹窗 -->
+    <el-dialog v-model="showInstructionsDialog" title="📄 数据集上传须知" width="650px">
+      <div class="instructions-content">
+        <el-alert
+          title="重要提示：不按规定格式上传将导致无法评测，后果自负！"
+          type="error"
+          show-icon
+          :closable="false"
+          style="margin-bottom: 20px;"
+        />
+        
+        <h4>1. 文件基础要求</h4>
+        <ul>
+          <li><strong>格式支持：</strong>CSV, JSON, ZIP</li>
+          <li><strong>文件大小：</strong>最大不超过 100MB</li>
+          <li><strong>数据结构：</strong>无论何种格式，解析后的数据必须是对象数组（List of Objects）。</li>
+        </ul>
+
+        <el-divider />
+
+        <h4>2. 字段要求（根据测评类型）</h4>
+        <p>您的数据集中的每条数据（Item）必须包含以下字段，否则系统将报错：</p>
+        
+        <table class="requirements-table">
+          <thead>
+            <tr>
+              <th>测评类型</th>
+              <th>必需字段</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><el-tag type="success" size="small">主观测评</el-tag></td>
+              <td><code>input</code>, <code>reference</code></td>
+              <td><strong>input</strong>: 问题/提示词<br><strong>reference</strong>: 参考答案</td>
+            </tr>
+            <tr>
+              <td><el-tag type="primary" size="small">客观测评</el-tag></td>
+              <td><code>input</code>, <code>answer</code></td>
+              <td><strong>input</strong>: 题目内容<br><strong>answer</strong>: 标准答案 (如 "A", "True")</td>
+            </tr>
+            <tr>
+              <td><el-tag type="danger" size="small">对抗测评</el-tag></td>
+              <td><code>input</code></td>
+              <td><strong>input</strong>: 问题/提示词</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <el-divider />
+
+        <h4>3. 智能能力维度分类</h4>
+        <p class="auto-class-note">
+          <el-icon><Opportunity /></el-icon>
+          <strong>无需手动选择维度：</strong>系统会自动分析您数据集的内容，通过大模型将其归类为以下四个维度之一：
+        </p>
+        <div class="dimension-tags">
+           <el-tag effect="plain">语言理解 (Language)</el-tag>
+           <el-tag effect="plain" type="warning">数学推理 (Math)</el-tag>
+           <el-tag effect="plain" type="success">代码能力 (Code)</el-tag>
+           <el-tag effect="plain" type="info">多模态 (Multimodal)</el-tag>
+        </div>
+
+        <el-divider />
+
+        <h4>4. 特殊格式说明</h4>
+        <ul>
+          <li><strong>JSON 文件：</strong>必须是标准的 JSON 数组格式，例如 <code>[{"input": "...", "answer": "..."}, ...]</code>。</li>
+          <li><strong>CSV 文件：</strong>第一行必须是表头（Header），且表头名称必须包含上述必需字段（区分大小写）。</li>
+          <li><strong>ZIP 压缩包：</strong>
+            <ul>
+              <li>必须包含一个 JSON 文件（推荐命名为 <code>data.json</code>）。</li>
+              <li>如果是<strong>图像数据集</strong>，图片文件需直接放在 ZIP 根目录或子目录中。</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="showInstructionsDialog = false">我已知晓</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -291,7 +379,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading, View, UploadFilled
+  FolderOpened, Folder, Upload, Refresh, Edit, Delete, Download, Loading, View, UploadFilled, QuestionFilled, Opportunity
 } from '@element-plus/icons-vue'
 import { getMyDatasets, updateDataset, deleteDataset, getDatasetEntries } from '@/api/datasets'
 import request from '@/api/request'
@@ -306,6 +394,7 @@ const datasets = ref([])
 const showUploadDialog = ref(false)
 const showEditDialog = ref(false)
 const showPreviewDialog = ref(false)
+const showInstructionsDialog = ref(false)
 
 // 预览相关 - 参考 DatasetSquare.vue 的实现
 const currentDataset = ref(null)
@@ -328,7 +417,6 @@ const uploadForm = reactive({
   description: '',
   category: '',
   evaluation_type: 'subjective',
-  capability_dimension: 'language',
   file_format: '',
   file: null,
   is_public: true
@@ -384,6 +472,28 @@ const getEvaluationTypeType = (type) => {
     'adversarial': 'danger'
   }
   return types[type] || 'info'
+}
+
+const getCapabilityLabel = (dim) => {
+  const labels = {
+    'language': '语言理解',
+    'math': '数学推理',
+    'code': '代码能力',
+    'multimodal': '多模态',
+    'reasoning': '逻辑推理'
+  }
+  return labels[dim] || dim || '综合'
+}
+
+const getCapabilityType = (dim) => {
+  const types = {
+    'language': '',
+    'math': 'warning',
+    'code': 'success',
+    'multimodal': 'info',
+    'reasoning': 'warning'
+  }
+  return types[dim] || 'info'
 }
 
 const formatFileSize = (size) => {
@@ -484,7 +594,6 @@ const resetUploadForm = () => {
   uploadForm.description = ''
   uploadForm.category = ''
   uploadForm.evaluation_type = 'subjective'
-  uploadForm.capability_dimension = 'language'
   uploadForm.file_format = ''
   uploadForm.file = null
   uploadForm.is_public = true
@@ -504,7 +613,6 @@ const submitUpload = async () => {
     formData.append('description', uploadForm.description || '')
     formData.append('category', uploadForm.category)
     formData.append('evaluation_type', uploadForm.evaluation_type)
-    formData.append('capability_dimension', uploadForm.capability_dimension)
     formData.append('file_format', uploadForm.file_format)
     formData.append('is_public', uploadForm.is_public)
     
@@ -910,6 +1018,77 @@ onMounted(() => {
 :deep(.el-upload-dragger:hover) {
   border-color: var(--accent-color);
   background-color: var(--bg-secondary);
+}
+
+.instructions-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.instructions-content h4 {
+  margin-top: 15px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.instructions-content ul {
+  padding-left: 20px;
+  margin-bottom: 15px;
+  color: var(--text-secondary);
+}
+
+.instructions-content li {
+  margin-bottom: 5px;
+}
+
+.requirements-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.requirements-table th,
+.requirements-table td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.requirements-table th {
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.requirements-table td {
+  color: var(--text-secondary);
+}
+
+.requirements-table code {
+  background-color: var(--bg-body);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  color: var(--accent-color);
+  border: 1px solid var(--border-color);
+}
+
+.auto-class-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+}
+
+.dimension-tags {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 </style>
 :deep(.el-upload__text) {
