@@ -655,6 +655,7 @@ const handleViewReport = (task) => {
 
 const handleRunEvaluation = async (task) => {
    try {
+        loadingTasks.value[task.id] = true;
         await ElMessageBox.confirm(
             `确认启动任务吗？ 启动后将不能改变评测所用的类型、模型和数据集`,
             '警告',
@@ -664,19 +665,19 @@ const handleRunEvaluation = async (task) => {
                 type: 'warning',
             }
         );
-        runEvaluationTask(task.id).then(() => {
-            console.log('任务实际在后端启动成功');
-        }).catch(err => {
-            ElMessage.error('任务启动失败: ' + err.message);
-            fetchTasks(true); // 失败了也刷新下状态
-        });
-
-        ElMessage.success('正在尝试启动任务...');
-        
+        await runEvaluationTask(task.id);
+        ElMessage.success('正在尝试启动任务...');      
         startPolling(); 
+        task.status = 'running';
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
     } catch (error) {
-        console.error('逻辑错误:', error);
+        console.error('启动评测失败:', error);
+        ElMessage.error(`启动失败: ${error.message}`);
+        // 如果失败了，把状态改回去，或者重新拉取列表
+        fetchAllTasks();
+    } finally {
+      loadingTasks.value[task.id] = false;
     }
 }
 
@@ -785,11 +786,21 @@ const stopPolling = () => {
     }
 }
 
-onMounted(() => {
-    fetchTasks(false);
-    fetchDatasets();
-    fetchModels();
-    fetchUserID();
+onMounted(async () => {
+    isTableLoading.value = true;
+    try {
+        // 1. 必须先获取用户 ID
+        await fetchUserID();
+        
+        // 2. 拿到 ID 后再并行获取其他基础数据
+        await Promise.all([
+            fetchTasks(true), 
+            fetchDatasets(),
+            fetchModels()
+        ]);
+    } finally {
+        isTableLoading.value = false;
+    }
 });
 
 onUnmounted(() => {
