@@ -673,7 +673,22 @@ const submitUpload = async () => {
     }
   } catch (error) {
     console.error('上传失败:', error)
-    ElMessage.error(error.response?.data?.msg || '上传失败，请稍后重试')
+    let errorMsg = '上传失败，请稍后重试'
+    if (error.response?.data) {
+      const resData = error.response.data
+      // 如果有具体的业务错误消息
+      if (resData.msg) errorMsg = resData.msg
+      // 如果有详细的字段错误信息 (DRF 格式)
+      if (resData.data) {
+        const details = resData.data
+        const firstKey = Object.keys(details)[0]
+        if (firstKey) {
+          const firstError = Array.isArray(details[firstKey]) ? details[firstKey][0] : details[firstKey]
+          errorMsg += `: ${firstError}`
+        }
+      }
+    }
+    ElMessage.error(errorMsg)
   } finally {
     uploading.value = false
   }

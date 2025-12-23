@@ -684,16 +684,31 @@ const submitUpload = async () => {
       fetchAllDatasets()
     } else {
       console.error('Upload failed with response:', res.data)
-      ElMessage.error(res.data?.msg || '上传失败')
+      let errorMsg = res.data?.msg || '上传失败'
+      if (res.data?.data) {
+        const firstKey = Object.keys(res.data.data)[0]
+        if (firstKey) {
+          const detail = Array.isArray(res.data.data[firstKey]) ? res.data.data[firstKey][0] : res.data.data[firstKey]
+          errorMsg += `: ${detail}`
+        }
+      }
+      ElMessage.error(errorMsg)
     }
   } catch (error) {
     console.error('上传失败:', error)
-    if (error.response) {
-       console.error('Error response data:', error.response.data)
-       ElMessage.error(JSON.stringify(error.response.data) || '上传失败')
-    } else {
-       ElMessage.error('上传失败，请稍后重试')
+    let errorMsg = '上传失败，请稍后重试'
+    if (error.response?.data) {
+      const resData = error.response.data
+      if (resData.msg) errorMsg = resData.msg
+      if (resData.data) {
+        const firstKey = Object.keys(resData.data)[0]
+        if (firstKey) {
+          const detail = Array.isArray(resData.data[firstKey]) ? resData.data[firstKey][0] : resData.data[firstKey]
+          errorMsg += `: ${detail}`
+        }
+      }
     }
+    ElMessage.error(errorMsg)
   } finally {
     uploading.value = false
   }

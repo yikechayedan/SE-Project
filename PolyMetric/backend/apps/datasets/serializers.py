@@ -193,10 +193,10 @@ class DatasetSerializer(serializers.ModelSerializer):
     def validate_dataset_format(self, file_obj, evaluation_type, category=None):
         """
         验证数据集格式是否符合对应的测评类型要求
-        返回验证结果：True表示验证通过，False表示验证失败
+        直接抛出 ValidationError 供上层捕获
         """
         if file_obj is None:
-            return True
+            return
            
         try:
             file_obj.seek(0)
@@ -289,16 +289,8 @@ class DatasetSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(f"ZIP文件解析错误: {str(e)}")
             else:
                 # 其他格式暂时跳过验证
-                return True
+                return
                         
-            return True
-           
-        except serializers.ValidationError:
-            # 验证失败，返回False
-            return False
-        except Exception as e:
-            # 验证失败，返回False
-            return False
         finally:
             file_obj.seek(0)
     
@@ -544,106 +536,159 @@ class DatasetSerializer(serializers.ModelSerializer):
         finally:
             file_obj.seek(0)
 
-    def create(self, validated_data):
-        validated_data["creator"] = self.context["request"].user
+        def create(self, validated_data):
 
-        file_obj = validated_data.get("file_path")
-        evaluation_type = validated_data.get("evaluation_type", "subjective")
-        file_format = validated_data.get("file_format")
+            validated_data["creator"] = self.context["request"].user
 
-        if file_obj and file_format:
-            # 验证数据集格式
-            format_valid = self.validate_dataset_format(file_obj, evaluation_type, validated_data.get("category"))
-            
-            # 统计样本数量和图片信息
-            file_format = validated_data.get("file_format", "").lower()
-            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
-            validated_data["sample_count"] = self._count_samples(file_obj, file_format)
-            validated_data["has_images"] = self._check_has_images(file_obj, file_format)
-            validated_data["image_count"] = self._count_images(file_obj, file_format)
-            
-            # 设置初始状态为审核中
-            validated_data["is_verified"] = False
-            
-            # 只有格式验证通过才进行能力分析
-            if format_valid:
-                # 设置默认能力标签，后续异步更新
+    
+
+            file_obj = validated_data.get("file_path")
+
+            file_format = validated_data.get("file_format")
+
+    
+
+            if file_obj and file_format:
+
+                # 统计样本数量和图片信息
+
+                file_format = validated_data.get("file_format", "").lower()
+
+                validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
+
+                validated_data["sample_count"] = self._count_samples(file_obj, file_format)
+
+                validated_data["has_images"] = self._check_has_images(file_obj, file_format)
+
+                validated_data["image_count"] = self._count_images(file_obj, file_format)
+
+                
+
+                # 设置初始状态
+
+                validated_data["is_verified"] = False
+
                 validated_data["capability_tag"] = "processing"
+
                 validated_data["capability_dimension"] = "other"
+
             else:
-                # 格式验证失败，直接设置为其他，不进行AI分析
+
+                validated_data["file_size"] = 0.0
+
+                validated_data["sample_count"] = 0
+
+                validated_data["has_images"] = False
+
+                validated_data["image_count"] = 0
+
                 validated_data["capability_tag"] = "other"
+
                 validated_data["capability_dimension"] = "other"
-        else:
-            validated_data["file_size"] = 0.0
-            validated_data["sample_count"] = 0
-            validated_data["has_images"] = False
-            validated_data["image_count"] = 0
-            validated_data["capability_tag"] = "other"
-            validated_data["capability_dimension"] = "other"
-            validated_data["is_verified"] = False
 
-        # 创建数据集
-        dataset = super().create(validated_data)
-        
-        # 异步分析能力维度（只有格式验证通过且有文件才进行）
-        if file_obj and file_format and validated_data.get("capability_tag") == "processing":
-            from apps.tasks.tasks import analyze_dataset_capability
-            analyze_dataset_capability.delay(dataset.id)
-        
-        return dataset
+                validated_data["is_verified"] = False
 
+    
 
-    def update(self, instance, validated_data):
-        """更新数据集"""
-        file_obj = validated_data.get("file_path")
-        evaluation_type = validated_data.get("evaluation_type", instance.evaluation_type)
-        
-        # 检查数据集是否已审核
-        if not instance.is_verified:
-            raise serializers.ValidationError("只有已审核通过的数据集才能修改")
-        
-        if file_obj:
-            # 验证数据集格式
-            format_valid = self.validate_dataset_format(file_obj, evaluation_type, validated_data.get("category"))
+            # 创建数据集
+
+            dataset = super().create(validated_data)
+
             
-            # 删除旧文件
-            if instance.has_file():
-                try:
-                    old_path = instance.file_path.path
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-                except:
-                    pass
+
+            # 异步分析能力维度（如果有文件）
+
+            if file_obj and file_format and validated_data.get("capability_tag") == "processing":
+
+                from apps.tasks.tasks import analyze_dataset_capability
+
+                analyze_dataset_capability.delay(dataset.id)
+
             
-            # 计算文件大小和格式
-            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
-            file_format = validated_data.get("file_format", instance.file_format).lower()
+
+            return dataset
+
+    
+
+        def update(self, instance, validated_data):
+
+            """更新数据集"""
+
+            file_obj = validated_data.get("file_path")
+
             
-            # 统计样本数量和图片信息
-            validated_data["sample_count"] = self._count_samples(file_obj, file_format)
-            validated_data["has_images"] = self._check_has_images(file_obj, file_format)
-            validated_data["image_count"] = self._count_images(file_obj, file_format)
+
+            # 检查数据集是否已审核
+
+            if not instance.is_verified:
+
+                raise serializers.ValidationError("只有已审核通过的数据集才能修改")
+
             
-            # 只有格式验证通过才进行能力分析
-            if format_valid:
-                # 设置默认能力标签，后续异步更新
+
+            if file_obj:
+
+                # 删除旧文件
+
+                if instance.has_file():
+
+                    try:
+
+                        old_path = instance.file_path.path
+
+                        if os.path.exists(old_path):
+
+                            os.remove(old_path)
+
+                    except:
+
+                        pass
+
+                
+
+                # 计算文件大小和格式
+
+                validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
+
+                file_format = validated_data.get("file_format", instance.file_format).lower()
+
+                
+
+                # 统计样本数量和图片信息
+
+                validated_data["sample_count"] = self._count_samples(file_obj, file_format)
+
+                validated_data["has_images"] = self._check_has_images(file_obj, file_format)
+
+                validated_data["image_count"] = self._count_images(file_obj, file_format)
+
+                
+
+                # 设置初始状态为处理中
+
                 validated_data["capability_tag"] = "processing"
+
                 validated_data["capability_dimension"] = "other"
-            else:
-                # 格式验证失败，直接设置为其他，不进行AI分析
-                validated_data["capability_tag"] = "other"
-                validated_data["capability_dimension"] = "other"
-        
-        # 更新数据集
-        dataset = super().update(instance, validated_data)
-        
-        # 异步分析能力维度（只有格式验证通过且有新文件才进行）
-        if file_obj and validated_data.get("capability_tag") == "processing":
-            from apps.tasks.tasks import analyze_dataset_capability
-            analyze_dataset_capability.delay(dataset.id)
-        
-        return dataset
+
+            
+
+            # 更新数据集
+
+            dataset = super().update(instance, validated_data)
+
+            
+
+            # 异步分析能力维度
+
+            if file_obj and validated_data.get("capability_tag") == "processing":
+
+                from apps.tasks.tasks import analyze_dataset_capability
+
+                analyze_dataset_capability.delay(dataset.id)
+
+            
+
+            return dataset
 
 
 class DatasetDetailSerializer(DatasetSerializer):
