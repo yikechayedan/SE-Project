@@ -911,9 +911,11 @@ def try_finalize_task(task_id: int, from_dispatcher: bool = False):
 
         elif method == "adversarial":
             summary_obj = generate_adversarial_summary(task)
+            accurary = summary_obj.accuracy if summary_obj else 0
+            task.accuracy = accurary
             task.status = "completed"
             task.time_used = timezone.now() - task.created_at
-            task.save(update_fields=["status", "time_used"])
+            task.save(update_fields=["status", "accuracy", "time_used"])
 
         # --- Sync Downstream Tasks (For Model Judge / Objective path) ---
         sync_downstream_tasks(task)

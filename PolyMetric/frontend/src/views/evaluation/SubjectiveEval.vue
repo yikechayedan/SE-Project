@@ -19,6 +19,21 @@
               {{ currentItem.item_content.input_query }}
             </blockquote>
             <div v-else class="content-placeholder">请等待问题加载...</div>
+            <div v-if="currentItem.item_content && currentItem.item_content.image_data" class="image-box">
+              <el-image 
+                :src="'data:image/png;base64,' + currentItem.item_content.image_data" 
+                :preview-src-list="['data:image/png;base64,' + currentItem.item_content.image_data]"
+                fit="contain"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>图片加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+              <div class="image-tip">点击图片查看高清大图</div>
+            </div>
             <p class="meta-info">数据集 ID：{{ datasetId }} | 类型：开放式问答</p>
           </el-card>
         </el-col>
@@ -148,7 +163,7 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
-import { Tickets } from '@element-plus/icons-vue';
+import { Tickets, Picture } from '@element-plus/icons-vue';
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
@@ -537,6 +552,43 @@ onMounted(initData);
     color: var(--el-color-primary);
     border-color: var(--el-color-primary-light-3);
     cursor: pointer;
+}
+
+/* 图片容器样式 */
+.image-box {
+  /* 与上方文本容器留下 20px 的间隙 */
+  margin-top: 20px; 
+  
+  /* 视觉上的修饰：边框、圆角和背景 */
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background-color: #fcfcfc;
+  
+  /* 居中显示 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 图片本身的样式 */
+.image-box .el-image {
+  width: 100%;
+  max-height: 450px; /* 限制高度，防止长图撑破屏幕 */
+  border-radius: 4px;
+  cursor: zoom-in; /* 提示用户可以点击放大 */
+  transition: all 0.3s;
+}
+
+/* 鼠标悬停微调 */
+.image-box .el-image:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.image-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 /* --- 底部导航 --- */
 .navigation-footer {
