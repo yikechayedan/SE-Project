@@ -79,7 +79,7 @@
         <div v-if="currentItem">
           <el-card class="prompt-card" shadow="hover">
             <template #header>
-              <span class="section-title prompt-title">问题 (Question) - 条目 ID: {{ currentItem.id }}</span>
+              <span class="section-title prompt-title">问题 (Question)</span>
             </template>
             <blockquote class="prompt-text">
               {{ currentItem.content }}

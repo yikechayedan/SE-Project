@@ -461,7 +461,7 @@ def reuse_task_items_model_aware(old_task, new_task):
     new_items_to_create = []
     
     entries = load_dataset_entries(new_task.dataset)
-    for entry in entries:
+    for i, entry in enumerate(entries):
         content, gold_answer = get_entry_data(entry)
         old_item = old_items.get(content)
         
@@ -503,7 +503,8 @@ def reuse_task_items_model_aware(old_task, new_task):
             correct_answer=gold_answer,
             predicted_answer=pred_1,
             predicted_answer_2=pred_2,
-            is_correct=is_correct  # 写入判分结果
+            is_correct=is_correct,  # 写入判分结果
+            dataset_index=i # 写入数据集索引
         ))
     
     EvaluationItem.objects.bulk_create(new_items_to_create)
@@ -545,7 +546,7 @@ def prepare_evaluation_items(task: EvaluationTask):
     entries = load_dataset_entries(task.dataset)
     items_to_create = []
 
-    for entry in entries:
+    for i, entry in enumerate(entries):
         content, gold_answer = get_entry_data(entry)
         
         if not content:
@@ -563,7 +564,8 @@ def prepare_evaluation_items(task: EvaluationTask):
                 content=content,
                 correct_answer=gold_answer,
                 predicted_answer=pred_1,
-                predicted_answer_2=pred_2
+                predicted_answer_2=pred_2,
+                dataset_index=i # 写入数据集索引
             )
         )
 

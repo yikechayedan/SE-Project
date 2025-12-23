@@ -16,6 +16,7 @@ from .serializers import (
     EvaluationTaskDetailSerializer,
 )
 from .benchmark import run_benchmark
+from apps.system.services import log_task_create
 
 
 User = get_user_model()
@@ -517,11 +518,19 @@ def run_task(request):
                         if task.items.filter(Q(predicted_answer__isnull=True) | Q(predicted_answer_2__isnull=True)).exists():
                             task.status = 'running'
                             task.save(update_fields=['status'])
+                            
+                            # 记录任务启动 (部分复用，仍需运行)
+                            log_task_create(task, request.user)
+                            
                             init_evaluation_task.delay(task.id)
                             return Response({"msg": "已复用部分回答，正在补全其余模型回答...", "status": "running"})
                         else:
                             task.status = 'awaiting_human_judge'
                             task.save(update_fields=['status'])
+                            
+                            # 记录任务启动 (完全复用，进入人工评分)
+                            log_task_create(task, request.user)
+                            
                             return Response({"msg": "所有回答已复用，请开始人工评分。", "status": "awaiting_human_judge"})
                     else:
                         task.status = 'running'
@@ -534,6 +543,10 @@ def run_task(request):
                     task.shared_from = existing_runner
                     task.status = 'running' 
                     task.save(update_fields=['shared_from', 'status'])
+                    
+                    # 记录任务启动 (等待上游)
+                    log_task_create(task, request.user)
+                    
                     return Response({
                         "msg": f"检测到重合任务(ID:{existing_runner.id})正在生成回答，本任务将排队等待其结果以节省开销。",
                         "status": "running"
@@ -542,6 +555,9 @@ def run_task(request):
             # 3. 彻底无重合：正常启动
             task.status = "running"
             task.save()
+            
+            # 记录任务启动 (正常流程)
+            log_task_create(task, request.user)
             
             init_evaluation_task.delay(task_id)
             

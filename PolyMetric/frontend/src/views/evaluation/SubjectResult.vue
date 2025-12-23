@@ -112,7 +112,6 @@
               </el-image>
               <div class="image-tip">点击图片查看高清大图</div>
             </div>
-              <p class="meta-info">条目 ID: {{ currentItem.id }}</p>
             </el-card>
           </el-col>
 

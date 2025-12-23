@@ -19,6 +19,7 @@ class EvaluationItemSerializer(serializers.ModelSerializer):
             "is_correct",
             "score",
             "preference",
+            "dataset_index",
         ]
 
 

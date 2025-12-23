@@ -10,6 +10,7 @@ class SystemEvent(models.Model):
         ('model_add', '模型收录'),      # 蓝色
         ('rank_up', '排名上升'),        # 金色/橙色
         ('task_complete', '评测完成'),  # 灰色
+        ('task_create', '发起评测'),    # 新增：青色/紫色
     ]
 
     # 1. 事件元数据
