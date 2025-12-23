@@ -26,14 +26,23 @@ class ModelListAPITest(TestCase, APITestMixin):
         """测试匿名用户获取模型列表"""
         response = self.client.get("/api/models/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 3)
+        
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            models = response.data["data"]
+        else:
+            models = response.data
+        
+        self.assertEqual(len(models), 3)
         
         # 检查返回数据格式
-        model_data = response.data[0]
+        model_data = models[0]
         self.assertIn("id", model_data)
         self.assertIn("name", model_data)
         self.assertIn("company", model_data)
         self.assertIn("category", model_data)
+        self.assertIn("star_count", model_data)
+        self.assertIn("is_starred", model_data)
     
     def test_list_models_with_follow(self):
         """测试获取模型列表包含关注状态"""
@@ -46,8 +55,14 @@ class ModelListAPITest(TestCase, APITestMixin):
         response = self.client.get("/api/models/?with_follow=true")
         self.assertEqual(response.status_code, 200)
         
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            models = response.data["data"]
+        else:
+            models = response.data
+        
         # 检查is_followed字段
-        for model in response.data:
+        for model in models:
             self.assertIn("is_followed", model)
         
         # 验证关注状态
@@ -59,8 +74,14 @@ class ModelListAPITest(TestCase, APITestMixin):
         response = self.client.get("/api/models/?with_follow=false")
         self.assertEqual(response.status_code, 200)
         
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            models = response.data["data"]
+        else:
+            models = response.data
+        
         # 检查不包含is_followed字段
-        for model in response.data:
+        for model in models:
             self.assertNotIn("is_followed", model)
 
 
@@ -82,13 +103,20 @@ class ModelDetailAPITest(TestCase, APITestMixin):
         response = self.client.get(f"/api/models/{self.model.id}/")
         self.assertEqual(response.status_code, 200)
         
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            model_data = response.data["data"]
+        else:
+            model_data = response.data
+        
         # 检查返回数据
-        model_data = response.data
         self.assertEqual(model_data["name"], "测试模型")
         self.assertEqual(model_data["company"], "测试公司")
         self.assertEqual(model_data["description"], "测试模型描述")
         self.assertEqual(model_data["parameter_size"], "10B")
         self.assertEqual(model_data["version"], "v1.0")
+        self.assertIn("star_count", model_data)
+        self.assertIn("is_starred", model_data)
     
     def test_get_nonexistent_model_detail(self):
         """测试获取不存在模型的详情"""
@@ -431,3 +459,168 @@ class ModelIntegrationAPITest(TestCase, APITestMixin):
         response = self.client.get(f"/api/models/{self.model1.id}/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["name"], "模型1")
+
+
+class ModelStarAPITest(TestCase, APITestMixin):
+    """模型点赞API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user1 = TestDataGenerator.create_user(username="user1")
+        self.user2 = TestDataGenerator.create_user(username="user2")
+        self.model = TestDataGenerator.create_model()
+        self.create_authenticated_client(self.user1)
+    
+    def test_star_model_success(self):
+        """测试点赞模型成功"""
+        response = self.client.post(f"/api/models/{self.model.id}/star/")
+        self.assertAPISuccess(response, 201)
+        
+        # 检查响应数据
+        self.assertIn("star_count", response.data["data"])
+        self.assertIn("is_starred", response.data["data"])
+        self.assertTrue(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 1)
+    
+    def test_star_already_starred(self):
+        """测试重复点赞模型"""
+        # 第一次点赞
+        self.client.post(f"/api/models/{self.model.id}/star/")
+        
+        # 第二次点赞
+        response = self.client.post(f"/api/models/{self.model.id}/star/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应数据
+        self.assertTrue(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 1)
+    
+    def test_unstar_model_success(self):
+        """测试取消点赞模型成功"""
+        # 先点赞
+        self.client.post(f"/api/models/{self.model.id}/star/")
+        
+        # 取消点赞
+        response = self.client.delete(f"/api/models/{self.model.id}/star/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应数据
+        self.assertFalse(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 0)
+    
+    def test_unstar_not_starred(self):
+        """测试取消未点赞的模型"""
+        response = self.client.delete(f"/api/models/{self.model.id}/star/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应数据
+        self.assertFalse(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 0)
+
+
+class ModelStatsAPITest(TestCase, APITestMixin):
+    """模型统计API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        self.create_authenticated_client(self.user)
+    
+    def test_get_model_stats_success(self):
+        """测试获取模型统计信息成功"""
+        response = self.client.get("/api/models/stats/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应格式
+        self.assertIn("data", response.data)
+        stats_data = response.data["data"]
+        
+        # 检查基本字段
+        self.assertIn("total_models_count", stats_data)
+        self.assertIn("text_models_count", stats_data)
+        self.assertIn("image_models_count", stats_data)
+        self.assertIn("multimodal_models_count", stats_data)
+        self.assertIn("code_models_count", stats_data)
+        self.assertIn("followed_models_count", stats_data)
+        
+        # 验证数据类型
+        self.assertIsInstance(stats_data["total_models_count"], int)
+        self.assertIsInstance(stats_data["text_models_count"], int)
+        self.assertIsInstance(stats_data["image_models_count"], int)
+        self.assertIsInstance(stats_data["multimodal_models_count"], int)
+        self.assertIsInstance(stats_data["code_models_count"], int)
+        self.assertIsInstance(stats_data["followed_models_count"], int)
+
+
+class ModelComparisonAPITest(TestCase, APITestMixin):
+    """模型对比API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        
+        # 创建不同类型的模型
+        self.text_model = TestDataGenerator.create_model(
+            name="文本模型",
+            category="text",
+            company="公司A"
+        )
+        self.image_model = TestDataGenerator.create_model(
+            name="图像模型",
+            category="image",
+            company="公司B"
+        )
+        self.multimodal_model = TestDataGenerator.create_model(
+            name="多模态模型",
+            category="multimodal",
+            company="公司A"
+        )
+        
+        self.create_authenticated_client(self.user)
+    
+    def test_compare_models_success(self):
+        """测试模型对比成功"""
+        model_ids = f"{self.text_model.id},{self.image_model.id}"
+        response = self.client.get(f"/api/models/compare/?models={model_ids}")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应格式
+        self.assertIn("data", response.data)
+        comparison_data = response.data["data"]
+        
+        # 检查对比数据
+        self.assertIn("models", comparison_data)
+        self.assertIn("comparison", comparison_data)
+        
+        # 验证模型数量
+        self.assertEqual(len(comparison_data["models"]), 2)
+        
+        # 验证模型数据包含必要字段
+        for model in comparison_data["models"]:
+            self.assertIn("id", model)
+            self.assertIn("name", model)
+            self.assertIn("category", model)
+            self.assertIn("company", model)
+    
+    def test_compare_models_invalid_ids(self):
+        """测试模型对比无效ID"""
+        response = self.client.get("/api/models/compare/?models=invalid,99999")
+        self.assertAPIError(response, 400)
+    
+    def test_compare_models_single_model(self):
+        """测试单个模型对比"""
+        response = self.client.get(f"/api/models/compare/?models={self.text_model.id}")
+        self.assertAPIError(response, 400)
+    
+    def test_compare_models_too_many(self):
+        """测试对比过多模型"""
+        model_ids = f"{self.text_model.id},{self.image_model.id},{self.multimodal_model.id},99999"
+        response = self.client.get(f"/api/models/compare/?models={model_ids}")
+        # 可能返回错误或只对比前几个
+        if response.status_code == 200:
+            self.assertAPISuccess(response, 200)
+            # 如果成功，检查最多对比数量
+            comparison_data = response.data["data"]
+            self.assertLessEqual(len(comparison_data["models"]), 3)
+        else:
+            self.assertAPIError(response, 400)

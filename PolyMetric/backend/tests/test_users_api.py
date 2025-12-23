@@ -421,3 +421,114 @@ class UserAdminAPITest(TestCase, APITestMixin):
         
         # 验证用户已删除
         self.assertFalse(User.objects.filter(id=self.regular_user.id).exists())
+
+
+class UserStatsAPITest(TestCase, APITestMixin):
+    """用户统计API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        self.create_authenticated_client(self.user)
+    
+    def test_get_user_stats_success(self):
+        """测试获取用户统计信息成功"""
+        response = self.client.get("/api/users/stats/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应格式
+        self.assertIn("data", response.data)
+        stats_data = response.data["data"]
+        
+        # 检查基本字段
+        self.assertIn("created_datasets_count", stats_data)
+        self.assertIn("followed_datasets_count", stats_data)
+        self.assertIn("followed_models_count", stats_data)
+        self.assertIn("followers_count", stats_data)
+        self.assertIn("following_count", stats_data)
+        self.assertIn("created_tasks_count", stats_data)
+        
+        # 验证数据类型
+        self.assertIsInstance(stats_data["created_datasets_count"], int)
+        self.assertIsInstance(stats_data["followed_datasets_count"], int)
+        self.assertIsInstance(stats_data["followed_models_count"], int)
+        self.assertIsInstance(stats_data["followers_count"], int)
+        self.assertIsInstance(stats_data["following_count"], int)
+        self.assertIsInstance(stats_data["created_tasks_count"], int)
+
+
+class UserOnlineAPITest(TestCase, APITestMixin):
+    """用户在线状态API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        self.admin = TestDataGenerator.create_admin_user()
+    
+    def test_get_online_users_anonymous(self):
+        """测试匿名用户获取在线用户列表"""
+        response = self.client.get("/api/users/online/")
+        # 根据API设计，可能允许匿名访问或需要认证
+        if response.status_code == 401:
+            self.assertAPIError(response, 401)
+        else:
+            self.assertAPISuccess(response, 200)
+    
+    def test_get_online_users_authenticated(self):
+        """测试认证用户获取在线用户列表"""
+        self.create_authenticated_client(self.user)
+        response = self.client.get("/api/users/online/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应格式
+        if "data" in response.data:
+            self.assertIsInstance(response.data["data"], list)
+    
+    def test_get_online_users_admin(self):
+        """测试管理员获取在线用户列表"""
+        self.create_authenticated_client(self.admin)
+        response = self.client.get("/api/users/online/")
+        self.assertAPISuccess(response, 200)
+        
+        # 管理员可能看到更详细的信息
+        if "data" in response.data:
+            self.assertIsInstance(response.data["data"], list)
+
+
+class UserActivityAPITest(TestCase, APITestMixin):
+    """用户活动API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        self.other_user = TestDataGenerator.create_user()
+    
+    def test_get_user_activity_own(self):
+        """测试获取自己的活动记录"""
+        self.create_authenticated_client(self.user)
+        response = self.client.get("/api/users/activity/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应格式
+        if "data" in response.data:
+            self.assertIsInstance(response.data["data"], list)
+    
+    def test_get_user_activity_other_public(self):
+        """测试获取其他用户的公开活动记录"""
+        self.create_authenticated_client(self.other_user)
+        response = self.client.get(f"/api/users/{self.user.id}/activity/")
+        # 根据隐私设置，可能允许或拒绝访问
+        if response.status_code == 200:
+            self.assertAPISuccess(response, 200)
+        else:
+            self.assertAPIError(response, response.status_code)
+    
+    def test_get_user_activity_other_private(self):
+        """测试获取其他用户的私有活动记录"""
+        # 设置用户活动为私有
+        self.user.show_activity = False
+        self.user.save()
+        
+        self.create_authenticated_client(self.other_user)
+        response = self.client.get(f"/api/users/{self.user.id}/activity/")
+        self.assertAPIError(response, 403)

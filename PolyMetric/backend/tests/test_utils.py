@@ -85,7 +85,12 @@ class TestDataGenerator:
             "is_public": kwargs.get("is_public", True),
             "is_verified": kwargs.get("is_verified", True),
             "creator": creator,
-            **{k: v for k, v in kwargs.items() if k not in ["description", "category", "file_format", "is_public", "is_verified", "creator"]}
+            "evaluation_type": kwargs.get("evaluation_type", "subjective"),
+            "capability_dimension": kwargs.get("capability_dimension", "other"),
+            "capability_tag": kwargs.get("capability_tag", None),
+            "has_images": kwargs.get("has_images", False),
+            "image_count": kwargs.get("image_count", 0),
+            **{k: v for k, v in kwargs.items() if k not in ["description", "category", "file_format", "is_public", "is_verified", "creator", "evaluation_type", "capability_dimension", "capability_tag", "has_images", "image_count"]}
         }
         return Dataset.objects.create(**dataset_data)
     
@@ -108,7 +113,10 @@ class TestDataGenerator:
             "creator": creator,
             "dataset": dataset,
             "myModel": model,
-            **{k: v for k, v in kwargs.items() if k not in ["description", "method", "creator", "dataset", "myModel"]}
+            "myModel_2": kwargs.get("myModel_2", None),
+            "judge_model": kwargs.get("judge_model", None),
+            "judge_type": kwargs.get("judge_type", "human"),
+            **{k: v for k, v in kwargs.items() if k not in ["description", "method", "creator", "dataset", "myModel", "myModel_2", "judge_model", "judge_type"]}
         }
         return EvaluationTask.objects.create(**task_data)
     
@@ -121,10 +129,13 @@ class TestDataGenerator:
         item_data = {
             "task": task,
             "content": kwargs.get("content", "测试内容"),
-            "correct_answer": kwargs.get("correct_answer", "测试答案"),  # 修正字段名
+            "correct_answer": kwargs.get("correct_answer", "测试答案"),
             "predicted_answer": kwargs.get("predicted_answer", "预测答案"),
+            "predicted_answer_2": kwargs.get("predicted_answer_2", None),
             "is_correct": kwargs.get("is_correct", True),
-            **{k: v for k, v in kwargs.items() if k not in ["task", "content", "correct_answer", "predicted_answer", "is_correct"]}
+            "score": kwargs.get("score", None),
+            "preference": kwargs.get("preference", None),
+            **{k: v for k, v in kwargs.items() if k not in ["task", "content", "correct_answer", "predicted_answer", "predicted_answer_2", "is_correct", "score", "preference"]}
         }
         return EvaluationItem.objects.create(**item_data)
     
@@ -165,6 +176,90 @@ class AuthUtils:
         return {
             'HTTP_AUTHORIZATION': f'Bearer {tokens["access"]}'
         }
+
+
+class DatasetTestUtils:
+    """数据集测试工具类"""
+    
+    @staticmethod
+    def create_test_image_dataset():
+        """创建测试图片数据集"""
+        import zipfile
+        import tempfile
+        import json
+        
+        # 创建临时ZIP文件
+        temp_zip = tempfile.NamedTemporaryFile(suffix='.zip', delete=False)
+        
+        with zipfile.ZipFile(temp_zip.name, 'w') as zf:
+            # 添加data.json文件
+            test_data = [
+                {
+                    "id": 1,
+                    "input": "描述这张图片",
+                    "image": "image1.jpg",
+                    "reference": "这是一张测试图片"
+                },
+                {
+                    "id": 2,
+                    "input": "图片中有什么？",
+                    "image": "image2.jpg",
+                    "reference": "图片中有一些测试对象"
+                }
+            ]
+            zf.writestr('data.json', json.dumps(test_data, ensure_ascii=False))
+            
+            # 添加模拟图片文件
+            zf.writestr('image1.jpg', 'fake image data 1')
+            zf.writestr('image2.jpg', 'fake image data 2')
+        
+        return temp_zip.name
+    
+    @staticmethod
+    def create_test_subjective_dataset():
+        """创建测试主观评测数据集"""
+        return [
+            {
+                "id": 1,
+                "input": "写一首关于春天的诗",
+                "reference": "春风拂面绿意浓，花开鸟语乐无穷"
+            },
+            {
+                "id": 2,
+                "input": "解释什么是机器学习",
+                "reference": "机器学习是人工智能的一个分支，让计算机通过数据学习规律"
+            }
+        ]
+    
+    @staticmethod
+    def create_test_objective_dataset():
+        """创建测试客观评测数据集"""
+        return [
+            {
+                "id": 1,
+                "input": "2+2等于多少？",
+                "answer": "4"
+            },
+            {
+                "id": 2,
+                "input": "中国的首都是哪里？",
+                "answer": "北京"
+            }
+        ]
+    
+    @staticmethod
+    def create_test_adversarial_dataset():
+        """创建测试对抗评测数据集"""
+        return [
+            {
+                "id": 1,
+                "input": "比较以下两种编程语言的优缺点"
+            },
+            {
+                "id": 2,
+                "input": "分析这个商业案例的成功因素"
+            }
+        ]
 
 
 class APITestMixin:

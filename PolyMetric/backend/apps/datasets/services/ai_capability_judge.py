@@ -36,7 +36,6 @@ def ai_judge_capability(samples):
         prompt=prompt,
         model_name="DeepSeek-R1-0528"   # 或你们已有的模型名
     )
-    print("🚨 LLM RAW RESPONSE:", repr(response))
     # response 必须是字符串
     if not isinstance(response, str):
         return "language"

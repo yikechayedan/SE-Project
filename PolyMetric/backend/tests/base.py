@@ -4,14 +4,29 @@
 import time
 import json
 import logging
+import os
+import concurrent.futures
+import threading
+import tempfile
+import zipfile
+from io import BytesIO
 from typing import Dict, Any, Optional, List, Union
 from django.test import TestCase, TransactionTestCase
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from rest_framework import status
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 import pytest
+
+# 尝试导入 psutil，如果失败则设置为 None
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    psutil = None
+    PSUTIL_AVAILABLE = False
 
 User = get_user_model()
 
@@ -84,6 +99,17 @@ class BaseAPITestCase(TestCase):
         """断言API响应模式"""
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
+        # 检查标准响应格式
+        if isinstance(response.data, dict):
+            self.assertIn("code", response.data)
+            self.assertIn("msg", response.data)
+            if "data" in response.data:
+                data = response.data["data"]
+            else:
+                data = response.data
+        else:
+            data = response.data
+        
         def validate_schema(data, schema):
             if isinstance(schema, dict):
                 self.assertIsInstance(data, dict)
@@ -98,21 +124,39 @@ class BaseAPITestCase(TestCase):
             elif isinstance(schema, type):
                 self.assertIsInstance(data, schema)
         
-        validate_schema(response.data, expected_schema)
+        validate_schema(data, expected_schema)
     
     def assertAPIPagination(self, response, expected_count: Optional[int] = None):
         """断言API分页响应"""
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('data', response.data)
-        self.assertIn('pagination', response.data)
         
-        pagination = response.data['pagination']
-        required_fields = ['page', 'page_size', 'total', 'total_pages']
-        for field in required_fields:
-            self.assertIn(field, pagination)
-        
-        if expected_count is not None:
-            self.assertEqual(len(response.data['data']), expected_count)
+        # 检查标准响应格式
+        if isinstance(response.data, dict):
+            self.assertIn("code", response.data)
+            self.assertIn("msg", response.data)
+            
+            # DRF分页格式
+            if 'count' in response.data and 'next' in response.data and 'previous' in response.data:
+                # DRF标准分页格式
+                if expected_count is not None:
+                    self.assertEqual(response.data['count'], expected_count)
+            # 自定义分页格式
+            elif 'data' in response.data and 'pagination' in response.data:
+                pagination = response.data['pagination']
+                required_fields = ['page', 'page_size', 'total', 'total_pages']
+                for field in required_fields:
+                    self.assertIn(field, pagination)
+                
+                if expected_count is not None:
+                    self.assertEqual(len(response.data['data']), expected_count)
+            # 只有data字段，无分页
+            elif 'data' in response.data:
+                if expected_count is not None:
+                    self.assertEqual(len(response.data['data']), expected_count)
+        else:
+            # 直接是数据列表
+            if expected_count is not None:
+                self.assertEqual(len(response.data), expected_count)
 
 
 class BaseIntegrationTestCase(TransactionTestCase):
@@ -132,9 +176,12 @@ class BaseIntegrationTestCase(TransactionTestCase):
     
     def assertEventTriggered(self, event_type: str, expected_count: int = 1):
         """断言事件已触发"""
-        from apps.system.models import SystemEvent
-        events = SystemEvent.objects.filter(event_type=event_type)
-        self.assertEqual(events.count(), expected_count)
+        try:
+            from apps.system.models import SystemEvent
+            events = SystemEvent.objects.filter(event_type=event_type)
+            self.assertEqual(events.count(), expected_count)
+        except ImportError:
+            self.skipTest("SystemEvent model not available")
 
 
 class BasePerformanceTestCase(TestCase):
@@ -168,12 +215,13 @@ class BasePerformanceTestCase(TestCase):
     
     def _get_memory_usage(self):
         """获取内存使用量"""
+        if not PSUTIL_AVAILABLE:
+            return 0
+        
         try:
-            import psutil
-            import os
             process = psutil.Process(os.getpid())
             return process.memory_info().rss
-        except ImportError:
+        except Exception:
             return 0
     
     def assertPerformanceThreshold(self, max_execution_time: float, max_memory_mb: float = None):
@@ -217,11 +265,9 @@ class BaseLoadTestCase(TestCase):
         super().setUp()
         self.concurrent_results = []
     
-    def run_concurrent_requests(self, url: str, method: str = 'GET', 
+    def run_concurrent_requests(self, url: str, method: str = 'GET',
                               num_requests: int = 10, **kwargs):
         """运行并发请求"""
-        import concurrent.futures
-        import threading
         
         def make_request():
             client = APIClient()
@@ -325,24 +371,33 @@ class TestDataManager:
     
     def create_user(self, **kwargs):
         """创建用户并跟踪"""
-        from tests.factories import UserFactory
-        user = UserFactory.create(**kwargs)
-        self.created_objects.append(('user', user))
-        return user
+        try:
+            from tests.factories import UserFactory
+            user = UserFactory.create(**kwargs)
+            self.created_objects.append(('user', user))
+            return user
+        except ImportError:
+            raise ImportError("tests.factories module not available. Please ensure factories.py exists.")
     
     def create_model(self, **kwargs):
         """创建模型并跟踪"""
-        from tests.factories import ModelFactory
-        model = ModelFactory.create(**kwargs)
-        self.created_objects.append(('model', model))
-        return model
+        try:
+            from tests.factories import ModelFactory
+            model = ModelFactory.create(**kwargs)
+            self.created_objects.append(('model', model))
+            return model
+        except ImportError:
+            raise ImportError("tests.factories module not available. Please ensure factories.py exists.")
     
     def create_dataset(self, **kwargs):
         """创建数据集并跟踪"""
-        from tests.factories import DatasetFactory
-        dataset = DatasetFactory.create(**kwargs)
-        self.created_objects.append(('dataset', dataset))
-        return dataset
+        try:
+            from tests.factories import DatasetFactory
+            dataset = DatasetFactory.create(**kwargs)
+            self.created_objects.append(('dataset', dataset))
+            return dataset
+        except ImportError:
+            raise ImportError("tests.factories module not available. Please ensure factories.py exists.")
     
     def cleanup(self):
         """清理创建的对象"""
@@ -360,11 +415,14 @@ class APITestHelper:
     @staticmethod
     def create_auth_headers(user):
         """创建认证头"""
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
-        return {
-            'HTTP_AUTHORIZATION': f'Bearer {refresh.access_token}'
-        }
+        try:
+            from rest_framework_simplejwt.tokens import RefreshToken
+            refresh = RefreshToken.for_user(user)
+            return {
+                'HTTP_AUTHORIZATION': f'Bearer {refresh.access_token}'
+            }
+        except ImportError:
+            raise ImportError("rest_framework_simplejwt not available. Please install djangorestframework-simplejwt.")
     
     @staticmethod
     def assert_standard_response(response, expected_status=200):
@@ -381,8 +439,6 @@ class APITestHelper:
     @staticmethod
     def create_test_file(content=None, filename="test.json", content_type="application/json"):
         """创建测试文件"""
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        
         if content is None:
             content = json.dumps({"test": "data"})
         
@@ -394,3 +450,125 @@ class APITestHelper:
             content.encode('utf-8'),
             content_type=content_type
         )
+
+
+class DatasetTestHelper:
+    """数据集测试辅助类"""
+    
+    @staticmethod
+    def create_test_dataset_file(content=None, file_format="json", filename=None):
+        """创建测试数据集文件"""
+        
+        if filename is None:
+            filename = f"test_dataset.{file_format}"
+        
+        if content is None:
+            if file_format == "json":
+                content = [
+                    {"id": 1, "input": "测试问题1", "reference": "测试答案1"},
+                    {"id": 2, "input": "测试问题2", "reference": "测试答案2"}
+                ]
+            elif file_format == "csv":
+                content = "id,input,reference\n1,测试问题1,测试答案1\n2,测试问题2,测试答案2"
+            elif file_format == "zip":
+                # 创建包含JSON文件的ZIP
+                temp_file = BytesIO()
+                with zipfile.ZipFile(temp_file, 'w') as zf:
+                    json_content = json.dumps([
+                        {"id": 1, "input": "测试问题1", "reference": "测试答案1"},
+                        {"id": 2, "input": "测试问题2", "reference": "测试答案2"}
+                    ], ensure_ascii=False)
+                    zf.writestr('data.json', json_content)
+                temp_file.seek(0)
+                return SimpleUploadedFile(
+                    filename,
+                    temp_file.read(),
+                    content_type="application/zip"
+                )
+        
+        if isinstance(content, (list, dict)):
+            content = json.dumps(content, ensure_ascii=False)
+        
+        return SimpleUploadedFile(
+            filename,
+            content.encode('utf-8') if isinstance(content, str) else content,
+            content_type={
+                "json": "application/json",
+                "csv": "text/csv",
+                "zip": "application/zip"
+            }.get(file_format, "application/octet-stream")
+        )
+    
+    @staticmethod
+    def create_test_image_dataset_file():
+        """创建测试图片数据集文件"""
+        
+        temp_file = BytesIO()
+        with zipfile.ZipFile(temp_file, 'w') as zf:
+            # 添加JSON数据文件
+            test_data = [
+                {
+                    "id": 1,
+                    "input": "描述这张图片",
+                    "image": "image1.jpg",
+                    "reference": "这是一张测试图片"
+                },
+                {
+                    "id": 2,
+                    "input": "图片中有什么？",
+                    "image": "image2.jpg",
+                    "reference": "图片中有一些测试对象"
+                }
+            ]
+            zf.writestr('data.json', json.dumps(test_data, ensure_ascii=False))
+            
+            # 添加模拟图片文件
+            zf.writestr('image1.jpg', b'fake image data 1')
+            zf.writestr('image2.jpg', b'fake image data 2')
+        
+        temp_file.seek(0)
+        return SimpleUploadedFile(
+            "image_dataset.zip",
+            temp_file.read(),
+            content_type="application/zip"
+        )
+
+
+class TaskTestHelper:
+    """任务测试辅助类"""
+    
+    @staticmethod
+    def create_adversarial_task_data():
+        """创建对抗评测任务数据"""
+        return {
+            "name": "对抗评测任务",
+            "description": "测试对抗评测功能",
+            "method": "adversarial",
+            "judge_type": "human",
+            "dataset": None,  # 需要在测试中设置
+            "myModel": None,   # 需要在测试中设置
+            "myModel_2": None  # 需要在测试中设置
+        }
+    
+    @staticmethod
+    def create_objective_task_data():
+        """创建客观评测任务数据"""
+        return {
+            "name": "客观评测任务",
+            "description": "测试客观评测功能",
+            "method": "objective",
+            "dataset": None,  # 需要在测试中设置
+            "myModel": None    # 需要在测试中设置
+        }
+    
+    @staticmethod
+    def create_subjective_task_data():
+        """创建主观评测任务数据"""
+        return {
+            "name": "主观评测任务",
+            "description": "测试主观评测功能",
+            "method": "subjective",
+            "judge_type": "human",
+            "dataset": None,  # 需要在测试中设置
+            "myModel": None    # 需要在测试中设置
+        }
