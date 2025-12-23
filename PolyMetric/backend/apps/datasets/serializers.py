@@ -303,7 +303,6 @@ class DatasetSerializer(serializers.ModelSerializer):
         """
         根据测评类型验证数据格式
         """
-<<<<<<< Updated upstream
         if len(data) == 0:
             raise serializers.ValidationError("数据集不能为空")
         
@@ -324,12 +323,6 @@ class DatasetSerializer(serializers.ModelSerializer):
             option_pattern = re.compile(r"\b([A-Z])\.", re.IGNORECASE)
 
             for i, item in enumerate(data):
-=======
-        # 根据测评类型验证格式（图像数据集也需要遵循测评类型的字段要求）
-        if evaluation_type == "subjective":
-            # 主观测评：每个项目必须包含 input 和 reference 字段
-            for i, item in enumerate(data[:5]):  # 只检查前5个项目，提高性能
->>>>>>> Stashed changes
                 if not isinstance(item, dict):
                     raise serializers.ValidationError(f"第 {i+1} 条客观题必须是对象（dict）")
 
@@ -556,32 +549,36 @@ class DatasetSerializer(serializers.ModelSerializer):
         file_format = validated_data.get("file_format")
 
         if file_obj and file_format:
-            # 1️⃣ 抽样
-            samples = self._sample_dataset(file_obj, file_format)
             # 验证数据集格式
             self.validate_dataset_format(file_obj, evaluation_type, validated_data.get("category"))
             
-            # 计算文件大小 (MB)
-
-            # 2️⃣ AI 判断能力标签
-            if samples:
-                capability = ai_judge_capability(samples)
-                validated_data["capability_tag"] = capability
-                validated_data["capability_dimension"] = capability
-
-                        # 统计样本数量
+            # 统计样本数量和图片信息
             file_format = validated_data.get("file_format", "").lower()
             validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)
+            
+            # 设置默认能力标签，后续异步更新
+            validated_data["capability_tag"] = "processing"
+            validated_data["capability_dimension"] = "other"
         else:
             validated_data["file_size"] = 0.0
             validated_data["sample_count"] = 0
             validated_data["has_images"] = False
             validated_data["image_count"] = 0
+            validated_data["capability_tag"] = "other"
+            validated_data["capability_dimension"] = "other"
 
-        return super().create(validated_data)
+        # 创建数据集
+        dataset = super().create(validated_data)
+        
+        # 异步分析能力维度（如果有文件）
+        if file_obj and file_format:
+            from apps.tasks.tasks import analyze_dataset_capability
+            analyze_dataset_capability.delay(dataset.id)
+        
+        return dataset
 
 
     def update(self, instance, validated_data):
@@ -606,21 +603,24 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             file_format = validated_data.get("file_format", instance.file_format).lower()
             
-            # 1️⃣ 抽样用于AI判断
-            samples = self._sample_dataset(file_obj, file_format)
-            
-            # 2️⃣ AI 判断能力标签
-            if samples:
-                capability = ai_judge_capability(samples)
-                validated_data["capability_tag"] = capability
-                validated_data["capability_dimension"] = capability
-            
             # 统计样本数量和图片信息
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)
+            
+            # 设置默认能力标签，后续异步更新
+            validated_data["capability_tag"] = "processing"
+            validated_data["capability_dimension"] = "other"
         
-        return super().update(instance, validated_data)
+        # 更新数据集
+        dataset = super().update(instance, validated_data)
+        
+        # 异步分析能力维度（如果有新文件）
+        if file_obj:
+            from apps.tasks.tasks import analyze_dataset_capability
+            analyze_dataset_capability.delay(dataset.id)
+        
+        return dataset
 
 
 class DatasetDetailSerializer(DatasetSerializer):

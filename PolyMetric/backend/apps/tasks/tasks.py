@@ -107,3 +107,67 @@ def _mark_task_failed(task_id, error_msg):
     except:
         pass
 
+@shared_task(bind=True)
+def analyze_dataset_capability(self, dataset_id):
+    """
+    异步分析数据集能力维度
+    在数据集上传后，通过Celery异步调用大模型判断数据集的能力维度
+    """
+    try:
+        from apps.datasets.models import Dataset
+        from apps.datasets.services.ai_capability_judge import ai_judge_capability
+        
+        # 获取数据集
+        dataset = Dataset.objects.get(id=dataset_id)
+        
+        # 如果已经有能力标签，直接返回
+        if dataset.capability_tag:
+            return f"Dataset {dataset_id} already has capability tag: {dataset.capability_tag}"
+        
+        # 检查是否有文件
+        if not dataset.has_file():
+            dataset.capability_tag = "other"
+            dataset.capability_dimension = "other"
+            dataset.save(update_fields=["capability_tag", "capability_dimension"])
+            return f"Dataset {dataset_id} has no file, set to 'other'"
+        
+        # 从文件中抽样
+        from apps.datasets.serializers import DatasetSerializer
+        serializer = DatasetSerializer()
+        samples = serializer._sample_dataset(dataset.file_path, dataset.file_format, limit=5)
+        
+        if not samples:
+            dataset.capability_tag = "other"
+            dataset.capability_dimension = "other"
+            dataset.save(update_fields=["capability_tag", "capability_dimension"])
+            return f"Dataset {dataset_id} has no valid samples, set to 'other'"
+        
+        # 调用AI判断能力
+        capability = ai_judge_capability(samples)
+        
+        # 更新数据集
+        dataset.capability_tag = capability
+        dataset.capability_dimension = capability
+        dataset.save(update_fields=["capability_tag", "capability_dimension"])
+        
+        return f"Dataset {dataset_id} capability analyzed and set to: {capability}"
+        
+    except Dataset.DoesNotExist:
+        return f"Dataset {dataset_id} not found"
+    except Exception as e:
+        error_msg = f"Error analyzing dataset {dataset_id}: {str(e)}"
+        print(error_msg)
+        import traceback
+        print(traceback.format_exc())
+        
+        # 尝试更新数据集为默认值
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+            dataset.capability_tag = "other"
+            dataset.capability_dimension = "other"
+            dataset.save(update_fields=["capability_tag", "capability_dimension"])
+        except:
+            pass
+            
+        return error_msg
+

@@ -840,3 +840,23 @@ class FollowedDatasetsListAPIView(generics.ListAPIView):
                 to_attr='datasetfollow'
             )
         ).order_by('-followers__created_at')
+
+    @action(detail=True, methods=["get"])
+    def capability_status(self, request, pk=None):
+        """查询数据集能力分析状态"""
+        dataset = self.get_object()
+        
+        # 检查是否正在处理
+        is_processing = dataset.capability_tag == "processing"
+        
+        return Response({
+            "code": 200,
+            "msg": "查询成功",
+            "data": {
+                "dataset_id": dataset.id,
+                "capability_tag": dataset.capability_tag,
+                "capability_dimension": dataset.capability_dimension,
+                "is_processing": is_processing,
+                "has_file": dataset.has_file()
+            }
+        })
