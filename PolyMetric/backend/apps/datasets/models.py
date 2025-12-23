@@ -24,6 +24,9 @@ class Dataset(models.Model):
     # 新增：能力维度，用于排行榜聚合计算
     CAPABILITY_CHOICES = [
         ('processing', '处理中'),
+        ('no_file', '文件缺失'),
+        ('no_samples', '无有效样本'),
+        ('analysis_failed', '分析失败'),
         ('language', '语言理解'),
         ('math', '数学推理'),
         ('code', '代码能力'),
@@ -81,6 +84,9 @@ class Dataset(models.Model):
         max_length=20,
         choices=[
             ("processing", "处理中"),
+            ("no_file", "文件缺失"),
+            ("no_samples", "无有效样本"),
+            ("analysis_failed", "分析失败"),
             ("language", "语言分析"),
             ("reasoning", "逻辑推理"),
             ("coding", "代码能力"),

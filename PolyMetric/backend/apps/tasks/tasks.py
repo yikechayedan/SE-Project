@@ -120,16 +120,23 @@ def analyze_dataset_capability(self, dataset_id):
         # 获取数据集
         dataset = Dataset.objects.get(id=dataset_id)
         
-        # 如果已经有能力标签，直接返回
-        if dataset.capability_tag:
+        # 如果已经有能力标签且不是processing状态，直接返回
+        if dataset.capability_tag and dataset.capability_tag != "processing":
             return f"Dataset {dataset_id} already has capability tag: {dataset.capability_tag}"
         
         # 检查是否有文件
         if not dataset.has_file():
-            dataset.capability_tag = "other"
+            dataset.capability_tag = "no_file"
             dataset.capability_dimension = "other"
             dataset.save(update_fields=["capability_tag", "capability_dimension"])
-            return f"Dataset {dataset_id} has no file, set to 'other'"
+            # 记录错误信息到数据集描述中
+            error_description = "\n\n[系统提示] 数据集文件缺失，无法进行能力分析。"
+            if dataset.description:
+                dataset.description = f"{dataset.description}{error_description}"
+            else:
+                dataset.description = error_description.strip()
+            dataset.save(update_fields=["description"])
+            return f"Dataset {dataset_id} has no file, set to 'no_file'"
         
         # 从文件中抽样
         from apps.datasets.serializers import DatasetSerializer
@@ -137,13 +144,35 @@ def analyze_dataset_capability(self, dataset_id):
         samples = serializer._sample_dataset(dataset.file_path, dataset.file_format, limit=5)
         
         if not samples:
-            dataset.capability_tag = "other"
+            dataset.capability_tag = "no_samples"
             dataset.capability_dimension = "other"
             dataset.save(update_fields=["capability_tag", "capability_dimension"])
-            return f"Dataset {dataset_id} has no valid samples, set to 'other'"
+            # 记录错误信息到数据集描述中
+            error_description = "\n\n[系统提示] 数据集文件中没有有效的样本数据，无法进行能力分析。"
+            if dataset.description:
+                dataset.description = f"{dataset.description}{error_description}"
+            else:
+                dataset.description = error_description.strip()
+            dataset.save(update_fields=["description"])
+            return f"Dataset {dataset_id} has no valid samples, set to 'no_samples'"
         
         # 调用AI判断能力
-        capability = ai_judge_capability(samples)
+        try:
+            capability = ai_judge_capability(samples)
+        except Exception as ai_error:
+            # AI调用失败
+            error_msg = f"AI分析失败: {str(ai_error)}"
+            dataset.capability_tag = "analysis_failed"
+            dataset.capability_dimension = "other"
+            dataset.save(update_fields=["capability_tag", "capability_dimension"])
+            # 记录错误信息到数据集描述中
+            error_description = f"\n\n[系统提示] 能力分析失败: {error_msg}。请检查数据集格式或稍后重试。"
+            if dataset.description:
+                dataset.description = f"{dataset.description}{error_description}"
+            else:
+                dataset.description = error_description.strip()
+            dataset.save(update_fields=["description"])
+            return f"Dataset {dataset_id} AI analysis failed: {error_msg}"
         
         # 更新数据集
         dataset.capability_tag = capability
@@ -160,12 +189,19 @@ def analyze_dataset_capability(self, dataset_id):
         import traceback
         print(traceback.format_exc())
         
-        # 尝试更新数据集为默认值
+        # 尝试更新数据集为错误状态
         try:
             dataset = Dataset.objects.get(id=dataset_id)
-            dataset.capability_tag = "other"
+            dataset.capability_tag = "analysis_failed"
             dataset.capability_dimension = "other"
             dataset.save(update_fields=["capability_tag", "capability_dimension"])
+            # 记录错误信息到数据集描述中
+            error_description = f"\n\n[系统提示] 分析过程中发生错误: {str(e)}。请检查数据集格式或联系管理员。"
+            if dataset.description:
+                dataset.description = f"{dataset.description}{error_description}"
+            else:
+                dataset.description = error_description.strip()
+            dataset.save(update_fields=["description"])
         except:
             pass
             

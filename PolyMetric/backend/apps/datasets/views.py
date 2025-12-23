@@ -610,8 +610,14 @@ class DatasetViewSet(viewsets.ModelViewSet):
         dataset = self.get_object()
         dataset.is_verified = True
         dataset.save()
+        
+        # 如果数据集正在处理中，且格式验证失败，重新触发分析
+        if dataset.capability_tag == "other" and dataset.has_file():
+            from apps.tasks.tasks import analyze_dataset_capability
+            analyze_dataset_capability.delay(dataset.id)
+        
         return Response({
-            "code": 200, 
+            "code": 200,
             "msg": "数据集审核通过"
         })
 
@@ -857,6 +863,7 @@ class FollowedDatasetsListAPIView(generics.ListAPIView):
                 "capability_tag": dataset.capability_tag,
                 "capability_dimension": dataset.capability_dimension,
                 "is_processing": is_processing,
+                "is_verified": dataset.is_verified,
                 "has_file": dataset.has_file()
             }
         })
