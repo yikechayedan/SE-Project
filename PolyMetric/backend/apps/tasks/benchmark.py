@@ -18,7 +18,7 @@ User = get_user_model()
 # ---------------------------------------------------------
 # 工具：单模型评测（带重试 + 超时）
 # ---------------------------------------------------------
-def evaluate_single_model(creator, dataset, method="objective", max_retry=2):
+def evaluate_single_model(creator, dataset,model , method="objective", max_retry=2):
     """
     针对单个模型执行评测，带：失败自动重试
     """
@@ -121,7 +121,7 @@ def run_benchmark(creator, dataset_id, model_ids, method="objective", max_worker
 
         for future in as_completed(future_to_model):
             try:
-                res = future.result(timeout=120)
+                res = future.result()
             except Exception as e:
                 model = future_to_model[future]
                 results.append({

@@ -4,6 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from apps.users.models import UserStar
 import os
 import json
+from apps.datasets.services.ai_capability_judge import ai_judge_capability
 
 
 class DatasetSerializer(serializers.ModelSerializer):
@@ -26,15 +27,62 @@ class DatasetSerializer(serializers.ModelSerializer):
     # 2. 当前用户状态
     is_starred = serializers.SerializerMethodField()
 
+    def _sample_dataset(self, file_obj, file_format, limit=5):
+        """
+        从数据集中抽样前 N 条，用于 AI 判断能力标签
+        """
+        file_obj.seek(0)
+        content = file_obj.read()
+
+        import  csv, io
+
+        if file_format == "json":
+            try:
+                data = json.loads(content.decode("utf-8"))
+                if isinstance(data, list):
+                    return data[:limit]
+            except Exception:
+                return []
+
+        if file_format == "csv":
+            try:
+                text = content.decode("utf-8", errors="ignore")
+                reader = csv.DictReader(io.StringIO(text))
+                return list(reader)[:limit]
+            except Exception:
+                return []
+
+        return []
+
+    
+    def ai_judge_capability(samples):
+        prompt = build_prompt(samples)
+        response = call_llm_api(prompt)
+
+        tag = response.strip().lower()
+
+        if tag not in ["language", "reasoning", "coding"]:
+            return "language"  # 兜底
+
+        return tag
+    
+
+    
     class Meta:
         model = Dataset
         fields = [
             "id", "name", "description", "category", "capability_dimension", "evaluation_type", "file_format",
             "file_size", "sample_count", "creator", "creator_id", "creator_username",
             "is_public", "is_verified", "is_followed", "has_file", "star_count", "is_starred",
-            "created_at", "updated_at", "file_url", "file_path", "has_images", "image_count"
+            "created_at", "updated_at", "file_url", "file_path","capability_tag","has_images", "image_count"
         ]
-        read_only_fields = ["id", "creator", "file_size", "sample_count", "created_at", "updated_at", "is_verified", "star_count", "is_starred", "has_images", "image_count"]
+        read_only_fields = [
+            "id", "creator", "file_size", "sample_count", "created_at", 
+            "updated_at", "is_verified", "star_count", "is_starred",
+            "capability_tag","has_images", "image_count"
+        ]
+
+
         extra_kwargs = {
             'file_path': {'write_only': True, 'required': False}
         }
@@ -353,7 +401,6 @@ class DatasetSerializer(serializers.ModelSerializer):
                 # ZIP: 返回JSON文件中的数据条目数量，如果没有JSON则返回文件数量
                 import zipfile
                 import io
-                import json
                 try:
                     with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
                         # 查找JSON文件
@@ -401,20 +448,29 @@ class DatasetSerializer(serializers.ModelSerializer):
             file_obj.seek(0)
 
     def create(self, validated_data):
-        """创建数据集"""
         validated_data["creator"] = self.context["request"].user
-        
+
         file_obj = validated_data.get("file_path")
         evaluation_type = validated_data.get("evaluation_type", "subjective")
-        
-        if file_obj:
+        file_format = validated_data.get("file_format")
+
+        if file_obj and file_format:
+            # 1️⃣ 抽样
+            samples = self._sample_dataset(file_obj, file_format)
             # 验证数据集格式
             self.validate_dataset_format(file_obj, evaluation_type, validated_data.get("category"))
             
             # 计算文件大小 (MB)
-            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
-            # 统计样本数量
+
+            # 2️⃣ AI 判断能力标签
+            if samples:
+                capability = ai_judge_capability(samples)
+                validated_data["capability_tag"] = capability
+                validated_data["capability_dimension"] = capability
+
+                        # 统计样本数量
             file_format = validated_data.get("file_format", "").lower()
+            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)
@@ -423,8 +479,9 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["sample_count"] = 0
             validated_data["has_images"] = False
             validated_data["image_count"] = 0
-        
+
         return super().create(validated_data)
+
 
     def update(self, instance, validated_data):
         """更新数据集"""

@@ -1,0 +1,45 @@
+POST http://127.0.0.1:8000/api/datasets/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY2NDE4NTczLCJpYXQiOjE3NjY0MTQ5NzMsImp0aSI6ImU5MmE1MWEzNjM3ZDRkMWRhYzE0YzM0ZjRiZTQ5MTVjIiwidXNlcl9pZCI6IjEifQ.mFdfLh7laCpgLws8sOKEHjeCCqXb2bWnoge88ndkpB4
+Content-Type: multipart/form-data; boundary=----PolyMetricBoundary
+
+------PolyMetricBoundary
+Content-Disposition: form-data; name="name"
+
+objectivejudge
+------PolyMetricBoundary
+Content-Disposition: form-data; name="category"
+
+text
+------PolyMetricBoundary
+Content-Disposition: form-data; name="evaluation_type"
+
+objective
+------PolyMetricBoundary
+Content-Disposition: form-data; name="file_format"
+
+json
+------PolyMetricBoundary
+Content-Disposition: form-data; name="is_public"
+
+true
+------PolyMetricBoundary
+Content-Disposition: form-data; name="file_path"; filename="objective.json"
+Content-Type: application/json
+
+[
+  {
+    "input": "2 + 2 等于多少？",
+    "answer": "4"
+  },
+  {
+    "input": "中国的首都是哪里？",
+    "answer": "北京"
+  },
+  {
+    "input": "HTTP 状态码 404 表示什么？",
+    "answer": "资源未找到"
+  }
+]
+
+
+------PolyMetricBoundary--

@@ -80,7 +80,7 @@
                 class="option-item"
                 :class="{ 
                   'is-correct-option': optKey === scope.row.correct_answer,
-                  'is-wrong-prediction': scope.row.is_correct !== 1 && optKey === scope.row.predicted_answer
+                  'is-wrong-prediction': scope.row.is_correct !== 1 && optKey === (scope.row.predicted_answer ? scope.row.predicted_answer.trim().toUpperCase() : '')
                 }"
               >
                 <span class="option-key">{{ optKey }}.</span>
@@ -94,7 +94,7 @@
                   正确答案
                 </el-tag>
                 <el-tag 
-                  v-if="scope.row.is_correct !== 1 && optKey === scope.row.predicted_answer" 
+                  v-if="scope.row.is_correct !== 1 && optKey === (scope.row.predicted_answer ? scope.row.predicted_answer.trim().toUpperCase() : '')" 
                   size="small" 
                   type="danger" 
                   effect="plain" 
@@ -104,17 +104,18 @@
               </div>
             </div>
 
-            <!-- 【新增】如果模型回答不在选项中（如 Error 或 输出格式错误），显式展示 -->
-            <div v-if="scope.row.predicted_answer && !parseContent(scope.row.content).options[scope.row.predicted_answer]" class="raw-prediction-box">
+            <!-- 【优化】只有当模型回答清洗后仍匹配不到选项时，才显示原始回答框 -->
+            <div v-if="scope.row.predicted_answer && !parseContent(scope.row.content).options[scope.row.predicted_answer.trim().toUpperCase()]" class="raw-prediction-box">
               <span class="raw-label">模型原始回答：</span>
-              <el-tag type="warning" size="small">{{ scope.row.predicted_answer }}</el-tag>
+              <el-tag type="warning" size="small">{{ scope.row.predicted_answer.trim() }}</el-tag>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="判定" width="100" align="center">
           <template #default="scope">
             <el-icon v-if="scope.row.is_correct === 1" class="result-icon correct-icon"><Check /></el-icon>
-            <el-icon v-else class="result-icon incorrect-icon"><Close /></el-icon>
+            <el-icon v-else-if="scope.row.is_correct === 0" class="result-icon incorrect-icon"><Close /></el-icon>
+            <el-icon v-else class="result-icon unknown-icon" style="color: #909399;"><Minus /></el-icon>
           </template>
         </el-table-column>
       </el-table>
