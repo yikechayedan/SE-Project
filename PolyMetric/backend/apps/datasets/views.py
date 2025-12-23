@@ -767,7 +767,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
         return entries, fields
     
     @action(detail=False, methods=["get"])
-    def followed(self, request):
+    def user_followed(self, request):
         """获取关注的数据集列表，支持user_id参数"""
         user_id = request.query_params.get('user_id')
         

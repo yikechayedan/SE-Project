@@ -15,6 +15,7 @@ if "%1"=="--simple" goto run_simple
 if "%1"=="--django" goto run_django
 if "%1"=="--coverage" goto run_coverage
 if "%1"=="--performance" goto run_performance
+if "%1"=="--updated" goto run_updated
 
 :: 默认运行Django测试
 goto run_django
@@ -27,6 +28,7 @@ echo 选项:
 echo   --django       运行Django测试套件（默认）
 echo   --advanced     运行高级测试套件
 echo   --simple       运行简化测试套件
+echo   --updated      运行更新后的测试套件（推荐）
 echo   --coverage     运行带覆盖率的测试
 echo   --performance  运行性能测试
 echo   --help, -h, /? 显示此帮助信息
@@ -36,6 +38,7 @@ echo   run_tests.bat
 echo   run_tests.bat --django
 echo   run_tests.bat --advanced
 echo   run_tests.bat --simple
+echo   run_tests.bat --updated
 echo   run_tests.bat --coverage
 echo   run_tests.bat --performance
 echo.
@@ -70,6 +73,12 @@ goto end
 echo.
 echo 运行性能测试...
 python run_advanced_tests.py --categories performance --benchmark
+goto end
+
+:run_updated
+echo.
+echo 运行更新后的测试套件...
+python run_updated_tests.py
 goto end
 
 :end
