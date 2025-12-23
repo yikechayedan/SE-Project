@@ -1,4 +1,5 @@
 <template>
+
   <div class="report-detail">
     <div v-if="reportData && reportData.id" class="report-content">
       
@@ -104,6 +105,16 @@
               </div>
             </div>
 
+            <div v-if="scope.row.image_data" class="image-box">
+              <img 
+                :src="'data:image/png;base64,' + scope.row.image_data" 
+                class="eval-image"
+                style="cursor: zoom-in; width: 50%; border-radius: 4px;"
+                @click="onPreview(scope.row.image_data)"
+              />
+              <div class="image-tip">点击打开交互式预览</div>
+            </div>
+
             <!-- 【优化】只有当模型回答清洗后仍匹配不到选项时，才显示原始回答框 -->
             <div v-if="scope.row.predicted_answer && !parseContent(scope.row.content).options[scope.row.predicted_answer.trim().toUpperCase()]" class="raw-prediction-box">
               <span class="raw-label">模型原始回答：</span>
@@ -128,7 +139,7 @@
             @click="handlePrevious" 
             :disabled="currentPage === 1"
           >
-            <el-icon><ArrowLeft /></el-icon> 上一题
+            <el-icon><ArrowLeft /></el-icon> 上一页
           </el-button>
         </div>
 
@@ -164,7 +175,7 @@
             @click="handleNext" 
             :disabled="currentPage >= Math.ceil(filteredItems.length / pageSize)"
           >
-            下一题 <el-icon><ArrowRight /></el-icon>
+            下一页 <el-icon><ArrowRight /></el-icon>
           </el-button>
         </div>
       </div>
@@ -172,12 +183,35 @@
     
     <el-empty v-else :description="errorMessage || '未找到评测报告'" />
 
+    <el-dialog 
+      v-model="previewVisible" 
+      title="查看图片"
+      width="80%"
+      append-to-body
+      destroy-on-close
+      custom-class="large-image-dialog"
+    >
+      <div class="preview-container">
+        <img :src="currentPreviewImg" style="max-width: 100%; max-height: 80vh; object-fit: contain;" />
+      </div>
+    </el-dialog>
+
+    <teleport to="body">
+      <el-image-viewer
+        v-if="showViewer"
+        :url-list="previewSrcList"
+        :initial-index="initialIndex"
+        @close="closeViewer"
+        :z-index="9999"
+      />
+    </teleport>
+
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, defineProps } from 'vue'
-import { Document, Check, Close, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { Document, Check, Close, ArrowLeft, ArrowRight, Picture } from '@element-plus/icons-vue'
 import { getEvaluationTaskDetail } from '@/api/tasks.js'
 
 const currentPage = ref(1)
@@ -267,6 +301,27 @@ const parseContent = (fullText) => {
 
   return { question, options };
 };
+
+// 控制预览对话框的显示隐藏
+const previewVisible = ref(false)
+// 存储当前正在预览的图片 Base64 数据
+const currentPreviewImg = ref('')
+const showViewer = ref(false) // 控制预览器开关
+const previewSrcList = ref([]) // 预览图片数组
+const initialIndex = ref(0)    // 初始展示哪一张
+
+// 点击图片触发
+const onPreview = (imgData) => {
+  const fullUrl = 'data:image/png;base64,' + imgData
+  previewSrcList.value = [fullUrl]
+  initialIndex.value = 0
+  showViewer.value = true
+}
+
+// 关闭预览
+const closeViewer = () => {
+  showViewer.value = false
+}
 
 // ===================== 辅助函数 (保持不变) =====================
 const formatTimeUsed = (timeStr) => {
@@ -683,6 +738,52 @@ onMounted(() => {
   color: #f56c6c;
 }
 
+/* 图片容器样式 */
+.image-box {
+  /* 与上方文本容器留下 20px 的间隙 */
+  margin-top: 20px; 
+  
+  /* 视觉上的修饰：边框、圆角和背景 */
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background-color: #fcfcfc;
+  
+  /* 居中显示 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.image-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 容器居中 */
+.preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  background-color: #f9f9f9; /* 可选：增加浅色背景衬托图片 */
+}
+
+/* 如果觉得默认背景太黑或太透，可以微调 */
+:deep(.el-image-viewer__mask) {
+  opacity: 0.8;
+  background-color: #000;
+}
+
+/* 确保工具栏按钮清晰 */
+:deep(.el-image-viewer__btn) {
+  color: #fff;
+}
+/* 去掉对话框默认内边距（可选，让图片更紧凑） */
+:deep(.el-dialog__body) {
+  padding: 20px !important;
+}
 /* Descriptions Dark Mode Override */
 :deep(.el-descriptions__label) {
   background-color: var(--bg-secondary) !important;
@@ -701,4 +802,5 @@ onMounted(() => {
 :deep(.el-divider) {
   border-color: var(--border-color);
 }
+
 </style>
