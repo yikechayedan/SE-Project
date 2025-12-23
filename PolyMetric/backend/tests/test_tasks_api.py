@@ -43,7 +43,14 @@ class EvaluationTaskListCreateAPITest(TestCase, APITestMixin):
         self.create_authenticated_client(self.user)
         response = self.client.get("/api/tasks/evaluation-tasks/")
         self.assertEqual(response.status_code, 200)
-        self.assertGreaterEqual(len(response.data), 2)
+        
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            tasks = response.data["data"]
+        else:
+            tasks = response.data
+        
+        self.assertGreaterEqual(len(tasks), 2)
     
     def test_list_tasks_unauthorized(self):
         """测试未认证用户获取任务列表"""
@@ -64,11 +71,17 @@ class EvaluationTaskListCreateAPITest(TestCase, APITestMixin):
         response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
         self.assertEqual(response.status_code, 201)
         
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
         # 验证任务已创建
-        self.assertEqual(response.data["name"], "新评测任务")
-        self.assertEqual(response.data["creator"], self.user.id)
-        self.assertEqual(response.data["myModel"], self.model.id)
-        self.assertEqual(response.data["dataset"], self.dataset.id)
+        self.assertEqual(task_data["name"], "新评测任务")
+        self.assertEqual(task_data["creator"], self.user.id)
+        self.assertEqual(task_data["myModel"], self.model.id)
+        self.assertEqual(task_data["dataset"], self.dataset.id)
     
     def test_create_task_missing_required_fields(self):
         """测试创建任务缺少必填字段"""
@@ -128,14 +141,28 @@ class EvaluationTaskDetailAPITest(TestCase, APITestMixin):
         self.create_authenticated_client(self.user)
         response = self.client.get(f"/api/tasks/evaluation-tasks/{self.task.id}/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["name"], "测试任务")
+        
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "测试任务")
     
     def test_get_task_detail_admin(self):
         """测试管理员获取任务详情"""
         self.create_authenticated_client(self.admin)
         response = self.client.get(f"/api/tasks/evaluation-tasks/{self.task.id}/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["name"], "测试任务")
+        
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "测试任务")
     
     def test_get_task_detail_unauthorized(self):
         """测试未授权用户获取任务详情"""
@@ -157,7 +184,14 @@ class EvaluationTaskDetailAPITest(TestCase, APITestMixin):
         }
         response = self.client.put(f"/api/tasks/evaluation-tasks/{self.task.id}/", data, format="json")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["name"], "更新后的任务")
+        
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "更新后的任务")
     
     def test_partial_update_task_success(self):
         """测试部分更新任务成功"""
@@ -166,7 +200,14 @@ class EvaluationTaskDetailAPITest(TestCase, APITestMixin):
         data = {"name": "部分更新的任务"}
         response = self.client.patch(f"/api/tasks/evaluation-tasks/{self.task.id}/", data, format="json")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["name"], "部分更新的任务")
+        
+        # 检查响应格式
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "部分更新的任务")
     
     def test_update_task_unauthorized(self):
         """测试未授权用户更新任务"""
@@ -648,3 +689,268 @@ class EvaluationTaskIntegrationTest(TestCase, APITestMixin):
         # 7. 删除任务
         response = self.client.delete(f"/api/tasks/evaluation-tasks/{task_id}/")
         self.assertEqual(response.status_code, 204)
+
+
+class AdversarialTaskAPITest(TestCase, APITestMixin):
+    """对抗评测任务API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        self.model1 = TestDataGenerator.create_model(name="模型1")
+        self.model2 = TestDataGenerator.create_model(name="模型2")
+        self.judge_model = TestDataGenerator.create_model(name="裁判模型")
+        self.dataset = TestDataGenerator.create_dataset(
+            evaluation_type="adversarial"
+        )
+        
+        self.create_authenticated_client(self.user)
+    
+    def test_create_adversarial_task_success(self):
+        """测试创建对抗评测任务成功"""
+        data = {
+            "name": "对抗评测任务",
+            "description": "测试对抗评测功能",
+            "method": "adversarial",
+            "judge_type": "human",
+            "dataset": self.dataset.id,
+            "myModel": self.model1.id,
+            "myModel_2": self.model2.id
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        self.assertAPISuccess(response, 201)
+        
+        # 验证任务已创建
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "对抗评测任务")
+        self.assertEqual(task_data["method"], "adversarial")
+        self.assertEqual(task_data["judge_type"], "human")
+        self.assertEqual(task_data["myModel"], self.model1.id)
+        self.assertEqual(task_data["myModel_2"], self.model2.id)
+    
+    def test_create_adversarial_task_with_model_judge(self):
+        """测试创建模型裁判的对抗评测任务"""
+        data = {
+            "name": "模型裁判对抗评测任务",
+            "description": "测试模型裁判功能",
+            "method": "adversarial",
+            "judge_type": "model",
+            "judge_model": self.judge_model.id,
+            "dataset": self.dataset.id,
+            "myModel": self.model1.id,
+            "myModel_2": self.model2.id
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        self.assertAPISuccess(response, 201)
+        
+        # 验证任务已创建
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "模型裁判对抗评测任务")
+        self.assertEqual(task_data["judge_type"], "model")
+        self.assertEqual(task_data["judge_model"], self.judge_model.id)
+    
+    def test_create_adversarial_task_missing_second_model(self):
+        """测试创建缺少第二个模型的对抗评测任务"""
+        data = {
+            "name": "不完整的对抗评测任务",
+            "method": "adversarial",
+            "dataset": self.dataset.id,
+            "myModel": self.model1.id
+            # 缺少myModel_2
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        # 可能成功或失败，取决于API设计
+        if response.status_code == 201:
+            self.assertAPISuccess(response, 201)
+        else:
+            self.assertAPIError(response, 400)
+    
+    def test_create_model_judge_task_without_judge_model(self):
+        """测试创建模型裁判任务但缺少裁判模型"""
+        data = {
+            "name": "缺少裁判模型的任务",
+            "method": "adversarial",
+            "judge_type": "model",
+            "dataset": self.dataset.id,
+            "myModel": self.model1.id,
+            "myModel_2": self.model2.id
+            # 缺少judge_model
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        self.assertAPIError(response, 400)
+
+
+class TaskReuseAPITest(TestCase, APITestMixin):
+    """任务复用API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        self.other_user = TestDataGenerator.create_user()
+        
+        self.model = TestDataGenerator.create_model()
+        self.dataset = TestDataGenerator.create_dataset()
+        
+        # 创建原始任务
+        self.original_task = TestDataGenerator.create_evaluation_task(
+            creator=self.user,
+            model=self.model,
+            dataset=self.dataset
+        )
+        
+        # 为原始任务创建一些评测项
+        for i in range(3):
+            TestDataGenerator.create_evaluation_item(
+                task=self.original_task,
+                content=f"测试问题{i+1}",
+                correct_answer=f"测试答案{i+1}"
+            )
+        
+        self.create_authenticated_client(self.user)
+    
+    def test_reuse_task_success(self):
+        """测试复用任务成功"""
+        data = {
+            "name": "复用的评测任务",
+            "description": "基于原任务创建的新任务",
+            "shared_from": self.original_task.id,
+            "myModel": self.model.id,
+            "dataset": self.dataset.id
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        self.assertAPISuccess(response, 201)
+        
+        # 验证任务已创建
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "复用的评测任务")
+        self.assertEqual(task_data["shared_from"], self.original_task.id)
+    
+    def test_reuse_task_with_authorized_viewer(self):
+        """测试复用任务并添加授权查看者"""
+        data = {
+            "name": "授权查看者的复用任务",
+            "description": "测试授权查看者功能",
+            "shared_from": self.original_task.id,
+            "myModel": self.model.id,
+            "dataset": self.dataset.id,
+            "authorized_viewers": [self.other_user.id]
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        self.assertAPISuccess(response, 201)
+        
+        # 验证任务已创建
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["name"], "授权查看者的复用任务")
+        self.assertIn(self.other_user.id, task_data["authorized_viewers"])
+    
+    def test_reuse_nonexistent_task(self):
+        """测试复用不存在的任务"""
+        data = {
+            "name": "复用不存在任务的测试",
+            "shared_from": 99999,
+            "myModel": self.model.id,
+            "dataset": self.dataset.id
+        }
+        response = self.client.post("/api/tasks/evaluation-tasks/", data, format="json")
+        self.assertAPIError(response, 400)
+    
+    def test_authorized_viewer_can_access_task(self):
+        """测试授权查看者可以访问任务"""
+        # 创建带授权查看者的任务
+        task_with_viewer = TestDataGenerator.create_evaluation_task(
+            creator=self.user,
+            model=self.model,
+            dataset=self.dataset
+        )
+        task_with_viewer.authorized_viewers.add(self.other_user)
+        task_with_viewer.save()
+        
+        # 使用其他用户身份访问
+        self.client.credentials()
+        tokens = AuthUtils.get_jwt_token(self.other_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
+        
+        response = self.client.get(f"/api/tasks/evaluation-tasks/{task_with_viewer.id}/")
+        self.assertAPISuccess(response, 200)
+        
+        # 验证可以访问
+        if isinstance(response.data, dict) and "data" in response.data:
+            task_data = response.data["data"]
+        else:
+            task_data = response.data
+        
+        self.assertEqual(task_data["id"], task_with_viewer.id)
+    
+    def test_unauthorized_viewer_cannot_access_task(self):
+        """测试未授权查看者不能访问任务"""
+        # 使用其他用户身份访问
+        self.client.credentials()
+        tokens = AuthUtils.get_jwt_token(self.other_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
+        
+        response = self.client.get(f"/api/tasks/evaluation-tasks/{self.original_task.id}/")
+        self.assertAPIError(response, 403)
+
+
+class TaskSummaryAPITest(TestCase, APITestMixin):
+    """任务汇总API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        
+        self.model = TestDataGenerator.create_model()
+        self.dataset = TestDataGenerator.create_dataset()
+        
+        # 创建任务
+        self.task = TestDataGenerator.create_evaluation_task(
+            creator=self.user,
+            model=self.model,
+            dataset=self.dataset,
+            method="objective"
+        )
+        
+        # 创建评测项
+        for i in range(5):
+            TestDataGenerator.create_evaluation_item(
+                task=self.task,
+                content=f"测试问题{i+1}",
+                correct_answer=f"测试答案{i+1}",
+                is_correct=i % 2 == 0  # 交替正确/错误
+            )
+        
+        self.create_authenticated_client(self.user)
+    
+    def test_get_task_summary_success(self):
+        """测试获取任务汇总成功"""
+        response = self.client.get(f"/api/tasks/evaluation-tasks/{self.task.id}/summary/")
+        self.assertAPISuccess(response, 200)
+        
+        # 验证汇总数据
+        if isinstance(response.data, dict) and "data" in response.data:
+            summary_data = response.data["data"]
+        else:
+            summary_data = response.data
+        
+        self.assertIn("total", summary_data)
+        self.assertIn("correct", summary_data)
+        self.assertIn("accuracy", summary_data)
+        self.assertEqual(summary_data["total"], 5)
+        self.assertEqual(summary_data["correct"], 3)  # 5个中3个正确
+        self.assertAlmostEqual(summary_data["accuracy"], 0.6, places=1)

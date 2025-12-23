@@ -5,7 +5,7 @@ from apps.users.models import UserStar
 import os
 import json
 from apps.datasets.services.ai_capability_judge import ai_judge_capability
-
+import re
 
 class DatasetSerializer(serializers.ModelSerializer):
     """
@@ -52,19 +52,61 @@ class DatasetSerializer(serializers.ModelSerializer):
             except Exception:
                 return []
 
+        if file_format == "zip":
+            try:
+                import zipfile
+                with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
+                    # 查找JSON文件
+                    json_files = [
+                        f for f in zf.namelist()
+                        if f.lower().endswith('.json') and not f.endswith('/')
+                    ]
+                    
+                    if not json_files:
+                        return []
+                    
+                    # 优先使用data.json
+                    target_file = "data.json" if "data.json" in json_files else json_files[0]
+                    
+                    with zf.open(target_file) as f:
+                        json_content = f.read()
+                        try:
+                            data = json.loads(json_content.decode('utf-8'))
+                            if isinstance(data, list):
+                                return data[:limit]
+                            elif isinstance(data, dict):
+                                # 查找常见的数据数组键
+                                data_keys = ['data', 'items', 'records', 'rows', 'samples', 'entries', 'test_cases', 'questions']
+                                for key in data_keys:
+                                    if key in data and isinstance(data[key], list):
+                                        return data[key][:limit]
+                                
+                                # 如果是测评数据集，检查是否有特定测评类型的数据结构
+                                for evaluation_type in ['subjective', 'objective', 'adversarial']:
+                                    if evaluation_type in data and isinstance(data[evaluation_type], list):
+                                        return data[evaluation_type][:limit]
+                                
+                                # 如果都没有找到，返回空列表
+                                return []
+                        except Exception:
+                            return []
+            except Exception:
+                return []
+
         return []
 
     
-    def ai_judge_capability(samples):
-        prompt = build_prompt(samples)
-        response = call_llm_api(prompt)
-
-        tag = response.strip().lower()
-
-        if tag not in ["language", "reasoning", "coding"]:
-            return "language"  # 兜底
-
-        return tag
+    # 移除未使用的函数
+    # def ai_judge_capability(samples):
+    #     prompt = build_prompt(samples)
+    #     response = call_llm_api(prompt)
+    #
+    #     tag = response.strip().lower()
+    #
+    #     if tag not in ["language", "reasoning", "coding"]:
+    #         return "language"  # 兜底
+    #
+    #     return tag
     
 
     
@@ -261,6 +303,10 @@ class DatasetSerializer(serializers.ModelSerializer):
         """
         根据测评类型验证数据格式
         """
+<<<<<<< Updated upstream
+        if len(data) == 0:
+            raise serializers.ValidationError("数据集不能为空")
+        
         # 图像类别的数据集可以有更灵活的结构
         if category == "image":
             # 图像数据集：只验证基本结构，不强制特定字段
@@ -273,33 +319,88 @@ class DatasetSerializer(serializers.ModelSerializer):
             return
         
         # 根据测评类型验证格式
+        # ---------- 客观评测 ----------
+        if evaluation_type == "objective":
+            option_pattern = re.compile(r"\b([A-Z])\.", re.IGNORECASE)
+
+            for i, item in enumerate(data):
+=======
+        # 根据测评类型验证格式（图像数据集也需要遵循测评类型的字段要求）
         if evaluation_type == "subjective":
             # 主观测评：每个项目必须包含 input 和 reference 字段
             for i, item in enumerate(data[:5]):  # 只检查前5个项目，提高性能
+>>>>>>> Stashed changes
                 if not isinstance(item, dict):
-                    raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
+                    raise serializers.ValidationError(f"第 {i+1} 条客观题必须是对象（dict）")
+
+                # 字段存在性
                 if "input" not in item:
-                    raise serializers.ValidationError(f"主观测评数据集第{i+1}个项目缺少必需的 'input' 字段")
-                if "reference" not in item:
-                    raise serializers.ValidationError(f"主观测评数据集第{i+1}个项目缺少必需的 'reference' 字段")
-                    
-        elif evaluation_type == "objective":
-            # 客观测评：每个项目必须包含 input 和 answer 字段
-            for i, item in enumerate(data[:5]):
-                if not isinstance(item, dict):
-                    raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
-                if "input" not in item:
-                    raise serializers.ValidationError(f"客观测评数据集第{i+1}个项目缺少必需的 'input' 字段")
+                    raise serializers.ValidationError(f"第 {i+1} 条客观题缺少字段 'input'")
                 if "answer" not in item:
-                    raise serializers.ValidationError(f"客观测评数据集第{i+1}个项目缺少必需的 'answer' 字段")
-                    
-        elif evaluation_type == "adversarial":
-            # 对抗测评：每个项目只需包含 input 字段
-            for i, item in enumerate(data[:5]):
+                    raise serializers.ValidationError(f"第 {i+1} 条客观题缺少字段 'answer'")
+
+                input_text = item["input"]
+                answer = item["answer"]
+
+                # 类型校验
+                if not isinstance(input_text, str) or not input_text.strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条客观题的 'input' 必须是非空字符串")
+
+                if not isinstance(answer, str):
+                    raise serializers.ValidationError(f"第 {i+1} 条客观题的 'answer' 必须是字符串")
+
+                # 提取选项
+                options = option_pattern.findall(input_text)
+                options = list(set([opt.upper() for opt in options]))
+
+                if len(options) < 2:
+                    raise serializers.ValidationError(
+                        f"第 {i+1} 条客观题的 'input' 中必须至少包含两个选项（如 A. B.）"
+                    )
+
+                # 校验答案格式
+                answer = answer.strip().upper()
+                if not re.fullmatch(r"[A-Z]", answer):
+                    raise serializers.ValidationError(
+                        f"第 {i+1} 条客观题的 'answer' 必须是单个选项字母（如 A / B / C）"
+                    )
+
+                if answer not in options:
+                    raise serializers.ValidationError(
+                        f"第 {i+1} 条客观题的答案 '{answer}' 不在题目选项 {options} 中"
+                    )
+
+        # ---------- 主观评测 ----------
+        elif evaluation_type == "subjective":
+            for i, item in enumerate(data):
                 if not isinstance(item, dict):
-                    raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题必须是对象（dict）")
+
                 if "input" not in item:
-                    raise serializers.ValidationError(f"对抗测评数据集第{i+1}个项目缺少必需的 'input' 字段")
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题缺少字段 'input'")
+                if "reference" not in item:
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题缺少字段 'reference'")
+
+                if not isinstance(item["input"], str) or not item["input"].strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题的 'input' 必须是非空字符串")
+
+                if not isinstance(item["reference"], str) or not item["reference"].strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题的 'reference' 必须是非空字符串")
+
+        # ---------- 对抗评测 ----------
+        elif evaluation_type == "adversarial":
+            for i, item in enumerate(data):
+                if not isinstance(item, dict):
+                    raise serializers.ValidationError(f"第 {i+1} 条对抗题必须是对象（dict）")
+
+                if "input" not in item:
+                    raise serializers.ValidationError(f"第 {i+1} 条对抗题缺少字段 'input'")
+
+                if not isinstance(item["input"], str) or not item["input"].strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条对抗题的 'input' 必须是非空字符串")
+
+        else:
+            raise serializers.ValidationError(f"未知的评测类型：{evaluation_type}")
 
     def _count_images(self, file_obj, file_format):
         """
@@ -501,8 +602,20 @@ class DatasetSerializer(serializers.ModelSerializer):
                 except:
                     pass
             
+            # 计算文件大小和格式
             validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             file_format = validated_data.get("file_format", instance.file_format).lower()
+            
+            # 1️⃣ 抽样用于AI判断
+            samples = self._sample_dataset(file_obj, file_format)
+            
+            # 2️⃣ AI 判断能力标签
+            if samples:
+                capability = ai_judge_capability(samples)
+                validated_data["capability_tag"] = capability
+                validated_data["capability_dimension"] = capability
+            
+            # 统计样本数量和图片信息
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)

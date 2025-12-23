@@ -55,7 +55,7 @@
           <p class="description-text"><strong>任务描述：</strong>{{ reportData.description }}</p>
         </div>
 
-        <el-row :gutter="20" class="summary-row" v-if="reportData.accuracy !== null">
+        <el-row :gutter="20" class="summary-row" >
           <el-col :span="24">
             <el-card shadow="hover" class="accuracy-card">
               <div class="accuracy-content">
@@ -84,6 +84,23 @@
             <blockquote class="prompt-text">
               {{ currentItem.content }}
             </blockquote>
+
+            
+            <div v-if="currentItem.content && currentItem.image_data" class="image-box">
+              <el-image 
+                :src="'data:image/png;base64,' + currentItem.image_data" 
+                :preview-src-list="['data:image/png;base64,' + currentItem.image_data]"
+                fit="contain"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>图片加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+              <div class="image-tip">点击图片查看高清大图</div>
+            </div>
           </el-card>
 
           <el-row :gutter="20" class="model-comparison">
@@ -175,7 +192,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Histogram, User, Service } from '@element-plus/icons-vue';
+import { Histogram, User, Service, Picture } from '@element-plus/icons-vue';
 import { getEvaluationTaskDetail } from '../../api/tasks.js';
 import { getAllModels } from '../../api/models.js';
 import MarkdownIt from 'markdown-it'
@@ -547,6 +564,44 @@ onMounted(() => {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: var(--border-color);
+}
+
+
+/* 图片容器样式 */
+.image-box {
+  /* 与上方文本容器留下 20px 的间隙 */
+  margin-top: 20px; 
+  
+  /* 视觉上的修饰：边框、圆角和背景 */
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background-color: #fcfcfc;
+  
+  /* 居中显示 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 图片本身的样式 */
+.image-box .el-image {
+  width: 50%;
+  max-height: 450px; /* 限制高度，防止长图撑破屏幕 */
+  border-radius: 4px;
+  cursor: zoom-in; /* 提示用户可以点击放大 */
+  transition: all 0.3s;
+}
+
+/* 鼠标悬停微调 */
+.image-box .el-image:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.image-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 底部导航 */
