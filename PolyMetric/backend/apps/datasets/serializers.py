@@ -303,7 +303,6 @@ class DatasetSerializer(serializers.ModelSerializer):
         """
         根据测评类型验证数据格式
         """
-<<<<<<< Updated upstream
         if len(data) == 0:
             raise serializers.ValidationError("数据集不能为空")
         
@@ -324,12 +323,6 @@ class DatasetSerializer(serializers.ModelSerializer):
             option_pattern = re.compile(r"\b([A-Z])\.", re.IGNORECASE)
 
             for i, item in enumerate(data):
-=======
-        # 根据测评类型验证格式（图像数据集也需要遵循测评类型的字段要求）
-        if evaluation_type == "subjective":
-            # 主观测评：每个项目必须包含 input 和 reference 字段
-            for i, item in enumerate(data[:5]):  # 只检查前5个项目，提高性能
->>>>>>> Stashed changes
                 if not isinstance(item, dict):
                     raise serializers.ValidationError(f"第 {i+1} 条客观题必须是对象（dict）")
 

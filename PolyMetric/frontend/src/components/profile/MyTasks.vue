@@ -79,6 +79,7 @@
             size="small" 
             type="primary" 
             round 
+            :loading="loadingTasks[scope.row.id]"
             @click="handleRunEvaluation(scope.row)"
           >
             <el-icon><VideoPlay /></el-icon>生成回答
@@ -294,7 +295,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { View, Edit, Delete, VideoPlay, Stopwatch } from '@element-plus/icons-vue';
 import EvalDialog from '../common/EvalDialog.vue';
-import { getEvaluationTasks, deleteEvaluationTask, updateEvaluationTask } from '@/api/tasks.js';
+import { getEvaluationTasks, deleteEvaluationTask, updateEvaluationTask, runEvaluationTask } from '@/api/tasks.js';
 import { getAllDatasets } from '@/api/datasets.js';
 import { getAllModels } from '@/api/models.js';
 import { getUserInfo} from '@/api/users.js'
@@ -321,6 +322,7 @@ const showEvalDialog = ref(false);
 const showEditDialog = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(5);
+const loadingTasks = ref([]);
 
 // 编辑表单
 const form = reactive({
@@ -675,7 +677,7 @@ const handleRunEvaluation = async (task) => {
         console.error('启动评测失败:', error);
         ElMessage.error(`启动失败: ${error.message}`);
         // 如果失败了，把状态改回去，或者重新拉取列表
-        fetchAllTasks();
+        fetchTasks();
     } finally {
       loadingTasks.value[task.id] = false;
     }
