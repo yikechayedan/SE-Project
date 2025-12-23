@@ -10,7 +10,8 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from rest_framework import status
-from tests.test_utils import TestDataGenerator, AuthUtils, APITestMixin
+from tests.test_utils import TestDataGenerator, AuthUtils, APITestMixin, DatasetTestUtils
+from tests.base import DatasetTestHelper
 
 User = get_user_model()
 
@@ -84,13 +85,12 @@ class DatasetListCreateAPITest(TestCase, APITestMixin):
         self.create_authenticated_client(self.user)
         
         # 创建测试文件
-        test_file = SimpleUploadedFile(
-            "test.json", 
-            json.dumps([
-                {"id": 1, "question": "测试问题1", "answer": "测试答案1"},
-                {"id": 2, "question": "测试问题2", "answer": "测试答案2"}
-            ]).encode('utf-8'),
-            content_type="application/json"
+        test_file = DatasetTestHelper.create_test_dataset_file(
+            content=[
+                {"id": 1, "input": "测试问题1", "reference": "测试答案1"},
+                {"id": 2, "input": "测试问题2", "reference": "测试答案2"}
+            ],
+            file_format="json"
         )
         
         data = {
@@ -98,15 +98,17 @@ class DatasetListCreateAPITest(TestCase, APITestMixin):
             "description": "测试数据集描述",
             "category": "text",
             "file_format": "json",
+            "evaluation_type": "subjective",
             "is_public": True,
-            "file": test_file
+            "file_path": test_file
         }
         response = self.client.post("/api/datasets/", data, format="multipart")
         self.assertAPISuccess(response, 201)
         
         # 验证数据集已创建
         self.assertEqual(response.data["data"]["name"], "新数据集")
-        self.assertEqual(response.data["data"]["creator"], self.user.id)
+        self.assertEqual(response.data["data"]["creator_id"], self.user.id)
+        self.assertEqual(response.data["data"]["evaluation_type"], "subjective")
     
     def test_create_dataset_unauthorized(self):
         """测试未认证用户创建数据集"""
@@ -115,10 +117,91 @@ class DatasetListCreateAPITest(TestCase, APITestMixin):
             "description": "测试数据集描述",
             "category": "text",
             "file_format": "json",
+            "evaluation_type": "subjective",
             "is_public": True
         }
         response = self.client.post("/api/datasets/", data, format="json")
         self.assertAPIError(response, 401)
+
+    def test_create_image_dataset_success(self):
+        """测试创建图片数据集成功"""
+        self.create_authenticated_client(self.user)
+        
+        # 创建测试图片数据集文件
+        test_file = DatasetTestHelper.create_test_image_dataset_file()
+        
+        data = {
+            "name": "图片数据集",
+            "description": "测试图片数据集描述",
+            "category": "image",
+            "file_format": "zip",
+            "evaluation_type": "subjective",
+            "is_public": True,
+            "file_path": test_file
+        }
+        response = self.client.post("/api/datasets/", data, format="multipart")
+        self.assertAPISuccess(response, 201)
+        
+        # 验证数据集已创建
+        self.assertEqual(response.data["data"]["name"], "图片数据集")
+        self.assertEqual(response.data["data"]["category"], "image")
+        self.assertEqual(response.data["data"]["has_images"], True)
+        self.assertGreater(response.data["data"]["image_count"], 0)
+
+    def test_create_dataset_with_different_evaluation_types(self):
+        """测试创建不同评测类型的数据集"""
+        self.create_authenticated_client(self.user)
+        
+        # 测试主观评测数据集
+        subjective_file = DatasetTestHelper.create_test_dataset_file(
+            content=DatasetTestUtils.create_test_subjective_dataset(),
+            file_format="json"
+        )
+        
+        data = {
+            "name": "主观评测数据集",
+            "category": "text",
+            "file_format": "json",
+            "evaluation_type": "subjective",
+            "is_public": True,
+            "file_path": subjective_file
+        }
+        response = self.client.post("/api/datasets/", data, format="multipart")
+        self.assertAPISuccess(response, 201)
+        
+        # 测试客观评测数据集
+        objective_file = DatasetTestHelper.create_test_dataset_file(
+            content=DatasetTestUtils.create_test_objective_dataset(),
+            file_format="json"
+        )
+        
+        data = {
+            "name": "客观评测数据集",
+            "category": "text",
+            "file_format": "json",
+            "evaluation_type": "objective",
+            "is_public": True,
+            "file_path": objective_file
+        }
+        response = self.client.post("/api/datasets/", data, format="multipart")
+        self.assertAPISuccess(response, 201)
+        
+        # 测试对抗评测数据集
+        adversarial_file = DatasetTestHelper.create_test_dataset_file(
+            content=DatasetTestUtils.create_test_adversarial_dataset(),
+            file_format="json"
+        )
+        
+        data = {
+            "name": "对抗评测数据集",
+            "category": "text",
+            "file_format": "json",
+            "evaluation_type": "adversarial",
+            "is_public": True,
+            "file_path": adversarial_file
+        }
+        response = self.client.post("/api/datasets/", data, format="multipart")
+        self.assertAPISuccess(response, 201)
 
 
 class DatasetDetailAPITest(TestCase, APITestMixin):
@@ -540,3 +623,129 @@ class DatasetEntriesAPITest(TestCase, APITestMixin):
         if response.status_code not in [400, 404]:
             print(f"DEBUG: Entries format response: {response.status_code}, {response.data}")
         self.assertAPIError(response, response.status_code, expected_code=None)
+
+
+class DatasetImageAPITest(TestCase, APITestMixin):
+    """数据集图片API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user = TestDataGenerator.create_user()
+        
+        # 创建带图片的数据集
+        image_file = DatasetTestHelper.create_test_image_dataset_file()
+        self.dataset = TestDataGenerator.create_dataset(
+            name="测试图片数据集",
+            creator=self.user,
+            category="image",
+            file_format="zip",
+            has_images=True,
+            image_count=2
+        )
+        
+        # 模拟文件上传
+        from django.core.files.base import ContentFile
+        self.dataset.file_path.save("test_images.zip", ContentFile(image_file.read()))
+        self.dataset.save()
+    
+    def test_get_images_list_success(self):
+        """测试获取图片列表成功"""
+        self.create_authenticated_client(self.user)
+        response = self.client.get(f"/api/datasets/{self.dataset.id}/images/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应格式
+        self.assertIn("data", response.data)
+        self.assertIn("images", response.data["data"])
+        self.assertIn("total", response.data["data"])
+        self.assertEqual(response.data["data"]["total"], 2)
+    
+    def test_get_images_list_no_images(self):
+        """测试获取没有图片的数据集图片列表"""
+        # 创建没有图片的数据集
+        text_dataset = TestDataGenerator.create_dataset(
+            name="文本数据集",
+            creator=self.user,
+            category="text",
+            has_images=False
+        )
+        
+        self.create_authenticated_client(self.user)
+        response = self.client.get(f"/api/datasets/{text_dataset.id}/images/")
+        self.assertAPIError(response, 404)
+    
+    def test_get_specific_image_success(self):
+        """测试获取特定图片成功"""
+        self.create_authenticated_client(self.user)
+        response = self.client.get(f"/api/datasets/{self.dataset.id}/image/?filename=image1.jpg")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/jpeg')
+    
+    def test_get_nonexistent_image(self):
+        """测试获取不存在的图片"""
+        self.create_authenticated_client(self.user)
+        response = self.client.get(f"/api/datasets/{self.dataset.id}/image/?filename=nonexistent.jpg")
+        self.assertAPIError(response, 404)
+    
+    def test_get_image_missing_filename(self):
+        """测试获取图片缺少filename参数"""
+        self.create_authenticated_client(self.user)
+        response = self.client.get(f"/api/datasets/{self.dataset.id}/image/")
+        self.assertAPIError(response, 400)
+
+
+class DatasetStarAPITest(TestCase, APITestMixin):
+    """数据集点赞API测试"""
+    
+    def setUp(self):
+        self.client = APIClient()
+        self.user1 = TestDataGenerator.create_user(username="user1")
+        self.user2 = TestDataGenerator.create_user(username="user2")
+        self.dataset = TestDataGenerator.create_dataset(creator=self.user2)
+        self.create_authenticated_client(self.user1)
+    
+    def test_star_dataset_success(self):
+        """测试点赞数据集成功"""
+        response = self.client.post(f"/api/datasets/{self.dataset.id}/star/")
+        self.assertAPISuccess(response, 201)
+        
+        # 检查响应数据
+        self.assertIn("star_count", response.data["data"])
+        self.assertIn("is_starred", response.data["data"])
+        self.assertTrue(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 1)
+    
+    def test_star_already_starred(self):
+        """测试重复点赞数据集"""
+        # 第一次点赞
+        self.client.post(f"/api/datasets/{self.dataset.id}/star/")
+        
+        # 第二次点赞
+        response = self.client.post(f"/api/datasets/{self.dataset.id}/star/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应数据
+        self.assertTrue(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 1)
+    
+    def test_unstar_dataset_success(self):
+        """测试取消点赞数据集成功"""
+        # 先点赞
+        self.client.post(f"/api/datasets/{self.dataset.id}/star/")
+        
+        # 取消点赞
+        response = self.client.delete(f"/api/datasets/{self.dataset.id}/star/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应数据
+        self.assertFalse(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 0)
+    
+    def test_unstar_not_starred(self):
+        """测试取消未点赞的数据集"""
+        response = self.client.delete(f"/api/datasets/{self.dataset.id}/star/")
+        self.assertAPISuccess(response, 200)
+        
+        # 检查响应数据
+        self.assertFalse(response.data["data"]["is_starred"])
+        self.assertEqual(response.data["data"]["star_count"], 0)

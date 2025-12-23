@@ -99,14 +99,21 @@ class DatasetFactory(factory.django.DjangoModelFactory):
     
     name = factory.Faker("catch_phrase")
     description = factory.Faker("paragraph", nb_sentences=5)
-    category = factory.Iterator(["text", "image", "multimodal", "audio", "video"])
-    file_format = factory.Iterator(["json", "csv", "jsonl", "parquet"])
+    category = factory.Iterator(["text", "image", "multimodal"])
+    file_format = factory.Iterator(["json", "csv", "zip"])
     is_public = factory.Faker("boolean", chance_of_getting_true=70)
     is_verified = factory.Faker("boolean", chance_of_getting_true=50)
     file_size = factory.Faker("random_int", min=1024, max=1073741824)  # 1KB到1GB
     sample_count = factory.Faker("random_int", min=100, max=1000000)
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    
+    # 新增字段
+    evaluation_type = factory.Iterator(["subjective", "objective", "adversarial"])
+    capability_dimension = factory.Iterator(["language", "math", "code", "multimodal", "other"])
+    capability_tag = factory.Iterator(["language", "reasoning", "coding", None])
+    has_images = factory.Faker("boolean", chance_of_getting_true=30)
+    image_count = factory.Faker("random_int", min=0, max=1000)
     
     creator = factory.SubFactory(UserFactory)
     
@@ -154,6 +161,21 @@ class EvaluationTaskFactory(factory.django.DjangoModelFactory):
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     
+    # 新增字段
+    judge_type = factory.Iterator(["human", "model"])
+    judge_model = factory.Maybe(
+        "judge_type",
+        yes_factory=factory.SubFactory(ModelFactory),
+        no_factory=None,
+        decider=lambda judge_type: judge_type == "model"
+    )
+    myModel_2 = factory.Maybe(
+        "method",
+        yes_factory=factory.SubFactory(ModelFactory),
+        no_factory=None,
+        decider=lambda method: method == "adversarial"
+    )
+    
     creator = factory.SubFactory(UserFactory)
     dataset = factory.SubFactory(DatasetFactory)
     myModel = factory.SubFactory(ModelFactory)
@@ -168,8 +190,19 @@ class EvaluationItemFactory(factory.django.DjangoModelFactory):
     content = factory.Faker("paragraph", nb_sentences=2)
     correct_answer = factory.Faker("sentence")
     predicted_answer = factory.Faker("sentence")
+    predicted_answer_2 = factory.Maybe(
+        "task__method",
+        yes_factory=factory.Faker("sentence"),
+        no_factory=None,
+        decider=lambda method: method == "adversarial"
+    )
     score = factory.Faker("random_int", min=1, max=10)
-    preference = factory.Iterator(["left", "right", "tie"])
+    preference = factory.Maybe(
+        "task__method",
+        yes_factory=factory.Iterator(["left", "right", "tie"]),
+        no_factory=None,
+        decider=lambda method: method == "adversarial"
+    )
     is_correct = factory.Faker("boolean")
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))

@@ -1,4 +1,5 @@
 # apps/tasks/views.py
+import json
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -7,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
-from .run_logic import run_evaluation, reuse_task_items_model_aware
+from .run_logic import run_evaluation, reuse_task_items_model_aware, load_image_from_dataset
 from .tasks import init_evaluation_task
 from .models import EvaluationTask, EvaluationItem
 from .serializers import (
@@ -147,14 +148,37 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
     # -----------------------------
     def retrieve(self, request, *args, **kwargs):
         task = self.get_object()
-        
-        # 权限检查：必须是 Owner 或 Authorized Viewer 或 Admin
+    
+        # 权限检查
         perm = self._check_owner_or_admin(request, task)
         if perm is not None:
             return perm
 
         serializer = self.get_serializer(task)
-        return Response(serializer.data)
+        data = serializer.data
+
+        items_list = data.get('data', []) 
+
+        for item in items_list:
+            content_str = item.get('content', '')
+            item['image_data'] = None  # 初始化字段
+            
+            if content_str and isinstance(content_str, str) and content_str.strip().startswith('{'):
+                try:
+                    content_json = json.loads(content_str)
+                    # 检查是否包含 image 字段
+                    display_text = content_json.get('text')
+                    image_path = content_json.get('image')
+                    if display_text:
+                        item['content'] = display_text
+                    if image_path:
+                        b64_data = load_image_from_dataset(task.dataset, image_path)
+                        item['image_data'] = b64_data
+                    
+                except Exception as e:
+                    print(f"解析 Item ID {item.get('id')} 内容失败: {e}")
+
+        return Response(data)
 
     # -----------------------------
     # 4 全量更新：PUT /api/tasks/evaluation-tasks/{id}/
@@ -409,17 +433,33 @@ def get_item_detail(request):
     except (EvaluationTask.DoesNotExist, EvaluationItem.DoesNotExist):
         return Response({"error": "Task or item not found"}, status=400)
 
-    return Response(
-        {
-            "method": task.method,
-            "itemID": item.id,
-            "item_content": {
-                "input_query": item.content,
-                "myModel1_response": item.predicted_answer,  # 对齐文档中的 myModel1_response
-                "myModel2_response": item.predicted_answer_2,  # 对抗评测下启用，可后续扩展
-            },
-        }
-    )
+    raw_content = item.content
+    display_text = raw_content
+    image_base64 = None
+
+    try:
+        if raw_content.strip().startswith("{"):
+            data = json.loads(raw_content)
+            display_text = data.get("text", raw_content)
+            rel_path = data.get("image")
+
+            if rel_path:
+                # 调用你那个现成的函数，从 ZIP 中提取 Base64
+                # 注意：确保你传入了正确的 dataset 对象
+                image_base64 = load_image_from_dataset(task.dataset, rel_path)
+    except Exception as e:
+        print(f"Error: {e}")
+
+    return Response({
+        "method": task.method,
+        "itemID": item.id,
+        "item_content": {
+            "input_query": display_text,
+            "image_data": image_base64,  # 返回 Base64 而不是 URL
+            "myModel1_response": item.predicted_answer,
+            "myModel2_response": item.predicted_answer_2,
+        },
+    })
 
 
 # --------------------------------------------------

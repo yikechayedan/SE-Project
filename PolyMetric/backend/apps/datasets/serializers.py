@@ -52,19 +52,61 @@ class DatasetSerializer(serializers.ModelSerializer):
             except Exception:
                 return []
 
+        if file_format == "zip":
+            try:
+                import zipfile
+                with zipfile.ZipFile(io.BytesIO(content), 'r') as zf:
+                    # 查找JSON文件
+                    json_files = [
+                        f for f in zf.namelist()
+                        if f.lower().endswith('.json') and not f.endswith('/')
+                    ]
+                    
+                    if not json_files:
+                        return []
+                    
+                    # 优先使用data.json
+                    target_file = "data.json" if "data.json" in json_files else json_files[0]
+                    
+                    with zf.open(target_file) as f:
+                        json_content = f.read()
+                        try:
+                            data = json.loads(json_content.decode('utf-8'))
+                            if isinstance(data, list):
+                                return data[:limit]
+                            elif isinstance(data, dict):
+                                # 查找常见的数据数组键
+                                data_keys = ['data', 'items', 'records', 'rows', 'samples', 'entries', 'test_cases', 'questions']
+                                for key in data_keys:
+                                    if key in data and isinstance(data[key], list):
+                                        return data[key][:limit]
+                                
+                                # 如果是测评数据集，检查是否有特定测评类型的数据结构
+                                for evaluation_type in ['subjective', 'objective', 'adversarial']:
+                                    if evaluation_type in data and isinstance(data[evaluation_type], list):
+                                        return data[evaluation_type][:limit]
+                                
+                                # 如果都没有找到，返回空列表
+                                return []
+                        except Exception:
+                            return []
+            except Exception:
+                return []
+
         return []
 
     
-    def ai_judge_capability(samples):
-        prompt = build_prompt(samples)
-        response = call_llm_api(prompt)
-
-        tag = response.strip().lower()
-
-        if tag not in ["language", "reasoning", "coding"]:
-            return "language"  # 兜底
-
-        return tag
+    # 移除未使用的函数
+    # def ai_judge_capability(samples):
+    #     prompt = build_prompt(samples)
+    #     response = call_llm_api(prompt)
+    #
+    #     tag = response.strip().lower()
+    #
+    #     if tag not in ["language", "reasoning", "coding"]:
+    #         return "language"  # 兜底
+    #
+    #     return tag
     
 
     
@@ -261,6 +303,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         """
         根据测评类型验证数据格式
         """
+<<<<<<< Updated upstream
         if len(data) == 0:
             raise serializers.ValidationError("数据集不能为空")
         
@@ -281,6 +324,12 @@ class DatasetSerializer(serializers.ModelSerializer):
             option_pattern = re.compile(r"\b([A-Z])\.", re.IGNORECASE)
 
             for i, item in enumerate(data):
+=======
+        # 根据测评类型验证格式（图像数据集也需要遵循测评类型的字段要求）
+        if evaluation_type == "subjective":
+            # 主观测评：每个项目必须包含 input 和 reference 字段
+            for i, item in enumerate(data[:5]):  # 只检查前5个项目，提高性能
+>>>>>>> Stashed changes
                 if not isinstance(item, dict):
                     raise serializers.ValidationError(f"第 {i+1} 条客观题必须是对象（dict）")
 
@@ -553,8 +602,20 @@ class DatasetSerializer(serializers.ModelSerializer):
                 except:
                     pass
             
+            # 计算文件大小和格式
             validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             file_format = validated_data.get("file_format", instance.file_format).lower()
+            
+            # 1️⃣ 抽样用于AI判断
+            samples = self._sample_dataset(file_obj, file_format)
+            
+            # 2️⃣ AI 判断能力标签
+            if samples:
+                capability = ai_judge_capability(samples)
+                validated_data["capability_tag"] = capability
+                validated_data["capability_dimension"] = capability
+            
+            # 统计样本数量和图片信息
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)

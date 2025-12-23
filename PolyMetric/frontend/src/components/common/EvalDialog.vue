@@ -20,18 +20,94 @@
           </el-radio>
         </el-radio-group>
       </el-form-item>
+      <el-form-item label="数据集" >
+        <div style="display: flex; width: 100%;">
+          
+          <el-select 
+            v-model="form.selectedDatasetName" 
+            placeholder="选择数据集" 
+            :loading="datasetLoading"
+            style="flex: 1;"
+            popper-class="dataset-select-popper" 
+          >
+            <el-option value="" label="清除选择" @click="handleClearDataset">
+              <div class="option-item clear-item">
+                <el-icon><CircleClose /></el-icon>
+                <span>清除当前选择</span>
+              </div>
+            </el-option>
+            
+            <el-option
+              v-for="dataset in filteredDatasetsList"
+              :key="dataset.id"
+              :label="dataset.name"
+              :value="dataset.name"
+            >
+              <div class="option-item" :title="dataset.name">
+                <span class="dataset-name-text">{{ dataset.name }}</span>
+                <el-tag 
+                  :type="getCategoryTag(dataset.category)" 
+                  size="small" 
+                  effect="plain"
+                  class="type-tag"
+                >
+                  {{ formatCategoryName(dataset.category) }}
+                </el-tag>
+                <el-tag 
+                  :type="getMethodTag(dataset.evaluation_type)" 
+                  size="small" 
+                  effect="plain"
+                  class="type-tag"
+                >
+                  {{ formatMethodName(dataset.evaluation_type) }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+
+          <el-input 
+            v-model="datasetSearchQuery" 
+            placeholder="搜索数据集" 
+            prefix-icon="Search" 
+            style="width: 150px; margin-left: 10px;"
+          />
+        </div>
+      </el-form-item>
       <el-form-item label="模型选择">
         <div style="display: flex; width: 100%;">
           
           <el-select v-model="form.selectedModelName" 
-                     placeholder="选择模型" 
-                     :loading="modelLoading"
-                     style="flex: 1;"> <el-option
-              v-for="model in filteredModelsList"
-              :key="model.id"
-              :label="model.name"
-              :value="model.name"
-            />
+              placeholder="选择模型" 
+              :loading="modelLoading"
+              style="flex: 1;"
+              popper-class="dataset-select-popper" 
+          > 
+              <el-option value="" label="清除选择" @click="handleClearModel1">
+                <div class="option-item clear-item">
+                  <el-icon><CircleClose /></el-icon>
+                  <span>清除当前选择</span>
+                </div>
+              </el-option>
+              
+              <el-option
+                v-for="model in filteredModelsList"
+                :key="model.id"
+                :label="model.name"
+                :value="model.name"
+              >
+                <div class="option-item" :title="model.name">
+                  <span class="dataset-name-text">{{ model.name }}</span>
+                  <el-tag 
+                    :type="getCategoryTag(model.category)" 
+                    size="small" 
+                    effect="plain"
+                    class="type-tag"
+                  >
+                    {{ formatCategoryName(model.category) }}
+                  </el-tag>
+                </div>
+              </el-option>
+
           </el-select>
 
           <el-input 
@@ -46,14 +122,38 @@
         <div style="display: flex; width: 100%;">
           
           <el-select v-model="form.selectedModelName2" 
-                     placeholder="选择模型二" 
-                     :loading="modelLoading"
-                     style="flex: 1;"> <el-option
+              placeholder="选择模型二" 
+              :loading="modelLoading"
+              style="flex: 1;"
+              popper-class="dataset-select-popper"
+          >
+            <el-option value="" label="清除选择" @click="handleClearModel2">
+                <div class="option-item clear-item">
+                  <el-icon><CircleClose /></el-icon>
+                  <span>清除当前选择</span>
+                </div>
+              </el-option>
+
+            <el-option
               v-for="model in filteredModel2sList"
               :key="model.id"
               :label="model.name"
               :value="model.name"
-            />
+            >
+              <div class="option-item" :title="model.name">
+                  <span class="dataset-name-text">{{ model.name }}</span>
+                  <el-tag 
+                    :type="getCategoryTag(model.category)" 
+                    size="small" 
+                    effect="plain"
+                    class="type-tag"
+                  >
+                    {{ formatCategoryName(model.category) }}
+                  </el-tag>
+                </div>
+            </el-option>
+
+
           </el-select>
 
           <el-input 
@@ -92,51 +192,7 @@
             />
         </div>
       </el-form-item>
-      <el-form-item label="数据集" >
-        <div style="display: flex; width: 100%;">
-          
-          <el-select 
-            v-model="form.selectedDatasetName" 
-            placeholder="选择数据集" 
-            :loading="datasetLoading"
-            style="flex: 1;"
-            popper-class="dataset-select-popper" 
-          >
-            <el-option value="" label="清除选择" @click="handleClearDataset">
-              <div class="option-item clear-item">
-                <el-icon><CircleClose /></el-icon>
-                <span>清除当前选择</span>
-              </div>
-            </el-option>
-            
-            <el-option
-              v-for="dataset in filteredDatasetsList"
-              :key="dataset.id"
-              :label="dataset.name"
-              :value="dataset.name"
-            >
-              <div class="option-item" :title="dataset.name">
-                <span class="dataset-name-text">{{ dataset.name }}</span>
-                <el-tag 
-                  :type="getMethodTag(dataset.evaluation_type)" 
-                  size="small" 
-                  effect="plain"
-                  class="type-tag"
-                >
-                  {{ formatMethodName(dataset.evaluation_type) }}
-                </el-tag>
-              </div>
-            </el-option>
-          </el-select>
-
-          <el-input 
-            v-model="datasetSearchQuery" 
-            placeholder="搜索数据集" 
-            prefix-icon="Search" 
-            style="width: 150px; margin-left: 10px;"
-          />
-        </div>
-      </el-form-item>
+      
       
     </el-form>
     <template #footer>
@@ -232,31 +288,63 @@ const fetchModels = async () => {
 
 // 筛选后的模型列表 (计算属性)
 const filteredModelsList = computed(() => {
+    let list = modelsList.value;
+    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+    if (selectedDataset) {
+        // 根据数据集的评测类型过滤模型
+        list = list.filter(model => {
+           return (selectedDataset.category === "image" || selectedDataset.category === "multimodel") ?
+                model.category === "multimodal" :
+                true ;
+        });
+    }
     if (!modelSearchQuery.value) {
-        return modelsList.value;
+        return list;
     }
     const query = modelSearchQuery.value.toLowerCase();
-    return modelsList.value.filter(model => 
+    return listfilter(model => 
         model.name.toLowerCase().includes(query)
     );
 })
 
 const filteredModel2sList = computed(() => {
+    let list = modelsList.value;
+    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+    if (selectedDataset) {
+        // 根据数据集的评测类型过滤模型
+        list = list.filter(model => {
+           return (selectedDataset.category === "image" || selectedDataset.category === "multimodel") ?
+                model.category === "multimodal" :
+                true ;
+        });
+    }
+
     if (!modelSearchQuery2.value) {
-        return modelsList.value;
+        return list;
     }
     const query = modelSearchQuery2.value.toLowerCase();
-    return modelsList.value.filter(model => 
+    return list.filter(model => 
         model.name.toLowerCase().includes(query)
     );
 })
 
 const filteredJudgeModelsList = computed(() => {
+    let list = modelsList.value;
+    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+    if (selectedDataset) {
+        // 根据数据集的评测类型过滤模型
+        list = list.filter(model => {
+           return (selectedDataset.category === "image" || selectedDataset.category === "multimodel") ?
+                model.category === "multimodal" :
+                true ;
+        });
+    }
+
     if (!judgeModelSearchQuery.value) {
-        return modelsList.value;
+        return list;
     }
     const query = judgeModelSearchQuery.value.toLowerCase();
-    return modelsList.value.filter(model => 
+    return list.filter(model => 
         model.name.toLowerCase().includes(query)
     );
 })
@@ -284,9 +372,23 @@ const fetchDatasets = async () => {
 // 筛选后的数据集列表 (计算属性)
 const filteredDatasetsList = computed(() => {
     let list = datasetsList.value;
-
+    const selectedModel = modelsList.value.find(m => m.name === form.value.selectedModelName);
+    const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
     if (form.value.method) {
-        list = list.filter(dataset => dataset.evaluation_type === form.value.method);
+        list = list.filter(dataset => {
+          return dataset.evaluation_type === form.value.method;
+        });
+    }
+
+    if(selectedModel || selectedModel2){
+      list = list.filter(dataset => {
+          const isModelText = (selectedModel && selectedModel.category === "text");
+          const isModel2Text = (selectedModel2 && selectedModel2.category === "text");
+          if(isModelText || isModel2Text){
+              return dataset.category === "text";
+          }
+          return true;
+      })
     }
 
     if (!datasetSearchQuery.value) {
@@ -316,6 +418,14 @@ watch(() => form.value.selectedDatasetName, (newDatasetName) => {
 // 清除数据集的选择
 const handleClearDataset = () => {
   form.value.selectedDatasetName = '';
+};
+
+const handleClearModel1 = () => {
+  form.value.selectedModelName = '';
+};
+
+const handleClearModel2 = () => {
+  form.value.selectedModelName2 = '';
 };
 
 const methodOptions = [
@@ -370,6 +480,26 @@ const formatMethodName = (method) => {
     adversarial: '对抗',
   };
   return map[method] || method;
+};
+
+const getCategoryTag = (category) => {
+  const map = {
+    text: 'primary',
+    image: 'success',
+    multimodel: 'warning',
+    multimodal: 'warning',
+  };
+  return map[category] || 'info';
+};
+
+const formatCategoryName = (category) => {
+  const map = {
+    text: '文本',
+    image: '图像',
+    multimodel: '多模态',
+    multimodal: '多模态',
+  };
+  return map[category] || category;
 };
 
 /**
