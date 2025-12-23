@@ -1,0 +1,22 @@
+[
+  {
+    "input": "Generate a futuristic city skyline at sunset with neon lights.",
+    "reference": "A high-quality image of a cyberpunk city."
+  },
+  {
+    "input": "Create an image of a cute red panda eating bamboo.",
+    "reference": "A realistic photo of a red panda."
+  },
+  {
+    "input": "Draw a vintage style map of a fantasy world.",
+    "reference": "An artistic map with mountains, rivers, and forests."
+  },
+  {
+    "input": "Generate a logo for a coffee shop named 'Morning Brew'.",
+    "reference": "A minimalist logo design."
+  },
+  {
+    "input": "Create a 3D render of a golden retriever wearing sunglasses.",
+    "reference": "A funny and high-quality 3D render."
+  }
+]
