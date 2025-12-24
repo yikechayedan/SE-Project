@@ -6,6 +6,9 @@ import os
 import json
 from apps.datasets.services.ai_capability_judge import ai_judge_capability
 import re
+from apps.tasks.tasks import analyze_dataset_capability
+
+
 
 class DatasetSerializer(serializers.ModelSerializer):
     """
@@ -291,6 +294,14 @@ class DatasetSerializer(serializers.ModelSerializer):
                 # 其他格式暂时跳过验证
                 return
                         
+            return True
+           
+        except serializers.ValidationError:
+            # 验证失败，返回False
+            raise
+        except Exception as e:
+            # 验证失败，返回False
+            return False
         finally:
             file_obj.seek(0)
     
