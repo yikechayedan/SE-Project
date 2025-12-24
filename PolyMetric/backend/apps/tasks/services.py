@@ -15,6 +15,56 @@ logger = logging.getLogger(__name__)
 IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo"]
 # ============================================================
 
+def load_image_from_dataset(dataset_file_path, image_relative_path):
+    """
+    从数据集（通常是 ZIP）中加载图片并转换为 Base64
+    """
+    import zipfile
+    import io
+    import base64
+    from django.conf import settings
+
+    if not dataset_file_path or not image_relative_path:
+        return None
+
+    try:
+        # 补全绝对路径
+        if not os.path.isabs(str(dataset_file_path)):
+            full_path = os.path.join(settings.MEDIA_ROOT, str(dataset_file_path))
+        else:
+            full_path = str(dataset_file_path)
+
+        if not os.path.exists(full_path):
+            logger.error(f"Dataset file not found: {full_path}")
+            return None
+
+        # 如果是 ZIP 文件
+        if str(full_path).lower().endswith('.zip'):
+            with zipfile.ZipFile(full_path, 'r') as zf:
+                # 统一路径分隔符为正斜杠，并去除可能的开头斜杠
+                target_path = image_relative_path.replace('\\', '/').lstrip('/')
+                
+                # 在 ZIP 中搜索文件
+                if target_path in zf.namelist():
+                    with zf.open(target_path) as f:
+                        return base64.b64encode(f.read()).decode('utf-8')
+                else:
+                    # 尝试模糊匹配（处理有些 ZIP 内部带一层文件夹的情况）
+                    for name in zf.namelist():
+                        if name.endswith(target_path):
+                            with zf.open(name) as f:
+                                return base64.b64encode(f.read()).decode('utf-8')
+        
+        # 如果是普通图片文件（用于兼容性）
+        elif any(str(full_path).lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+            with open(full_path, 'rb') as f:
+                return base64.b64encode(f.read()).decode('utf-8')
+
+    except Exception as e:
+        logger.error(f"Error loading image from dataset: {e}")
+    
+    return None
+
 def _save_remote_image(url):
     """从远程 URL 下载图片并保存到本地"""
     import requests
@@ -55,32 +105,53 @@ def call_llm_api(prompt: str, model_name: str, images: list = None, max_retries:
     import httpx
     
     def get_mime_type(b64_str):
+        import base64
         try:
-            data = base64.b64decode(b64_str[:32])
+            # 彻底清洗：剥离可能存在的 data 头部并移除所有空白符
+            s = b64_str.strip()
+            if "," in s: s = s.split(",")[-1]
+            s = "".join(s.split())
+            
+            # 自动补齐 Base64 填充
+            missing_padding = len(s) % 4
+            if missing_padding:
+                s += "=" * (4 - missing_padding)
+                
+            data = base64.b64decode(s[:64])
             if data.startswith(b'\x89PNG\r\n\x1a\n'): return "image/png"
             if data.startswith(b'\xff\xd8'): return "image/jpeg"
             if data.startswith(b'GIF87a') or data.startswith(b'GIF89a'): return "image/gif"
             if data.startswith(b'RIFF') and data[8:12] == b'WEBP': return "image/webp"
-        except: pass
-        return "image/jpeg" # 兜底
+            if b'JFIF' in data or b'Exif' in data: return "image/jpeg"
+        except Exception as e:
+            logger.error(f"MIME detection error: {e}")
+        return "image/jpeg"
 
     backoff = 2
     
-    # 检查prompt长度，避免过长导致API调用失败
-    if len(prompt) > 10000:
-        logger.warning(f"Prompt is too long ({len(prompt)} chars), truncating...")
-        prompt = prompt[:9500] + "...[内容已截断]"
+    # ... (此处省略逻辑，位置由 old_string 确定)
     
     if images:
+        # [Verify] 记录图片发送情况
+        logger.info(f"Sending LLM request to {model_name} with {len(images)} images and prompt length {len(prompt)}")
         content_payload = [{"type": "text", "text": prompt}]
         for img_b64 in images:
-            # 清理 Base64 字符串（移除可能存在的换行或空格）
-            img_b64_clean = "".join(img_b64.split())
-            mime = get_mime_type(img_b64_clean)
+            # [Fix] 深度清理 Base64 字符串，确保网关能正确解析
+            clean_b64 = img_b64.strip()
+            if "," in clean_b64:
+                clean_b64 = clean_b64.split(",")[-1]
+            clean_b64 = "".join(clean_b64.split())
+            
+            # 补齐长度
+            pad_needed = len(clean_b64) % 4
+            if pad_needed:
+                clean_b64 += "=" * (4 - pad_needed)
+            
+            mime = get_mime_type(clean_b64)
             content_payload.append({
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:{mime};base64,{img_b64_clean}",
+                    "url": f"data:{mime};base64,{clean_b64}",
                     "detail": "auto"
                 }
             })

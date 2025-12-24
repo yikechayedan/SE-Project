@@ -568,28 +568,35 @@ const uploadForm = reactive({
 
 // 动态计算可选的文件格式
 const availableFileFormats = computed(() => {
-  const common = [
-    { label: 'CSV 文件', value: 'csv' },
-    { label: 'ZIP 压缩包', value: 'zip' }
-  ]
   if (uploadForm.category === 'image' || uploadForm.category === 'multimodal') {
-    return common
+    // 图像和多模态强制要求 ZIP (以包含物理图片文件)
+    return [
+      { label: 'ZIP 压缩包', value: 'zip' }
+    ]
   }
+  // 文本数据支持全部三种格式
   return [
-    ...common,
-    { label: 'JSON 文件', value: 'json' }
+    { label: 'CSV 文件', value: 'csv' },
+    { label: 'JSON 文件', value: 'json' },
+    { label: 'ZIP 压缩包', value: 'zip' }
   ]
 })
 
 // 监听分类变化，如果当前格式不再可选范围内则重置
 watch(() => uploadForm.category, (newCategory) => {
-  if (['image', 'multimodal'].includes(newCategory) && uploadForm.file_format === 'json') {
+  const formats = availableFileFormats.value.map(f => f.value)
+  if (!formats.includes(uploadForm.file_format)) {
     uploadForm.file_format = ''
   }
 })
 
-// 接受的文件类型 (为了防止浏览器拖拽限制，这里允许所有支持的格式)
-const acceptFileTypes = '.csv,.json,.zip'
+// 接受的文件类型 (根据分类动态限制)
+const acceptFileTypes = computed(() => {
+  if (uploadForm.category === 'image' || uploadForm.category === 'multimodal') {
+    return '.zip'
+  }
+  return '.csv,.json,.zip'
+})
 
 const uploadRules = {
   name: [

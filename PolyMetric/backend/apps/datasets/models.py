@@ -28,7 +28,7 @@ class Dataset(models.Model):
         ('no_samples', '无有效样本'),
         ('analysis_failed', '分析失败'),
         ('language', '语言理解'),
-        ('math', '数学推理'),
+        ('reasoning', '推理能力'),
         ('code', '代码能力'),
         ('multimodal', '多模态'),
         ('other', '其他'),
