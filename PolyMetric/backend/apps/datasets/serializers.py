@@ -218,7 +218,7 @@ class DatasetSerializer(serializers.ModelSerializer):
                 # 匹配 A. B. C. D.（不要求必须全有）
                 options = list(set(re.findall(r"(?:^|[\n\r\s]|\\n)([A-E])\.", input_text, re.IGNORECASE)))
  
-                if len(options) < 2 | len(options) > 5:
+                if len(options) < 2 or len(options) > 5:
                     raise serializers.ValidationError(
                         f"第 {i+1} 条客观题至少需要 2 个选项,至多 5 个选项（A/B/C/D），当前检测到 {len(options)} 个"
                     )
