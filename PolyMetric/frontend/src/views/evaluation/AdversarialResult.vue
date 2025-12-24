@@ -1,11 +1,11 @@
 <template>
-  <div class="evaluation-page">
-    <div v-if="reportData && reportData.id" v-loading="loading">
+  <div class="evaluation-page" v-loading="loading">
+    <div v-if="reportData && reportData.id">
       <el-card class="eval-card" shadow="never">
         <template #header>
           <div class="card-header">
             <h2 class="title">
-               <el-icon style="vertical-align: middle; margin-right: 8px;"><Histogram /></el-icon>
+               <el-icon style="vertical-align: middle; margin-right: 8px;"><Document /></el-icon>
                对抗评测结果查看
             </h2>
             <el-tag type="warning" size="large">任务名称: {{ reportData.id }}</el-tag>
@@ -27,7 +27,7 @@
             <div class="meta-label">评测方法</div>
             <div class="meta-value value-wrapper value-content">
               <el-tag :type="reportData.judge_type === 'human' ? 'warning' : 'primary'" size="small" class="judge-tag">
-                <el-icon><User v-if="reportData.judge_type === 'human'" /><service v-else /></el-icon>
+                <el-icon><User v-if="reportData.judge_type === 'human'" /><Document v-else /></el-icon>
                 {{ reportData.judge_type === 'human' ? '人类裁判' : '模型裁判' }}
               </el-tag>
               <el-tooltip
@@ -206,13 +206,13 @@
       </el-card>
     </div>
 
-    <el-empty v-else :description="errorMessage || '未找到评测报告'" />
+    <el-empty v-else-if="!loading" :description="errorMessage || '未找到评测报告'" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Histogram, User, Service, Picture } from '@element-plus/icons-vue';
+import { Document, User, Picture } from '@element-plus/icons-vue';
 import { getEvaluationTaskDetail } from '../../api/tasks.js';
 import { getAllModels } from '../../api/models.js';
 import MarkdownIt from 'markdown-it'
@@ -236,7 +236,7 @@ const allModels = ref([]);
 
 const reportData = ref({
   id: null,
-  name:null,
+  name: null,
   description: null,
   time_used: null,
   myModel_name: null,
@@ -265,7 +265,6 @@ const formatTimeUsed = (timeStr) => {
     return timeStr.split('.')[0];
   }
   
-  // 方式 2：如果后端偶尔返回的是秒数（数字），则需要另一种逻辑
   if (typeof timeStr === 'number') {
     const h = Math.floor(timeStr / 3600).toString().padStart(2, '0');
     const m = Math.floor((timeStr % 3600) / 60).toString().padStart(2, '0');
@@ -299,31 +298,39 @@ const md = new MarkdownIt({
 
 const isPureImage1Only = computed(() => {
   if (!currentItem.value || !currentItem.value.predicted_answer) return false;
-  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer.trim());
+  return /^!\[.*?\]\(.*?\)$/.test(currentItem.value.predicted_answer.trim());
 });
 
 const isPureImage2Only = computed(() => {
   if (!currentItem.value || !currentItem.value.predicted_answer_2) return false;
-  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer_2.trim());
+  return /^!\[.*?\]\(.*?\)$/.test(currentItem.value.predicted_answer_2.trim());
 });
 
 const renderedResponse1 = computed(() => {
   if (!currentItem.value || !currentItem.value.predicted_answer) return '';
-  const cleanContent = currentItem.value.predicted_answer.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  const cleanContent = currentItem.value.predicted_answer.replace(/!\[.*?\]\(.*?\)/g, '');
   return md.render(cleanContent);
 });
 
 const renderedResponse2 = computed(() => {
   if (!currentItem.value || !currentItem.value.predicted_answer_2) return '';
-  const cleanContent = currentItem.value.predicted_answer_2.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  const cleanContent = currentItem.value.predicted_answer_2.replace(/!\[.*?\]\(.*?\)/g, '');
   return md.render(cleanContent);
 });
 
+const formatBase64 = (b64) => {
+  if (!b64) return '';
+  if (b64.startsWith('data:')) return b64;
+  if (b64.startsWith('iVBORw')) return 'data:image/png;base64,' + b64;
+  if (b64.startsWith('/9j/')) return 'data:image/jpeg;base64,' + b64;
+  return 'data:image/jpeg;base64,' + b64;
+};
 
 // 数据获取
 const fetchReportData = async () => {
   loading.value = true;
   errorMessage.value = null;
+  console.log('Fetching adversarial report data for task:', props.taskId);
   try {
     const [response, modelsRes] = await Promise.all([
         getEvaluationTaskDetail(props.taskId),
@@ -333,15 +340,19 @@ const fetchReportData = async () => {
     allModels.value = modelsRes.data || [];
     if (response.data && response.data.id) {
       reportData.value = response.data;
+      console.log('Report data loaded:', response.data);
       if (reportData.value.status !== 'completed') {
         errorMessage.value = `任务状态：${reportData.value.status}，请稍后再试。`;
+        // 不清除 ID 以便显示部分信息，或者清除以强制显示错误
+        // reportData.value.id = null; // 保持 ID 可以显示头部
       }
     } else {
       errorMessage.value = '获取数据无效';
+      reportData.value.id = null;
     }
   } catch (error) {
     errorMessage.value = '请求报告详情失败';
-    console.error(error);
+    console.error('Fetch report error:', error);
   } finally {
     loading.value = false;
   }
