@@ -6,6 +6,9 @@ import os
 import json
 from apps.datasets.services.ai_capability_judge import ai_judge_capability
 import re
+from apps.tasks.tasks import analyze_dataset_capability
+
+
 
 class DatasetSerializer(serializers.ModelSerializer):
     """
@@ -295,7 +298,7 @@ class DatasetSerializer(serializers.ModelSerializer):
            
         except serializers.ValidationError:
             # 验证失败，返回False
-            return False
+            raise
         except Exception as e:
             # 验证失败，返回False
             return False
