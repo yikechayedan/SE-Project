@@ -121,6 +121,7 @@ class ForgotPasswordView(generics.GenericAPIView):
 
         return Response({"code": 200, "msg": "验证码已发送到您的邮箱"})
 
+
 class VerifyCodeView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyCodeSerializer
@@ -160,6 +161,31 @@ class ResetPasswordView(generics.GenericAPIView):
         user.save()
 
         return Response({"code": 200,"msg": "密码重置成功"}, status=200)
+
+class RegisterSendCodeView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"code": 400, "msg": "请提供邮箱"}, status=400)
+
+        # 已注册直接拒绝
+        if User.objects.filter(email=email).exists():
+            return Response({"code": 400, "msg": "该邮箱已注册"}, status=400)
+
+        code = generate_code()
+        save_code(email, code)
+
+        send_mail(
+            subject="PolyMetric 注册验证码",
+            message=f"您的注册验证码是：{code}，5分钟内有效。",
+            from_email=None,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        return Response({"code": 200, "msg": "验证码已发送"})
 
 class AvatarUploadView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]

@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .auth import CustomTokenObtainPairView
-
+from .views import RegisterSendCodeView
 from .views import (
     RegisterView,  ChangePasswordView,
     LogoutView, AdminUserListView, AdminUserDeleteView,
@@ -12,6 +12,9 @@ from .views import (
 )
 
 urlpatterns = [
+    path("register/send-code/", RegisterSendCodeView.as_view(), name="register-send-code"),
+    path("register/", RegisterView.as_view(), name="register"),
+
     path("register/", RegisterView.as_view(), name="register"),
 
     # 登录 & 刷新 token
