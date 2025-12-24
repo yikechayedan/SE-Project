@@ -374,13 +374,14 @@ const filteredDatasetsList = computed(() => {
     let list = datasetsList.value;
     const selectedModel = modelsList.value.find(m => m.name === form.value.selectedModelName);
     const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
-    if (form.value.method) {
-        list = list.filter(dataset => {
-          return dataset.evaluation_type === form.value.method;
-        });
-    }
-
-    if(selectedModel || selectedModel2){
+    
+    // [New] 如果选了生图模型，强制只能选文本数据集 (Prompt)
+    const isImageModel = (selectedModel && selectedModel.category === 'image') || 
+                         (selectedModel2 && selectedModel2.category === 'image');
+    
+    if (isImageModel) {
+        list = list.filter(d => d.category === 'text');
+    } else if(selectedModel || selectedModel2){
       list = list.filter(dataset => {
           const isModelText = (selectedModel && selectedModel.category === "text");
           const isModel2Text = (selectedModel2 && selectedModel2.category === "text");
@@ -389,6 +390,12 @@ const filteredDatasetsList = computed(() => {
           }
           return true;
       })
+    }
+
+    if (form.value.method) {
+        list = list.filter(dataset => {
+          return dataset.evaluation_type === form.value.method;
+        });
     }
 
     if (!datasetSearchQuery.value) {
@@ -420,6 +427,25 @@ const handleClearDataset = () => {
   form.value.selectedDatasetName = '';
 };
 
+// [New] 监听模型选择，处理生图模型的自动冲突解决
+watch([() => form.value.selectedModelName, () => form.value.selectedModelName2], ([m1, m2]) => {
+    const model1 = modelsList.value.find(m => m.name === m1);
+    const model2 = modelsList.value.find(m => m.name === m2);
+    const isImageModel = (model1 && model1.category === 'image') || (model2 && model2.category === 'image');
+
+    if (isImageModel) {
+        // 1. 如果当前是客观评测，自动清空（因为生图模型不支持）
+        if (form.value.method === 'objective') {
+            form.value.method = '';
+        }
+        // 2. 如果当前选中的数据集不是文本类型，自动清空
+        const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+        if (selectedDataset && selectedDataset.category !== 'text') {
+            form.value.selectedDatasetName = '';
+        }
+    }
+});
+
 const handleClearModel1 = () => {
   form.value.selectedModelName = '';
 };
@@ -448,17 +474,24 @@ const handleRadioClick = (val) => {
 
 // 判定评测类型是否应该被禁用
 const isMethodDisabled = (methodType) => {
-    // 如果还没选数据集，则都不禁用
-    if (!form.value.selectedDatasetName) {
-        return false;
+    // 1. 根据数据集锁定
+    if (form.value.selectedDatasetName) {
+        const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+        if (selectedDataset && selectedDataset.evaluation_type) {
+            if (selectedDataset.evaluation_type !== methodType) return true;
+        }
     }
-    // 找到当前选中的数据集对象
-    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+
+    // 2. 根据模型锁定 (新逻辑：生图模型不支持客观评测)
+    const selectedModel = modelsList.value.find(m => m.name === form.value.selectedModelName);
+    const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
+    const isImageModel = (selectedModel && selectedModel.category === 'image') || 
+                         (selectedModel2 && selectedModel2.category === 'image');
     
-    // 如果数据集存在且有类型，则禁用掉所有不属于该类型的选项
-    if (selectedDataset && selectedDataset.evaluation_type) {
-        return selectedDataset.evaluation_type !== methodType;
+    if (isImageModel && methodType === 'objective') {
+        return true;
     }
+
     return false;
 };
 

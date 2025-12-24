@@ -339,12 +339,8 @@ class DatasetSerializer(serializers.ModelSerializer):
                             if len(data) == 0:
                                 raise serializers.ValidationError("数据集不能为空")
                                 
-                            # 4. 图片路径验证（如果是图像数据集）
-                            if category == "image":
-                                self._validate_image_paths(zf, data)
-                                
-                            # 5. 根据测评类型验证格式
-                            self._validate_data_by_evaluation_type(data, evaluation_type, category)
+                            # 5. 根据测评类型验证格式 (传入 zf 以便检查图片路径)
+                            self._validate_data_by_evaluation_type(data, evaluation_type, category, zf)
                                 
                 except Exception as e:
                     if isinstance(e, serializers.ValidationError):
@@ -426,28 +422,23 @@ class DatasetSerializer(serializers.ModelSerializer):
         else:
             return ['input']
     
-    def _validate_data_by_evaluation_type(self, data, evaluation_type, category=None):
+    def _validate_data_by_evaluation_type(self, data, evaluation_type, category=None, zip_file=None):
         """
         根据测评类型验证数据格式
         """
         if len(data) == 0:
             raise serializers.ValidationError("数据集不能为空")
         
-        # 图像类别的数据集可以有更灵活的结构
-        if category == "image":
-            # 图像数据集：只验证基本结构，不强制特定字段
-            for i, item in enumerate(data[:5]):  # 只检查前5个项目，提高性能
-                if not isinstance(item, dict):
-                    raise serializers.ValidationError(f"第{i+1}个项目必须是对象格式")
-                # 图像数据集至少需要有一个字段
-                if len(item.keys()) == 0:
-                    raise serializers.ValidationError(f"图像数据集第{i+1}个项目不能为空")
-            return
+        # 预先获取 ZIP 内文件清单 (如果是图像/多模态且是 ZIP)
+        zip_namelist = set(zip_file.namelist()) if zip_file else set()
+        
+        # 为了性能，如果数据集极大，全量校验前 500 条
+        check_data = data[:500]
         
         # 根据测评类型验证格式
         # ---------- 客观评测 ----------
         if evaluation_type == "objective":
-            for i, item in enumerate(data):
+            for i, item in enumerate(check_data):
                 if not isinstance(item, dict):
                     raise serializers.ValidationError(f"第 {i+1} 条客观题必须是对象（dict）")
 
@@ -457,22 +448,26 @@ class DatasetSerializer(serializers.ModelSerializer):
                 if "answer" not in item:
                     raise serializers.ValidationError(f"第 {i+1} 条客观题缺少字段 'answer'")
 
-                # 处理转义的换行符
-                input_text = item["input"].replace('\\n', '\n')
-                answer = item["answer"]
+                # 处理内容
+                input_text = str(item["input"]).replace('\\n', '\n')
+                answer = str(item["answer"])
 
                 # 类型校验
-                if not isinstance(input_text, str) or not input_text.strip():
-                    raise serializers.ValidationError(f"第 {i+1} 条客观题的 'input' 必须是非空字符串")
+                if not input_text.strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条客观题的 'input' 必须是非空内容")
 
-                if not isinstance(answer, str):
-                    raise serializers.ValidationError(f"第 {i+1} 条客观题的 'answer' 必须是字符串")
+                # 图像/多模态路径检查
+                if category in ["image", "multimodal"]:
+                    if "image" not in item:
+                        raise serializers.ValidationError(f"第 {i+1} 条图像客观题缺少字段 'image'")
+                    if item["image"] not in zip_namelist:
+                        raise serializers.ValidationError(f"第 {i+1} 条题目引用的图片 '{item['image']}' 在压缩包中不存在")
 
-                # 使用多个正则表达式匹配选项（处理不同格式）
+                # 使用多个正则表达式匹配选项
                 option_patterns = [
-                    re.compile(r"\\n([A-Z])\.", re.IGNORECASE),  # 转义的换行符
-                    re.compile(r"\n([A-Z])\.", re.IGNORECASE),   # 实际的换行符
-                    re.compile(r"\b([A-Z])\.", re.IGNORECASE)    # 单词边界后的选项
+                    re.compile(r"\\n([A-Z])\.", re.IGNORECASE),
+                    re.compile(r"\n([A-Z])\.", re.IGNORECASE),
+                    re.compile(r"\b([A-Z])\.", re.IGNORECASE)
                 ]
                 
                 options = []
@@ -482,9 +477,9 @@ class DatasetSerializer(serializers.ModelSerializer):
                 
                 options = list(set([opt.upper() for opt in options]))
 
-                if len(options) < 2:
+                if len(options) != 4:
                     raise serializers.ValidationError(
-                        f"第 {i+1} 条客观题的 'input' 中必须至少包含两个选项（如 A. B.）"
+                        f"第 {i+1} 条客观题必须包含且仅包含 A. B. C. D. 四个选项（当前检测到 {len(options)} 个）"
                     )
 
                 # 校验答案格式
@@ -501,7 +496,7 @@ class DatasetSerializer(serializers.ModelSerializer):
 
         # ---------- 主观评测 ----------
         elif evaluation_type == "subjective":
-            for i, item in enumerate(data):
+            for i, item in enumerate(check_data):
                 if not isinstance(item, dict):
                     raise serializers.ValidationError(f"第 {i+1} 条主观题必须是对象（dict）")
 
@@ -510,23 +505,37 @@ class DatasetSerializer(serializers.ModelSerializer):
                 if "reference" not in item:
                     raise serializers.ValidationError(f"第 {i+1} 条主观题缺少字段 'reference'")
 
-                if not isinstance(item["input"], str) or not item["input"].strip():
-                    raise serializers.ValidationError(f"第 {i+1} 条主观题的 'input' 必须是非空字符串")
+                if not str(item["input"]).strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题的 'input' 必须是非空内容")
 
-                if not isinstance(item["reference"], str) or not item["reference"].strip():
-                    raise serializers.ValidationError(f"第 {i+1} 条主观题的 'reference' 必须是非空字符串")
+                if not str(item["reference"]).strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条主观题的 'reference' 必须是非空内容")
+                
+                # 图像/多模态路径检查
+                if category in ["image", "multimodal"]:
+                    if "image" not in item:
+                        raise serializers.ValidationError(f"第 {i+1} 条图像主观题缺少字段 'image'")
+                    if item["image"] not in zip_namelist:
+                        raise serializers.ValidationError(f"第 {i+1} 条题目引用的图片 '{item['image']}' 在压缩包中不存在")
 
         # ---------- 对抗评测 ----------
         elif evaluation_type == "adversarial":
-            for i, item in enumerate(data):
+            for i, item in enumerate(check_data):
                 if not isinstance(item, dict):
                     raise serializers.ValidationError(f"第 {i+1} 条对抗题必须是对象（dict）")
 
                 if "input" not in item:
                     raise serializers.ValidationError(f"第 {i+1} 条对抗题缺少字段 'input'")
 
-                if not isinstance(item["input"], str) or not item["input"].strip():
-                    raise serializers.ValidationError(f"第 {i+1} 条对抗题的 'input' 必须是非空字符串")
+                if not str(item["input"]).strip():
+                    raise serializers.ValidationError(f"第 {i+1} 条对抗题的 'input' 必须是非空内容")
+                
+                # 图像/多模态路径检查
+                if category in ["image", "multimodal"]:
+                    if "image" not in item:
+                        raise serializers.ValidationError(f"第 {i+1} 条图像对抗题缺少字段 'image'")
+                    if item["image"] not in zip_namelist:
+                        raise serializers.ValidationError(f"第 {i+1} 条题目引用的图片 '{item['image']}' 在压缩包中不存在")
 
         else:
             raise serializers.ValidationError(f"未知的评测类型：{evaluation_type}")
@@ -739,83 +748,158 @@ class DatasetSerializer(serializers.ModelSerializer):
         finally:
             file_obj.seek(0)
         
-            def create(self, validated_data):
-                validated_data["creator"] = self.context["request"].user
-                file_obj = validated_data.get("file_path")
-                file_format = validated_data.get("file_format")
+    def create(self, validated_data):
         
-                if file_obj and file_format:
-                    # 统计样本数量和图片信息
-                    file_format = validated_data.get("file_format", "").lower()
-                    validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
-                    validated_data["sample_count"] = self._count_samples(file_obj, file_format)
-                    validated_data["has_images"] = self._check_has_images(file_obj, file_format)
-                    validated_data["image_count"] = self._count_images(file_obj, file_format)
-                    
-                    # 设置初始状态
-                    validated_data["is_verified"] = False
-                    validated_data["capability_tag"] = "processing"
-                    validated_data["capability_dimension"] = "other"
-                else:
-                    validated_data["file_size"] = 0.0
-                    validated_data["sample_count"] = 0
-                    validated_data["has_images"] = False
-                    validated_data["image_count"] = 0
-                    validated_data["capability_tag"] = "other"
-                    validated_data["capability_dimension"] = "other"
-                    validated_data["is_verified"] = False
+        validated_data["creator"] = self.context["request"].user
         
-                # 创建数据集
-                dataset = super().create(validated_data)
-                
-                # 异步分析能力维度（如果有文件）
-                if file_obj and file_format and validated_data.get("capability_tag") == "processing":
-                    from apps.tasks.tasks import analyze_dataset_capability
-                    analyze_dataset_capability.delay(dataset.id)
-                
-                return dataset
+        file_obj = validated_data.get("file_path")
         
-            def update(self, instance, validated_data):
-                """更新数据集"""
-                file_obj = validated_data.get("file_path")
-                
-                # 检查数据集是否已审核
-                if not instance.is_verified:
-                    raise serializers.ValidationError("只有已审核通过的数据集才能修改")
-                
-                if file_obj:
-                    # 删除旧文件
-                    if instance.has_file():
-                        try:
-                            old_path = instance.file_path.path
-                            if os.path.exists(old_path):
-                                os.remove(old_path)
-                        except:
-                            pass
-                    
-                    # 计算文件大小和格式
-                    validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
-                    file_format = validated_data.get("file_format", instance.file_format).lower()
-                    
-                    # 统计样本数量和图片信息
-                    validated_data["sample_count"] = self._count_samples(file_obj, file_format)
-                    validated_data["has_images"] = self._check_has_images(file_obj, file_format)
-                    validated_data["image_count"] = self._count_images(file_obj, file_format)
-                    
-                    # 设置初始状态为处理中
-                    validated_data["capability_tag"] = "processing"
-                    validated_data["capability_dimension"] = "other"
-                
-                # 更新数据集
-                dataset = super().update(instance, validated_data)
-                
-                # 异步分析能力维度
-                if file_obj and validated_data.get("capability_tag") == "processing":
-                    from apps.tasks.tasks import analyze_dataset_capability
-                    analyze_dataset_capability.delay(dataset.id)
-                
-        return dataset
+        file_format = validated_data.get("file_format")
+        
 
+        
+        if file_obj and file_format:
+        
+            # 统计样本数量和图片信息
+        
+            file_format = validated_data.get("file_format", "").lower()
+        
+            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
+        
+            validated_data["sample_count"] = self._count_samples(file_obj, file_format)
+        
+            validated_data["has_images"] = self._check_has_images(file_obj, file_format)
+        
+            validated_data["image_count"] = self._count_images(file_obj, file_format)
+        
+            
+        
+            # 设置初始状态
+        
+            validated_data["is_verified"] = False
+        
+            validated_data["capability_tag"] = "processing"
+        
+            validated_data["capability_dimension"] = "other"
+        
+        else:
+        
+            validated_data["file_size"] = 0.0
+        
+            validated_data["sample_count"] = 0
+        
+            validated_data["has_images"] = False
+        
+            validated_data["image_count"] = 0
+        
+            validated_data["capability_tag"] = "other"
+        
+            validated_data["capability_dimension"] = "other"
+        
+            validated_data["is_verified"] = False
+        
+
+        
+        # 创建数据集
+        
+        dataset = super().create(validated_data)
+        
+        
+        
+        # 异步分析能力维度（如果有文件）
+        
+        if file_obj and file_format and validated_data.get("capability_tag") == "processing":
+        
+            from apps.tasks.tasks import analyze_dataset_capability
+        
+            analyze_dataset_capability.delay(dataset.id)
+        
+        
+        
+        return dataset
+        
+
+        
+    def update(self, instance, validated_data):
+        
+        """更新数据集"""
+        
+        file_obj = validated_data.get("file_path")
+        
+        
+        
+        # 检查数据集是否已审核
+        
+        if not instance.is_verified:
+        
+            raise serializers.ValidationError("只有已审核通过的数据集才能修改")
+        
+        
+        
+        if file_obj:
+        
+            # 删除旧文件
+        
+            if instance.has_file():
+        
+                try:
+        
+                    old_path = instance.file_path.path
+        
+                    if os.path.exists(old_path):
+        
+                        os.remove(old_path)
+        
+                except:
+        
+                    pass
+        
+            
+        
+            # 计算文件大小和格式
+        
+            validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
+        
+            file_format = validated_data.get("file_format", instance.file_format).lower()
+        
+            
+        
+            # 统计样本数量和图片信息
+        
+            validated_data["sample_count"] = self._count_samples(file_obj, file_format)
+        
+            validated_data["has_images"] = self._check_has_images(file_obj, file_format)
+        
+            validated_data["image_count"] = self._count_images(file_obj, file_format)
+        
+            
+        
+            # 设置初始状态为处理中
+        
+            validated_data["capability_tag"] = "processing"
+        
+            validated_data["capability_dimension"] = "other"
+        
+        
+        
+        # 更新数据集
+        
+        dataset = super().update(instance, validated_data)
+        
+        
+        
+        # 异步分析能力维度
+        
+        if file_obj and validated_data.get("capability_tag") == "processing":
+        
+            from apps.tasks.tasks import analyze_dataset_capability
+        
+            analyze_dataset_capability.delay(dataset.id)
+        
+        
+        
+        return dataset
+        
 
 class DatasetDetailSerializer(DatasetSerializer):
     """数据集详情序列化器"""

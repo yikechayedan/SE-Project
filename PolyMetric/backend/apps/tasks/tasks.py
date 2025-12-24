@@ -157,9 +157,9 @@ def analyze_dataset_capability(self, dataset_id):
             dataset.save(update_fields=["description"])
             return f"Dataset {dataset_id} has no valid samples, set to 'no_samples'"
         
-        # 调用AI判断能力
+        # 调用AI判断能力 (传入 dataset 对象以支持图像分析)
         try:
-            capability = ai_judge_capability(samples)
+            capability = ai_judge_capability(samples, dataset=dataset)
         except Exception as ai_error:
             # AI调用失败，记录详细错误信息
             import traceback
