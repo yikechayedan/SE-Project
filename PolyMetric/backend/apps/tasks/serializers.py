@@ -8,19 +8,43 @@ from apps.models.models import My_Model  # 仅供类型提示 / 可选引用
 # 单条评测 item 序列化
 # ------------------------------------
 class EvaluationItemSerializer(serializers.ModelSerializer):
+    # 定义用于存放图片 Base64 的虚拟字段
+    predicted_image_data = serializers.SerializerMethodField()
+    predicted_image_2_data = serializers.SerializerMethodField()
+
     class Meta:
         model = EvaluationItem
-        fields = [
-            "id",
-            "content",
-            "correct_answer",
-            "predicted_answer",
-            "predicted_answer_2", 
-            "is_correct",
-            "score",
-            "preference",
-            "dataset_index",
-        ]
+        fields = "__all__"
+
+    def get_predicted_image_data(self, obj):
+        return self._get_base64_from_answer(obj.predicted_answer)
+
+    def get_predicted_image_2_data(self, obj):
+        return self._get_base64_from_answer(obj.predicted_answer_2)
+
+    def _get_base64_from_answer(self, answer):
+        if not answer or '/media/generated_images/' not in answer:
+            return None
+            
+        import re
+        import os
+        import base64
+        from django.conf import settings
+        
+        # 匹配 Markdown 中的路径：![...](/media/generated_images/xxx.png)
+        match = re.search(r'\/media\/(generated_images\/[^)]+)', answer)
+        if match:
+            rel_path = match.group(1).strip().rstrip(')')
+            filename = os.path.basename(rel_path)
+            full_path = os.path.join(settings.MEDIA_ROOT, "generated_images", filename)
+            
+            if os.path.exists(full_path):
+                try:
+                    with open(full_path, "rb") as f:
+                        return base64.b64encode(f.read()).decode('utf-8')
+                except Exception:
+                    return None
+        return None
 
 
 # ------------------------------------

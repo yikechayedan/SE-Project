@@ -112,7 +112,17 @@
                   </span>
                 </template>
                 <div class="model-response">
-                  <div class="markdown-body" v-html="renderedResponse1"></div>
+                  <div v-if="!isPureImage1Only" class="markdown-body" v-html="renderedResponse1"></div>
+                  <!-- 模型 A 生成图片展示 -->
+                  <div v-if="currentItem && currentItem.predicted_image_data" class="gen-image-container">
+                    <el-divider v-if="!isPureImage1Only" border-style="dashed">生成的图像结果</el-divider>
+                    <el-image 
+                      :src="formatBase64(currentItem.predicted_image_data)" 
+                      :preview-src-list="[formatBase64(currentItem.predicted_image_data)]"
+                      fit="contain"
+                      class="responsive-gen-image"
+                    />
+                  </div>
                 </div>
               </el-card>
             </el-col>
@@ -125,7 +135,17 @@
                   </span>
                 </template>
                 <div class="model-response">
-                  <div class="markdown-body" v-html="renderedResponse2"></div>
+                  <div v-if="!isPureImage2Only" class="markdown-body" v-html="renderedResponse2"></div>
+                  <!-- 模型 B 生成图片展示 -->
+                  <div v-if="currentItem && currentItem.predicted_image_2_data" class="gen-image-container">
+                    <el-divider v-if="!isPureImage2Only" border-style="dashed">生成的图像结果</el-divider>
+                    <el-image 
+                      :src="formatBase64(currentItem.predicted_image_2_data)" 
+                      :preview-src-list="[formatBase64(currentItem.predicted_image_2_data)]"
+                      fit="contain"
+                      class="responsive-gen-image"
+                    />
+                  </div>
                 </div>
               </el-card>
             </el-col>
@@ -277,29 +297,28 @@ const md = new MarkdownIt({
   }
 });
 
+const isPureImage1Only = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer) return false;
+  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer.trim());
+});
+
+const isPureImage2Only = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer_2) return false;
+  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer_2.trim());
+});
+
 const renderedResponse1 = computed(() => {
-  if (currentItem.value && currentItem.value.predicted_answer) {
-    let content = currentItem.value.predicted_answer;
-    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
-    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
-    let htmlContent = md.render(currentItem.value.predicted_answer);
-    htmlContent = htmlContent.replace(/>\s+</g, '><');
-    return htmlContent;
-  }
-  return '';
+  if (!currentItem.value || !currentItem.value.predicted_answer) return '';
+  const cleanContent = currentItem.value.predicted_answer.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  return md.render(cleanContent);
 });
 
 const renderedResponse2 = computed(() => {
-  if (currentItem.value && currentItem.value.predicted_answer_2) {
-    let content = currentItem.value.predicted_answer_2;
-    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
-    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
-    let htmlContent = md.render(currentItem.value.predicted_answer_2);
-    htmlContent = htmlContent.replace(/>\s+</g, '><');
-    return htmlContent;
-  }
-  return '';
+  if (!currentItem.value || !currentItem.value.predicted_answer_2) return '';
+  const cleanContent = currentItem.value.predicted_answer_2.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  return md.render(cleanContent);
 });
+
 
 // 数据获取
 const fetchReportData = async () => {

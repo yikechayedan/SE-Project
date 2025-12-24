@@ -36,29 +36,46 @@
       </el-card>
 
       <el-row :gutter="20" class="model-comparison">
-        <el-col :span="12">
-          <el-card class="model-output-card" shadow="hover">
-            <template #header>
-              <span class="section-title model-a-title">左侧：模型 A (V1.0)</span>
-            </template>
-            <div class="model-response" v-if="currentItem.itemID">
-                <div class="markdown-body" v-html="renderedResponse1"></div>
-            </div>
-            <div v-else class="content-placeholder">请等待模型 A 输出加载...</div>
-          </el-card>
-        </el-col>
+            <el-col :span="12">
+              <el-card class="model-output-card" shadow="hover">
+                <template #header>
+                  <span class="section-title model-a-title">模型A</span>
+                </template>
+                <div class="model-response">
+                  <div v-if="!isPureImage1Only" class="markdown-body" v-html="renderedResponse1"></div>
+                  <!-- 模型 A 图片展示 -->
+                  <div v-if="currentItem && currentItem.predicted_image_data" class="gen-image-container">
+                    <el-image 
+                      :src="formatBase64(currentItem.predicted_image_data)" 
+                      :preview-src-list="[formatBase64(currentItem.predicted_image_data)]"
+                      fit="contain"
+                      class="responsive-gen-image"
+                    />
+                  </div>
+                </div>
+              </el-card>
+            </el-col>
 
-        <el-col :span="12">
-          <el-card class="model-output-card" shadow="hover">
-            <template #header>
-              <span class="section-title model-b-title">右侧：模型 B (V2.0)</span>
-            </template>
-            <div class="model-response" v-if="currentItem.itemID">
-                <div class="markdown-body" v-html="renderedResponse2"></div>
-            </div>
-            <div v-else class="content-placeholder">请等待模型 B 输出加载...</div>
-          </el-card>
-        </el-col>
+            <el-col :span="12">
+              <el-card class="model-output-card" shadow="hover">
+                <template #header>
+                  <span class="section-title model-b-title">模型B</span>
+                </template>
+                <div class="model-response">
+                  <div v-if="!isPureImage2Only" class="markdown-body" v-html="renderedResponse2"></div>
+                  <!-- 模型 B 图片展示 -->
+                  <div v-if="currentItem && currentItem.predicted_image_2_data" class="gen-image-container">
+                    <el-image 
+                      :src="formatBase64(currentItem.predicted_image_2_data)" 
+                      :preview-src-list="[formatBase64(currentItem.predicted_image_2_data)]"
+                      fit="contain"
+                      class="responsive-gen-image"
+                    />
+                  </div>
+                </div>
+              </el-card>
+            </el-col>
+
       </el-row>
 
       <el-card class="rating-card" shadow="always">
@@ -221,29 +238,37 @@ const md = new MarkdownIt({
   }
 });
 
+// ===================== 辅助函数：格式化 Base64 =====================
+const formatBase64 = (b64) => {
+  if (!b64) return '';
+  if (b64.startsWith('data:')) return b64;
+  if (b64.startsWith('iVBORw')) return 'data:image/png;base64,' + b64;
+  if (b64.startsWith('/9j/')) return 'data:image/jpeg;base64,' + b64;
+  return 'data:image/jpeg;base64,' + b64;
+};
+
+const isPureImage1Only = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer) return false;
+  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer.trim());
+});
+
+const isPureImage2Only = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer_2) return false;
+  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer_2.trim());
+});
+
 const renderedResponse1 = computed(() => {
-  if (currentItem.value && currentItem.value.item_content.myModel1_response) {
-    let content = currentItem.value.item_content.myModel1_response;
-    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
-    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
-    let htmlContent = md.render(currentItem.value.item_content.myModel1_response);
-    htmlContent = htmlContent.replace(/>\s+</g, '><');
-    return htmlContent;
-  }
-  return '';
+  if (!currentItem.value || !currentItem.value.predicted_answer) return '';
+  const cleanContent = currentItem.value.predicted_answer.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  return md.render(cleanContent);
 });
 
 const renderedResponse2 = computed(() => {
-  if (currentItem.value && currentItem.value.item_content.myModel2_response) {
-    let content = currentItem.value.item_content.myModel2_response;
-    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
-    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
-    let htmlContent = md.render(currentItem.value.item_content.myModel2_response);
-    htmlContent = htmlContent.replace(/>\s+</g, '><');
-    return htmlContent;
-  }
-  return '';
+  if (!currentItem.value || !currentItem.value.predicted_answer_2) return '';
+  const cleanContent = currentItem.value.predicted_answer_2.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  return md.render(cleanContent);
 });
+
 
 // --- 核心方法 ---
 
@@ -290,12 +315,25 @@ const initData = async () => {
     }
 };
 
+// 获取条目详情
 const fetchDetail = async (id) => {
-    loading.value = true;
-    currentItemId.value = id;
-    try {
-        const res = await getItemDetail(props.taskId, id);
-        currentItem.value = res.data;
+  loading.value = true;
+  currentItemId.value = id;
+  try {
+    const res = await getItemDetail(props.taskId, id);
+    
+    // [Fix] 这里的后端响应是嵌套在 item_content 下的，需要手动拍平
+    const content = res.data.item_content || {};
+    currentItem.value = {
+        ...res.data,
+        content: content.input_query,
+        image_data: content.image_data,
+        predicted_answer: content.myModel1_response,
+        predicted_answer_2: content.myModel2_response,
+        predicted_image_data: content.predicted_image_data,
+        predicted_image_2_data: content.predicted_image_2_data
+    };
+
         
         // --- 核心回显逻辑 ---
         // 检查本地缓存中是否有该题目的评测记录
@@ -704,5 +742,14 @@ onMounted(initData);
 
 .markdown-body {
   white-space: pre-wrap;      /* 保留原始缩进（如 \t），但允许自动换行 */
+}
+.gen-image-container {
+  margin-top: 15px;
+  width: 100%;
+}
+.responsive-gen-image {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
 }
 </style>

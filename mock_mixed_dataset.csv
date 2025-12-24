@@ -1,5 +1,0 @@
-input,reference
-"计算：(25 * 4) / 5 + 10 等于多少？","30"
-"用 Python 写一个简单的 Hello World。","print('Hello World')"
-"如果 1=5, 2=25, 3=125, 那么 5=?","1 (根据逻辑 1=5，所以 5=1，或者根据等比规律 3125)"
-"查看图中的电路图，说出 R1 的阻值：![电路](https://example.com/circuit.png)","电路图显示 R1 的阻值为 10k 欧姆。"

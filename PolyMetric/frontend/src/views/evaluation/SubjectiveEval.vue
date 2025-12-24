@@ -39,15 +39,25 @@
         </el-col>
 
         <el-col :span="12">
-          <el-card class="model-output-card" shadow="hover">
-            <template #header>
-              <span class="section-title">模型输出 (Model Output)</span>
-            </template>
-            <div class="model-response" v-if="currentItem.itemID" >
-              <div class="markdown-body" v-html="renderedResponse"></div>
-            </div>
-            <div v-else class="content-placeholder">请等待模型输出加载...</div>
-          </el-card>
+            <el-card class="model-output-card" shadow="hover">
+              <template #header>
+                <span class="section-title">模型输出 (Model Output)</span>
+              </template>
+              <div class="model-response">
+                <div v-if="!isPureImageResponse" class="markdown-body" v-html="renderedResponse"></div>
+                <!-- 模型生成图片展示 -->
+                <div v-if="currentItem && currentItem.predicted_image_data" class="gen-image-container">
+                  <el-divider v-if="!isPureImageResponse" border-style="dashed">生成的图像结果</el-divider>
+                  <el-image 
+                    :src="formatBase64(currentItem.predicted_image_data)" 
+                    :preview-src-list="[formatBase64(currentItem.predicted_image_data)]"
+                    fit="contain"
+                    class="responsive-gen-image"
+                  />
+                </div>
+              </div>
+            </el-card>
+
         </el-col>
       </el-row>
       
@@ -237,17 +247,27 @@ const md = new MarkdownIt({
   }
 });
 
-const renderedResponse = computed(() => {
-  if (currentItem.value && currentItem.value.item_content.myModel1_response) {
-    let content = currentItem.value.item_content.myModel1_response;
-    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
-    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
-    let htmlContent = md.render(currentItem.value.item_content.myModel1_response);
-    htmlContent = htmlContent.replace(/>\s+</g, '><');
-    return htmlContent;
-  }
-  return '';
+// ===================== 辅助函数：格式化 Base64 =====================
+const formatBase64 = (b64) => {
+  if (!b64) return '';
+  if (b64.startsWith('data:')) return b64;
+  if (b64.startsWith('iVBORw')) return 'data:image/png;base64,' + b64;
+  if (b64.startsWith('/9j/')) return 'data:image/jpeg;base64,' + b64;
+  return 'data:image/jpeg;base64,' + b64;
+};
+
+const isPureImageResponse = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer) return false;
+  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer.trim());
 });
+
+const renderedResponse = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer) return '';
+  // 清除 Markdown 中的图片标签防止裂图
+  const cleanContent = currentItem.value.predicted_answer.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  return md.render(cleanContent);
+});
+
 
 // --- 核心逻辑 ---
 
@@ -298,7 +318,16 @@ const fetchDetail = async (id) => {
   currentItemId.value = id;
   try {
     const res = await getItemDetail(props.taskId, id);
-    currentItem.value = res.data;
+    
+    // [Fix] 这里的后端响应是嵌套在 item_content 下的，需要手动拍平
+    const content = res.data.item_content || {};
+    currentItem.value = {
+        ...res.data,
+        content: content.input_query,
+        image_data: content.image_data,
+        predicted_answer: content.myModel1_response,
+        predicted_image_data: content.predicted_image_data // 注入生图数据
+    };
 
     // --- 分数回显核心逻辑 ---
     // 检查这个 ID 是否在已评测缓存中
@@ -776,5 +805,14 @@ onMounted(initData);
 
 .markdown-body {
   white-space: pre-wrap;      /* 保留原始缩进（如 \t），但允许自动换行 */
+}
+.gen-image-container {
+  margin-top: 15px;
+  width: 100%;
+}
+.responsive-gen-image {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
 }
 </style>

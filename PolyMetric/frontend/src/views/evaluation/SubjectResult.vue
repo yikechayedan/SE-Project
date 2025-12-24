@@ -121,7 +121,19 @@
                 <span class="section-title">模型输出 (Model Output)</span>
               </template>
               <div class="model-response">
-                <div class="markdown-body" v-html="renderedResponse"></div>
+                <!-- 文字部分 -->
+                <div v-if="!isPureImageResponse" class="markdown-body" v-html="renderedResponse"></div>
+                
+                <!-- 生成图片展示 (支持图文混排) -->
+                <div v-if="currentItem && currentItem.predicted_image_data" class="gen-image-container">
+                  <el-divider v-if="!isPureImageResponse" border-style="dashed">生成的图像结果</el-divider>
+                  <el-image 
+                    :src="formatBase64(currentItem.predicted_image_data)" 
+                    :preview-src-list="[formatBase64(currentItem.predicted_image_data)]"
+                    fit="contain"
+                    class="responsive-gen-image"
+                  />
+                </div>
               </div>
             </el-card>
           </el-col>
@@ -323,17 +335,27 @@ const md = new MarkdownIt({
   }
 });
 
-const renderedResponse = computed(() => {
-  if (currentItem.value && currentItem.value.predicted_answer) {
-    let content = currentItem.value.predicted_answer;
-    content = content.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
-    content = content.replace(/\*\*\s+：/g, '**：').replace(/\*\*\s+:/g, '**:');
-    let htmlContent = md.render(currentItem.value.predicted_answer);
-    htmlContent = htmlContent.replace(/>\s+</g, '><');
-    return htmlContent;
-  }
-  return '';
+// ===================== 辅助函数：格式化 Base64 =====================
+const formatBase64 = (b64) => {
+  if (!b64) return '';
+  if (b64.startsWith('data:')) return b64;
+  if (b64.startsWith('iVBORw')) return 'data:image/png;base64,' + b64;
+  if (b64.startsWith('/9j/')) return 'data:image/jpeg;base64,' + b64;
+  return 'data:image/jpeg;base64,' + b64;
+};
+
+const isPureImageResponse = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer) return false;
+  return /^!\[.*?\]\s*\(.*\)$/.test(currentItem.value.predicted_answer.trim());
 });
+
+const renderedResponse = computed(() => {
+  if (!currentItem.value || !currentItem.value.predicted_answer) return '';
+  // 仅清理图片标签，保留文字
+  const cleanContent = currentItem.value.predicted_answer.replace(/!\[.*?\]\s*\(.*\)/g, '');
+  return md.render(cleanContent);
+});
+
 
 // ===================== 导航逻辑 (处理分页切换) =====================
 
@@ -915,5 +937,14 @@ onMounted(() => {
 
 .markdown-body {
   white-space: pre-wrap;      /* 保留原始缩进（如 \t），但允许自动换行 */
+}
+.gen-image-container {
+  margin-top: 15px;
+  width: 100%;
+}
+.responsive-gen-image {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
 }
 </style>

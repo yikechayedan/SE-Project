@@ -451,6 +451,10 @@ def get_item_detail(request):
     except Exception as e:
         print(f"Error: {e}")
 
+    # 获取图片 Base64 (通过序列化器复用逻辑)
+    from .serializers import EvaluationItemSerializer
+    item_serializer = EvaluationItemSerializer(item)
+    
     return Response({
         "method": task.method,
         "itemID": item.id,
@@ -459,7 +463,10 @@ def get_item_detail(request):
             "image_data": image_base64,  # 返回 Base64 而不是 URL
             "myModel1_response": item.predicted_answer,
             "myModel2_response": item.predicted_answer_2,
+            "predicted_image_data": item_serializer.data.get("predicted_image_data"),
+            "predicted_image_2_data": item_serializer.data.get("predicted_image_2_data")
         },
+        "completed": item.score is not None
     })
 
 
