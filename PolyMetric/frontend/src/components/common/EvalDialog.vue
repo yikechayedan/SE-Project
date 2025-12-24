@@ -690,16 +690,20 @@ const submitEval = async() => {
         } else if (method === 'subjective') {
           router.push({ name: 'SubjectResult', params: { taskId: existingTaskId } });
         } else if (method === 'adversarial') {
-          router.push({ 
-            name: 'AdversarialEval', 
-            params: { 
-              taskId: existingTaskId,
-              reviewerId: currentUserId.value,
-              modelId: selectedModel.id,
-              model2Id: selectedModel2.id,
-              datasetId: selectedDataset.id
-            } 
-          });
+          if (form.value.type === 'model') {
+             router.push({ name: 'AdversarialResult', params: { taskId: existingTaskId } });
+          } else {
+             router.push({ 
+              name: 'AdversarialEval', 
+              params: { 
+                taskId: existingTaskId,
+                reviewerId: currentUserId.value,
+                modelId: selectedModel.id,
+                model2Id: selectedModel2.id,
+                datasetId: selectedDataset.id
+              } 
+            });
+          }
         }
         
       } else {
