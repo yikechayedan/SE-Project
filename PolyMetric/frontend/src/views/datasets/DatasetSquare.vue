@@ -376,9 +376,12 @@
         </el-form-item>
         <el-form-item label="文件格式" prop="file_format">
           <el-select v-model="uploadForm.file_format" placeholder="请选择文件格式" style="width: 100%;">
-            <el-option label="CSV 文件" value="csv" />
-            <el-option label="JSON 文件" value="json" />
-            <el-option label="ZIP 压缩包" value="zip" />
+            <el-option 
+              v-for="item in availableFileFormats" 
+              :key="item.value" 
+              :label="item.label" 
+              :value="item.value" 
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="数据集文件" prop="file">
@@ -563,6 +566,28 @@ const uploadForm = reactive({
   is_public: true
 })
 
+// 动态计算可选的文件格式
+const availableFileFormats = computed(() => {
+  const common = [
+    { label: 'CSV 文件', value: 'csv' },
+    { label: 'ZIP 压缩包', value: 'zip' }
+  ]
+  if (uploadForm.category === 'image' || uploadForm.category === 'multimodal') {
+    return common
+  }
+  return [
+    ...common,
+    { label: 'JSON 文件', value: 'json' }
+  ]
+})
+
+// 监听分类变化，如果当前格式不再可选范围内则重置
+watch(() => uploadForm.category, (newCategory) => {
+  if (['image', 'multimodal'].includes(newCategory) && uploadForm.file_format === 'json') {
+    uploadForm.file_format = ''
+  }
+})
+
 // 接受的文件类型 (为了防止浏览器拖拽限制，这里允许所有支持的格式)
 const acceptFileTypes = '.csv,.json,.zip'
 
@@ -587,12 +612,23 @@ const handleFileChange = (file) => {
   
   // 自动识别格式
   const name = file.name.toLowerCase()
+  let detectedFormat = ''
   if (name.endsWith('.csv')) {
-    uploadForm.file_format = 'csv'
+    detectedFormat = 'csv'
   } else if (name.endsWith('.json')) {
-    uploadForm.file_format = 'json'
+    detectedFormat = 'json'
   } else if (name.endsWith('.zip')) {
-    uploadForm.file_format = 'zip'
+    detectedFormat = 'zip'
+  }
+  
+  // 如果识别出的格式在当前分类的可选范围内，则自动选中
+  if (detectedFormat) {
+    const isImageOrMulti = ['image', 'multimodal'].includes(uploadForm.category)
+    if (isImageOrMulti && detectedFormat === 'json') {
+      ElMessage.warning('图像或多模态数据集通常需要以 ZIP 格式上传以包含图片文件')
+    } else {
+      uploadForm.file_format = detectedFormat
+    }
   }
   
   // 如果还没填名称，自动填入文件名(去后缀)
@@ -648,16 +684,31 @@ const submitUpload = async () => {
       fetchAllDatasets()
     } else {
       console.error('Upload failed with response:', res.data)
-      ElMessage.error(res.data?.msg || '上传失败')
+      let errorMsg = res.data?.msg || '上传失败'
+      if (res.data?.data) {
+        const firstKey = Object.keys(res.data.data)[0]
+        if (firstKey) {
+          const detail = Array.isArray(res.data.data[firstKey]) ? res.data.data[firstKey][0] : res.data.data[firstKey]
+          errorMsg += `: ${detail}`
+        }
+      }
+      ElMessage.error(errorMsg)
     }
   } catch (error) {
     console.error('上传失败:', error)
-    if (error.response) {
-       console.error('Error response data:', error.response.data)
-       ElMessage.error(JSON.stringify(error.response.data) || '上传失败')
-    } else {
-       ElMessage.error('上传失败，请稍后重试')
+    let errorMsg = '上传失败，请稍后重试'
+    if (error.response?.data) {
+      const resData = error.response.data
+      if (resData.msg) errorMsg = resData.msg
+      if (resData.data) {
+        const firstKey = Object.keys(resData.data)[0]
+        if (firstKey) {
+          const detail = Array.isArray(resData.data[firstKey]) ? resData.data[firstKey][0] : resData.data[firstKey]
+          errorMsg += `: ${detail}`
+        }
+      }
     }
+    ElMessage.error(errorMsg)
   } finally {
     uploading.value = false
   }

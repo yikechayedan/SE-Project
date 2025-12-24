@@ -553,6 +553,11 @@ const submitEval = async() => {
         ElMessage.error('请选择模型二');
         return;
       }
+      // [Fix] 对抗评测禁止选择相同模型
+      if (selectedModel && selectedModel2 && selectedModel.id === selectedModel2.id) {
+        ElMessage.warning('对抗评测中，模型一和模型二不能相同');
+        return;
+      }
     }
 
     let selectedJudgeModel = null;

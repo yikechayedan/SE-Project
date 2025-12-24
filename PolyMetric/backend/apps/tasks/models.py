@@ -187,11 +187,18 @@ class EvaluationItem(models.Model):
         verbose_name="偏好",
     )
 
-    
+    # 原始数据集中的索引顺序
+    dataset_index = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="数据集内索引",
+        help_text="用于在报告中按原始顺序展示"
+    )
 
     class Meta:
         verbose_name = "评测条目"
         verbose_name_plural = verbose_name
+        ordering = ["dataset_index", "id"]
 
     def __str__(self):
         return f"Item {self.id} for Task {self.task_id}"
