@@ -814,10 +814,11 @@ class DatasetSerializer(serializers.ModelSerializer):
                     from apps.tasks.tasks import analyze_dataset_capability
                     analyze_dataset_capability.delay(dataset.id)
                 
-                return dataset
-        
-        
-        class DatasetDetailSerializer(DatasetSerializer):    """数据集详情序列化器"""
+        return dataset
+
+
+class DatasetDetailSerializer(DatasetSerializer):
+    """数据集详情序列化器"""
     class Meta(DatasetSerializer.Meta):
         pass
 

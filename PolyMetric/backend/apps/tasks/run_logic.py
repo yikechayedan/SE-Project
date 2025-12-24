@@ -5,7 +5,7 @@ import re
 from django.utils import timezone
 from django.db import transaction
 
-from .services import call_llm_api
+from .services import call_llm_api, IMAGE_GEN_MODEL_KEYWORDS
 from .models import EvaluationTask, EvaluationItem
 from apps.datasets.models import Dataset
 from .models import EvaluationSummary
@@ -93,8 +93,18 @@ def build_subjective_prompt(question, model_answer, reference=None):
 """.strip()
 
 
+def is_image_gen_model(model_name: str) -> bool:
+    """判断是否为文生图模型，逻辑与 services.py 保持一致"""
+    if not model_name: return False
+    name_lower = model_name.lower()
+    return any(k in name_lower for k in IMAGE_GEN_MODEL_KEYWORDS)
+
 def build_subjective_answer_prompt(item: EvaluationItem) -> str:
+    # [Fix] 如果是生图模型，直接返回纯文本题干，跳过模板包装
     text = get_item_text(item.content)
+    if is_image_gen_model(item.task.myModel.name):
+        return text
+        
     return f"""
 请认真回答下面的主观问题。
 

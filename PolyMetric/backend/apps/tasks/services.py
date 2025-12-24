@@ -10,6 +10,11 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+# ===================== 生图模型识别关键字 =====================
+# 只要模型名称包含以下任一关键字（不区分大小写），系统将自动切换至生图接口
+IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo"]
+# ============================================================
+
 def _save_remote_image(url):
     """从远程 URL 下载图片并保存到本地"""
     import requests
@@ -85,7 +90,50 @@ def call_llm_api(prompt: str, model_name: str, images: list = None, max_retries:
 
     for attempt in range(max_retries + 1):
         try:
-            # 增加超时时间，特别是对于CSV数据分析任务
+            model_lower = model_name.lower()
+            # [Fix] 使用外部定义的关键字列表进行识别
+            is_t2i_model = any(k in model_lower for k in IMAGE_GEN_MODEL_KEYWORDS)
+            
+            if is_t2i_model:
+                try:
+                    logger.info(f"Routing {model_name} to specialized T2I endpoint.")
+                    client = OpenAI(api_key=settings.LLM_API_KEY, base_url=settings.LLM_BASE_URL)
+                    # [Fix] 显式增加 size 参数，某些模型（如 WanX）在缺失规格参数时可能返回空结果
+                    response = client.images.generate(
+                        model=model_name,
+                        prompt=prompt,
+                        n=1,
+                        size="1024x1024" 
+                    )
+                    # [Fix] 增加长度校验，防止 list index out of range
+                    if hasattr(response, 'data') and len(response.data) > 0:
+                        image_url = response.data[0].url
+                        if image_url:
+                            return _save_remote_image(image_url)
+                    
+                    logger.error(f"T2I Response structure unexpected or empty: {response}")
+                    raise Exception(f"No image data in successful 200 response from {model_name}")
+                except Exception as e:
+                    logger.warning(f"T2I SDK call failed for {model_name}: {e}. Trying raw request fallback.")
+                    # 只有在 SDK 明确报错后才尝试 raw 模式，且 raw 模式下也要处理可能的 URL 列表
+                    headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}", "Content-Type": "application/json"}
+                    payload = {"model": model_name, "messages": messages, "stream": False}
+                    base = settings.LLM_BASE_URL.rstrip('/')
+                    if not base.endswith('/v1'): base += '/v1'
+                    
+                    # 尝试 chat 接口但手动解析 content 列表 (针对万一网关没拦截但返回 list 的情况)
+                    resp = requests.post(f"{base}/chat/completions", json=payload, headers=headers, timeout=120)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = data['choices'][0]['message']['content']
+                        if isinstance(content, list):
+                            for part in content:
+                                if isinstance(part, dict) and 'url' in part:
+                                    return _save_remote_image(part['url'])
+                        return str(content)
+                    raise e # 如果还是不行，抛出原始 SDK 错误
+
+            # 正常文本模型逻辑
             timeout = 120.0 if len(prompt) > 5000 else 60.0
             
             client = OpenAI(
