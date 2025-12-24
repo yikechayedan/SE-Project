@@ -2,16 +2,26 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from .models import User, UserFollow
+from .utils import check_code
 
 User = get_user_model()
 
 # ========== 基础序列化器（保留） ==========
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
-
+    code = serializers.CharField(write_only=True, required=True)
     class Meta:
         model = User
-        fields = ["id", "username", "password", "email", "phone"]
+        fields = ["id", "username", "password", "email", "phone","code"]
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        code = attrs.get("code")
+
+        if not check_code(email, code):
+            raise serializers.ValidationError("邮箱验证码错误或已过期")
+
+        return attrs
 
     def validate_phone(self, value):
         """如果手机号为空字符串，转为 None"""
@@ -20,6 +30,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        validated_data.pop("code")
         validated_data["password"] = make_password(validated_data["password"])
         return super().create(validated_data)
 
