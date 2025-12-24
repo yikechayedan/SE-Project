@@ -79,16 +79,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="is_public" label="状态" width="130" align="center">
+        <el-table-column prop="is_public" label="公开状态" width="100" align="center">
           <template #default="{ row }">
-            <div class="status-tags">
-              <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
-                {{ row.is_public ? '公开' : '私有' }}
-              </el-tag>
-              <el-tag :type="row.is_verified ? 'success' : 'warning'" size="small">
-                {{ row.is_verified ? '已审核' : '待审核' }}
-              </el-tag>
-            </div>
+            <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
+              {{ row.is_public ? '公开' : '私有' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="上传时间" width="110" align="center">
@@ -96,7 +91,14 @@
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right" align="center">
+        <el-table-column label="审核状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="info" size="small" text @click="handlePreview(row)" :disabled="!row.has_file">
@@ -476,6 +478,24 @@ const editRules = {
 }
 
 // 工具函数
+const getStatusLabel = (status) => {
+  const map = {
+    'pending': '待审核',
+    'passed': '通过审核',
+    'rejected': '未通过'
+  }
+  return map[status] || '未知状态'
+}
+
+const getStatusType = (status) => {
+  const map = {
+    'pending': 'info',
+    'passed': 'success',
+    'rejected': 'danger'
+  }
+  return map[status] || ''
+}
+
 const getCategoryLabel = (category) => {
   const map = { image: '图像', text: '文本', multimodal: '多模态' }
   return map[category] || category || '未分类'
@@ -664,7 +684,7 @@ const submitUpload = async () => {
     })
     
     if (res.data?.code === 201 || res.data?.code === 200) {
-      ElMessage.success(res.data.msg || '上传成功')
+      ElMessage.success(res.data.msg || '上传成功，请等待审核')
       showUploadDialog.value = false
       resetUploadForm()
       fetchMyDatasets()
@@ -847,17 +867,93 @@ const fetchPreviewEntries = async (page = 1) => {
     
     // 后端返回格式: { code: 200, msg: "查询成功", data: { entries: [...], total: 100, fields: [...] } }
     if (res.data?.code === 200 && res.data.data) {
-      const { entries, total, fields } = res.data.data
-      previewEntries.value = entries || []
-      previewTotal.value = total || 0
+      const data = res.data.data
       
-      // 如果后端返回了字段列表则使用，否则从第一条数据中提取
-      if (fields && fields.length > 0) {
-        previewFields.value = fields
-      } else if (entries && entries.length > 0) {
-        previewFields.value = Object.keys(entries[0])
+      // 特殊处理 CSV (后端直接返回文本)
+      if (data.type === 'csv' && data.content) {
+        // 健壮的 CSV 解析逻辑 (处理引号和换行)
+        const parseCSV = (text) => {
+          const rows = [];
+          let currentRow = [];
+          let currentField = '';
+          let inQuotes = false;
+          
+          for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+            
+            if (inQuotes) {
+              if (char === '"' && nextChar === '"') {
+                currentField += '"';
+                i++;
+              } else if (char === '"') {
+                inQuotes = false;
+              } else {
+                currentField += char;
+              }
+            } else {
+              if (char === '"') {
+                inQuotes = true;
+              } else if (char === ',') {
+                currentRow.push(currentField.trim());
+                currentField = '';
+              } else if (char === '\n' || char === '\r') {
+                currentRow.push(currentField.trim());
+                if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0] !== '')) {
+                  rows.push(currentRow);
+                }
+                currentRow = [];
+                currentField = '';
+                if (char === '\r' && nextChar === '\n') i++;
+              } else {
+                currentField += char;
+              }
+            }
+          }
+          if (currentRow.length > 0 || currentField !== '') {
+            currentRow.push(currentField.trim());
+            rows.push(currentRow);
+          }
+          return rows;
+        };
+
+        const allRows = parseCSV(data.content);
+        if (allRows.length > 0) {
+          const headers = allRows[0];
+          const jsonData = [];
+          for (let i = 1; i < allRows.length; i++) {
+            const row = {};
+            headers.forEach((header, index) => {
+              row[header] = allRows[i][index] || '';
+            });
+            jsonData.push(row);
+          }
+          
+          // 前端分页
+          previewTotal.value = jsonData.length;
+          const start = (page - 1) * previewPageSize.value;
+          const end = start + previewPageSize.value;
+          previewEntries.value = jsonData.slice(start, end);
+          previewFields.value = headers;
+        } else {
+          previewEntries.value = []
+          previewTotal.value = 0
+          previewFields.value = []
+        }
       } else {
-        previewFields.value = []
+        // JSON 格式 (后端已处理分页)
+        const { entries, total, fields } = data
+        previewEntries.value = entries || []
+        previewTotal.value = total || 0
+        
+        // 如果后端返回了字段列表则使用，否则从第一条数据中提取
+        if (fields && fields.length > 0) {
+          previewFields.value = fields
+        } else if (entries && entries.length > 0) {
+          previewFields.value = Object.keys(entries[0])
+        } else {
+          previewFields.value = []
+        }
       }
     } else {
       previewEntries.value = []

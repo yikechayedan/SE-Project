@@ -28,7 +28,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "description", "category", "capability_dimension", "evaluation_type", "file_format",
             "file_size", "sample_count", "creator", "creator_id", "creator_username",
-            "is_public", "is_verified", "is_followed", "has_file", "star_count", "is_starred",
+            "is_public", "is_verified", "status", "is_followed", "has_file", "star_count", "is_starred",
             "created_at", "updated_at", "file_url", "file_path","capability_tag","has_images", "image_count"
         ]
         read_only_fields = [
@@ -82,6 +82,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["image_count"] = self._count_images(file_obj, file_format)
             
             validated_data["is_verified"] = False
+            validated_data["status"] = "pending"
             validated_data["capability_tag"] = "processing"
             validated_data["capability_dimension"] = "other"
         else:
@@ -114,6 +115,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)
+            validated_data["status"] = "pending"
             validated_data["capability_tag"] = "processing"
             validated_data["capability_dimension"] = "other"
         
@@ -211,18 +213,24 @@ class DatasetSerializer(serializers.ModelSerializer):
                     if image_path not in zip_namelist:
                         raise serializers.ValidationError(f"第 {i+1} 条多模态题目引用的图片 '{image_path}' 在 ZIP 中不存在")
 
-            # 3. 客观题 A-D 选项正则校验
+            # 3. 客观题选项校验（2-5 个即可）
             if evaluation_type == "objective":
                 input_text = str(item["input"])
-                # 增强正则：匹配 A. B. C. D. 且允许前后有换行或空格
-                options = list(set(re.findall(r"(?:^|[\n\r\s]|\\n)([A-D])\.", input_text, re.IGNORECASE)))
-                
-                if len(options) != 4:
-                    raise serializers.ValidationError(f"第 {i+1} 条客观题必须包含 A. B. C. D. 四个选项（当前检测到 {len(options)} 个）")
-                
+
+                # 匹配 A. B. C. D.（不要求必须全有）
+                options = list(set(re.findall(r"(?:^|[\n\r\s]|\\n)([A-E])\.", input_text, re.IGNORECASE)))
+ 
+                if len(options) < 2 or len(options) > 5:
+                    raise serializers.ValidationError(
+                        f"第 {i+1} 条客观题至少需要 2 个选项,至多 5 个选项（A/B/C/D），当前检测到 {len(options)} 个"
+                    )
+
                 ans = str(item["answer"]).strip().upper()
                 if ans not in [opt.upper() for opt in options]:
-                    raise serializers.ValidationError(f"第 {i+1} 条答案 '{ans}' 不在检测到的选项 {options} 中")
+                    raise serializers.ValidationError(
+                        f"第 {i+1} 条答案 '{ans}' 不在检测到的选项 {options} 中"
+                    )
+
 
     # ========================== 辅助工具方法 ==========================
 

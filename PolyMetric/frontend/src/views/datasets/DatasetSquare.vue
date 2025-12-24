@@ -243,9 +243,9 @@
               </el-descriptions-item>
               <el-descriptions-item label="文件格式">{{ datasetDetail.file_format || '未知' }}</el-descriptions-item>
               <el-descriptions-item label="文件大小">{{ formatFileSize(datasetDetail.file_size) }}</el-descriptions-item>
-              <el-descriptions-item label="状态">
-                <el-tag :type="datasetDetail.is_verified ? 'success' : 'warning'" size="small">
-                  {{ datasetDetail.is_verified ? '已审核' : '待审核' }}
+              <el-descriptions-item label="审核状态">
+                <el-tag :type="getStatusType(datasetDetail.status)" size="small">
+                  {{ getStatusLabel(datasetDetail.status) }}
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="创建时间">{{ formatDate(datasetDetail.created_at) }}</el-descriptions-item>
@@ -684,7 +684,7 @@ const submitUpload = async () => {
     const res = await createDataset(formData)
     
     if (res.data?.code === 201 || res.data?.code === 200) {
-      ElMessage.success(res.data.msg || '上传成功')
+      ElMessage.success(res.data.msg || '上传成功，请等待审核')
       showUploadDialog.value = false
       resetUploadForm()
       // 刷新列表
@@ -738,6 +738,18 @@ const entriesTotal = ref(0)
 // 本地筛选后的数据集（并排序：关注 > 热度 > 上传时间）
 const filteredDatasets = computed(() => {
   let result = allDatasets.value
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+
+  // [Fix] 这里的过滤逻辑必须足够宽松：
+  // 1. 任何人都能看 passed 的
+  // 2. 自己能看自己的（无论什么状态，包括 pending 和 rejected）
+  result = result.filter(item => {
+    const isOwner = currentUser.id && item.creator_id === currentUser.id
+    const isPassed = item.status === 'passed'
+    // 弃用 is_verified，完全基于 status 和所有权
+    return isPassed || isOwner
+  })
+
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
     result = result.filter(item => item.name.toLowerCase().includes(keyword))
@@ -749,8 +761,15 @@ const filteredDatasets = computed(() => {
     result = result.filter(item => item.is_followed)
   }
   
-  // 排序：关注 > 热度 > 上传时间
+  // 排序：自己上传的 > 关注 > 热度 > 上传时间
   return result.sort((a, b) => {
+    // 0. My Datasets first (Priority 0)
+    const aIsMine = currentUser.id && a.creator_id === currentUser.id
+    const bIsMine = currentUser.id && b.creator_id === currentUser.id
+    if (aIsMine !== bIsMine) {
+      return aIsMine ? -1 : 1
+    }
+
     // 1. Followed (is_followed) - true first
     if (a.is_followed !== b.is_followed) {
       return a.is_followed ? -1 : 1
@@ -837,6 +856,24 @@ const formatDate = (dateStr) => {
 }
 
 // 分类英文转中文
+const getStatusLabel = (status) => {
+  const map = {
+    'pending': '待审核',
+    'passed': '通过审核',
+    'rejected': '未通过'
+  }
+  return map[status] || '未知状态'
+}
+
+const getStatusType = (status) => {
+  const map = {
+    'pending': 'info',
+    'passed': 'success',
+    'rejected': 'danger'
+  }
+  return map[status] || ''
+}
+
 const getCategoryLabel = (category) => {
   const labels = {
     'image': '图像',
@@ -1115,47 +1152,110 @@ const handleToggleFollowInDialog = async () => {
 }
 
 // 获取数据集条目（分页）
-const fetchDatasetEntries = async (page = 1) => {
-  if (!currentDataset.value) return
-  
-  entriesLoading.value = true
-  entriesCurrentPage.value = page
-  
-  try {
-    const res = await getDatasetEntries(currentDataset.value.id, {
-      page: page,
-      page_size: entriesPageSize.value
-    })
+  const fetchDatasetEntries = async (page = 1) => {
+    if (!currentDataset.value) return
     
-    // 后端返回格式: { code: 200, msg: "查询成功", data: { entries: [...], total: 100, fields: [...] } }
-    if (res.data?.code === 200 && res.data.data) {
-      const { entries, total, fields } = res.data.data
-      datasetEntries.value = entries || []
-      entriesTotal.value = total || 0
-      // 如果后端返回了字段列表则使用，否则从第一条数据中提取
-      if (fields && fields.length > 0) {
-        entryFields.value = fields
-      } else if (entries && entries.length > 0) {
-        entryFields.value = Object.keys(entries[0])
+    entriesLoading.value = true
+    entriesCurrentPage.value = page
+    
+    try {
+      const res = await getDatasetEntries(currentDataset.value.id, {
+        page: page,
+        page_size: entriesPageSize.value
+      })
+      
+      const data = res.data.data
+      
+      if (data.type === 'csv' && data.content) {
+        // 健壮的 CSV 解析逻辑 (处理引号和换行)
+        const parseCSV = (text) => {
+          const rows = [];
+          let currentRow = [];
+          let currentField = '';
+          let inQuotes = false;
+          
+          for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+            
+            if (inQuotes) {
+              if (char === '"' && nextChar === '"') {
+                currentField += '"';
+                i++;
+              } else if (char === '"') {
+                inQuotes = false;
+              } else {
+                currentField += char;
+              }
+            } else {
+              if (char === '"') {
+                inQuotes = true;
+              } else if (char === ',') {
+                currentRow.push(currentField.trim());
+                currentField = '';
+              } else if (char === '\n' || char === '\r') {
+                currentRow.push(currentField.trim());
+                if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0] !== '')) {
+                  rows.push(currentRow);
+                }
+                currentRow = [];
+                currentField = '';
+                if (char === '\r' && nextChar === '\n') i++;
+              } else {
+                currentField += char;
+              }
+            }
+          }
+          if (currentRow.length > 0 || currentField !== '') {
+            currentRow.push(currentField.trim());
+            rows.push(currentRow);
+          }
+          return rows;
+        };
+
+        const allRows = parseCSV(data.content);
+        if (allRows.length > 0) {
+          const headers = allRows[0];
+          const jsonData = [];
+          for (let i = 1; i < allRows.length; i++) {
+            const row = {};
+            headers.forEach((header, index) => {
+              row[header] = allRows[i][index] || '';
+            });
+            jsonData.push(row);
+          }
+          
+          // 前端分页
+          entriesTotal.value = jsonData.length;
+          const start = (page - 1) * entriesPageSize.value;
+          const end = start + entriesPageSize.value;
+          datasetEntries.value = jsonData.slice(start, end);
+          entryFields.value = headers;
+        }
       } else {
-        entryFields.value = []
+        // JSON 格式
+        const { entries, total, fields } = data
+        datasetEntries.value = entries || []
+        entriesTotal.value = total || 0
+        
+        if (fields && fields.length > 0) {
+          entryFields.value = fields
+        } else if (datasetEntries.value.length > 0) {
+          entryFields.value = Object.keys(datasetEntries.value[0])
+        } else {
+          entryFields.value = []
+        }
       }
-    } else {
+    } catch (error) {
+      console.error('获取数据集条目失败:', error)
+      ElMessage.error('获取数据集预览失败')
       datasetEntries.value = []
       entriesTotal.value = 0
       entryFields.value = []
+    } finally {
+      entriesLoading.value = false
     }
-  } catch (error) {
-    console.error('获取数据条目失败:', error)
-    // 不显示错误提示，可能是格式不支持
-    datasetEntries.value = []
-    entriesTotal.value = 0
-    entryFields.value = []
-  } finally {
-    entriesLoading.value = false
   }
-}
-
 // 处理条目分页变化
 const handleEntriesPageChange = (page) => {
   fetchDatasetEntries(page)

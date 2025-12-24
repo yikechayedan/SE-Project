@@ -169,7 +169,9 @@ def analyze_dataset_capability(self, dataset_id):
             error_msg = f"AI分析失败: {str(ai_error)}"
             dataset.capability_tag = "analysis_failed"
             dataset.capability_dimension = "other"
-            dataset.save(update_fields=["capability_tag", "capability_dimension"])
+            dataset.status = "rejected"
+            dataset.is_verified = False
+            dataset.save(update_fields=["capability_tag", "capability_dimension", "status", "is_verified"])
             # 记录错误信息到数据集描述中
             error_description = f"\n\n[系统提示] 能力分析失败: {error_msg}。请检查数据集格式或稍后重试。"
             if dataset.description:
@@ -184,13 +186,21 @@ def analyze_dataset_capability(self, dataset_id):
             
             return f"Dataset {dataset_id} AI analysis failed: {error_msg}"
         
-        # 更新数据集
+        # 更新数据集状态与标签
         dataset.capability_tag = capability
         dataset.capability_dimension = capability
-        dataset.is_verified = (capability != "other")
+        
+        if capability == "other":
+            dataset.status = "rejected"
+            dataset.is_verified = False
+        else:
+            dataset.status = "passed"
+            dataset.is_verified = True
+            
         dataset.save(update_fields=[
             "capability_tag",
             "capability_dimension",
+            "status",
             "is_verified",
         ])
         
@@ -211,7 +221,9 @@ def analyze_dataset_capability(self, dataset_id):
             dataset = Dataset.objects.get(id=dataset_id)
             dataset.capability_tag = "analysis_failed"
             dataset.capability_dimension = "other"
-            dataset.save(update_fields=["capability_tag", "capability_dimension"])
+            dataset.status = "rejected"
+            dataset.is_verified = False
+            dataset.save(update_fields=["capability_tag", "capability_dimension", "status", "is_verified"])
             # 记录错误信息到数据集描述中
             error_description = f"\n\n[系统提示] 分析过程中发生错误: {str(e)}。请检查数据集格式或联系管理员。"
             if dataset.description:
