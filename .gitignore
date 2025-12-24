@@ -43,7 +43,7 @@ node_modules/
 **/node_modules/
 # Django uploaded files
 PolyMetric/backend/media/
-start.sh
+
 
 ### Frontend Build ###
 dist/
