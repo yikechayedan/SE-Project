@@ -80,6 +80,18 @@ class Dataset(models.Model):
     is_public = models.BooleanField(default=True, verbose_name="是否公开")
     is_verified = models.BooleanField(default=False, verbose_name="是否通过管理员审核")
 
+    STATUS_CHOICES = [
+        ('pending', '待审核'),
+        ('passed', '通过审核'),
+        ('rejected', '未通过审核'),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name="审核状态"
+    )
+
     capability_tag = models.CharField(
         max_length=20,
         choices=[

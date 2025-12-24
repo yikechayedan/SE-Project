@@ -28,7 +28,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "description", "category", "capability_dimension", "evaluation_type", "file_format",
             "file_size", "sample_count", "creator", "creator_id", "creator_username",
-            "is_public", "is_verified", "is_followed", "has_file", "star_count", "is_starred",
+            "is_public", "is_verified", "status", "is_followed", "has_file", "star_count", "is_starred",
             "created_at", "updated_at", "file_url", "file_path","capability_tag","has_images", "image_count"
         ]
         read_only_fields = [
@@ -82,6 +82,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["image_count"] = self._count_images(file_obj, file_format)
             
             validated_data["is_verified"] = False
+            validated_data["status"] = "pending"
             validated_data["capability_tag"] = "processing"
             validated_data["capability_dimension"] = "other"
         else:
@@ -114,6 +115,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
             validated_data["has_images"] = self._check_has_images(file_obj, file_format)
             validated_data["image_count"] = self._count_images(file_obj, file_format)
+            validated_data["status"] = "pending"
             validated_data["capability_tag"] = "processing"
             validated_data["capability_dimension"] = "other"
         

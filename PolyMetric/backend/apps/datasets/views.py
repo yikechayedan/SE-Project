@@ -42,7 +42,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
     queryset = Dataset.objects.all()
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["category", "evaluation_type", "file_format", "is_public", "is_verified"]
+    filterset_fields = ["category", "evaluation_type", "file_format", "is_public", "status"]
     search_fields = ["name", "description", "creator__username"]
     ordering_fields = ["created_at", "updated_at", "sample_count", "file_size"]
 
@@ -70,12 +70,15 @@ class DatasetViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
-            return Dataset.objects.filter(is_public=True, is_verified=True)
+            # 未登录用户只能看到已通过审核的公开数据集
+            return Dataset.objects.filter(is_public=True, status='passed')
         elif user.is_staff:
+            # 管理员看全部
             return Dataset.objects.all()
         else:
+            # 登录用户看到：自己的全部数据集 + 别人已通过审核的公开数据集
             return Dataset.objects.filter(
-                models.Q(creator=user) | models.Q(is_public=True, is_verified=True)
+                models.Q(creator=user) | models.Q(is_public=True, status='passed')
             )
 
     def list(self, request, *args, **kwargs):
@@ -497,12 +500,47 @@ class DatasetViewSet(viewsets.ModelViewSet):
             )
         
         # 检查文件格式是否支持
-        if dataset.file_format not in ["json", "zip"]:
+        if dataset.file_format == "zip":
             return Response(
-                {"code": 400, "msg": "该数据集格式不支持预览", "data": None},
+                {"code": 400, "msg": "ZIP格式不支持预览", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        file_path = dataset.file_path.path
         
+        # CSV格式：直接返回文本
+        if dataset.file_format == "csv":
+            try:
+                # 尝试多种编码
+                content = None
+                for encoding in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
+                    try:
+                        with open(file_path, 'r', encoding=encoding) as f:
+                            content = f.read()
+                        break
+                    except:
+                        continue
+                
+                if content is None:
+                    # 兜底
+                    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                        content = f.read()
+
+                return Response({
+                    "code": 200,
+                    "msg": "查询成功",
+                    "data": {
+                        "type": "csv",
+                        "content": content
+                    }
+                })
+            except Exception as e:
+                return Response(
+                    {"code": 500, "msg": f"读取文件失败: {str(e)}", "data": None},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        # JSON格式：原有分页逻辑
         try:
             # 获取分页参数
             page = int(request.query_params.get("page", 1))
@@ -512,7 +550,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
             page_size = max(5, min(page_size, 50))
             
             # 读取并解析文件内容
-            file_path = dataset.file_path.path
             all_entries, fields = self._parse_dataset_file(
                 file_path, 
                 dataset.file_format
@@ -533,6 +570,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
             
             # 准备响应数据
             response_data = {
+                "type": "json",
                 "entries": current_entries,
                 "total": total,
                 "page": page,
