@@ -867,17 +867,93 @@ const fetchPreviewEntries = async (page = 1) => {
     
     // 后端返回格式: { code: 200, msg: "查询成功", data: { entries: [...], total: 100, fields: [...] } }
     if (res.data?.code === 200 && res.data.data) {
-      const { entries, total, fields } = res.data.data
-      previewEntries.value = entries || []
-      previewTotal.value = total || 0
+      const data = res.data.data
       
-      // 如果后端返回了字段列表则使用，否则从第一条数据中提取
-      if (fields && fields.length > 0) {
-        previewFields.value = fields
-      } else if (entries && entries.length > 0) {
-        previewFields.value = Object.keys(entries[0])
+      // 特殊处理 CSV (后端直接返回文本)
+      if (data.type === 'csv' && data.content) {
+        // 健壮的 CSV 解析逻辑 (处理引号和换行)
+        const parseCSV = (text) => {
+          const rows = [];
+          let currentRow = [];
+          let currentField = '';
+          let inQuotes = false;
+          
+          for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+            
+            if (inQuotes) {
+              if (char === '"' && nextChar === '"') {
+                currentField += '"';
+                i++;
+              } else if (char === '"') {
+                inQuotes = false;
+              } else {
+                currentField += char;
+              }
+            } else {
+              if (char === '"') {
+                inQuotes = true;
+              } else if (char === ',') {
+                currentRow.push(currentField.trim());
+                currentField = '';
+              } else if (char === '\n' || char === '\r') {
+                currentRow.push(currentField.trim());
+                if (currentRow.length > 0 && (currentRow.length > 1 || currentRow[0] !== '')) {
+                  rows.push(currentRow);
+                }
+                currentRow = [];
+                currentField = '';
+                if (char === '\r' && nextChar === '\n') i++;
+              } else {
+                currentField += char;
+              }
+            }
+          }
+          if (currentRow.length > 0 || currentField !== '') {
+            currentRow.push(currentField.trim());
+            rows.push(currentRow);
+          }
+          return rows;
+        };
+
+        const allRows = parseCSV(data.content);
+        if (allRows.length > 0) {
+          const headers = allRows[0];
+          const jsonData = [];
+          for (let i = 1; i < allRows.length; i++) {
+            const row = {};
+            headers.forEach((header, index) => {
+              row[header] = allRows[i][index] || '';
+            });
+            jsonData.push(row);
+          }
+          
+          // 前端分页
+          previewTotal.value = jsonData.length;
+          const start = (page - 1) * previewPageSize.value;
+          const end = start + previewPageSize.value;
+          previewEntries.value = jsonData.slice(start, end);
+          previewFields.value = headers;
+        } else {
+          previewEntries.value = []
+          previewTotal.value = 0
+          previewFields.value = []
+        }
       } else {
-        previewFields.value = []
+        // JSON 格式 (后端已处理分页)
+        const { entries, total, fields } = data
+        previewEntries.value = entries || []
+        previewTotal.value = total || 0
+        
+        // 如果后端返回了字段列表则使用，否则从第一条数据中提取
+        if (fields && fields.length > 0) {
+          previewFields.value = fields
+        } else if (entries && entries.length > 0) {
+          previewFields.value = Object.keys(entries[0])
+        } else {
+          previewFields.value = []
+        }
       }
     } else {
       previewEntries.value = []
