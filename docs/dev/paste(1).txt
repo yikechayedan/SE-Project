@@ -1,0 +1,103 @@
+二、API ①：发送注册验证码（前端第一个调用）
+📌 接口说明
+
+用于验证邮箱真实性，不创建用户
+
+✅ URL
+POST /api/users/register/send-code/
+
+✅ 请求头
+Content-Type: application/json
+
+✅ 请求体
+{
+  "email": "test@example.com"
+}
+
+✅ 成功响应
+{
+  "code": 200,
+  "msg": "验证码已发送"
+}
+
+❌ 失败响应（示例）
+邮箱已注册
+{
+  "code": 400,
+  "msg": "该邮箱已注册"
+}
+
+邮箱为空 / 非法
+{
+  "code": 400,
+  "msg": "请提供邮箱"
+}
+
+📌 前端交互建议
+
+成功后：
+
+弹 toast：“验证码已发送，请查收邮箱”
+
+启动 60 秒倒计时
+
+失败后：
+
+直接展示 msg
+
+三、API ②：注册（必须带验证码）
+📌 接口说明
+
+验证邮箱验证码成功后才会真正创建用户
+
+✅ URL
+POST /api/users/register/
+
+✅ 请求头
+Content-Type: application/json
+
+✅ 请求体（完整示例）
+{
+  "username": "liusy",
+  "password": "12345678",
+  "email": "test@example.com",
+  "phone": "13800000000",
+  "code": "839201"
+}
+
+
+phone 可选
+code 必填
+
+✅ 成功响应
+{
+  "code": 200,
+  "msg": "注册成功",
+  "data": {
+    "id": 12,
+    "username": "liusy",
+    "email": "test@example.com",
+    "phone": "13800000000",
+    "avatar": null,
+    "bio": null
+  }
+}
+
+❌ 失败响应（常见）
+验证码错误 / 过期
+{
+  "code": 400,
+  "msg": "邮箱验证码错误或已过期"
+}
+
+用户名已存在
+{
+  "code": 400,
+  "msg": "注册失败：该用户名已存在"
+}
+
+邮箱已注册（双重兜底）
+{
+  "code": 400,
+  "msg": "注册失败：该邮箱已被使用"
+}

@@ -502,7 +502,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
         # 检查文件格式是否支持
         if dataset.file_format == "zip":
             return Response(
-                {"code": 400, "msg": "ZIP格式不支持预览", "data": None},
+                {"code": 200, "msg": "ZIP格式不支持预览", "data": None},
                 status=status.HTTP_400_BAD_REQUEST
             )
             

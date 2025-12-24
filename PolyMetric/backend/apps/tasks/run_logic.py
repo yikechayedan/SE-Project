@@ -736,7 +736,8 @@ def run_single_item_logic(item_id: int, phase='both'):
             
         def is_image_gen_model_local(name):
             if not name: return False
-            keywords = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo", "mj", "sd", "dalle"]
+            # [Fix] Removed "turbo" to align with global config
+            keywords = ["wanx", "cogview", "seedream", "t2i", "flux", "mj", "sd", "dalle"]
             return any(k in name.lower() for k in keywords)
 
         # ---------- 处理不同测评类型的逻辑 ----------

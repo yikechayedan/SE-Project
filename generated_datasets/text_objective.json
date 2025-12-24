@@ -1,0 +1,22 @@
+[
+  {
+    "input": "What is the result of 1 + 0?\nA. 1\nB. 10\nC. 20\nD. 30",
+    "answer": "A"
+  },
+  {
+    "input": "What is the result of 1 + 1?\nA. 2\nB. 11\nC. 21\nD. 31",
+    "answer": "A"
+  },
+  {
+    "input": "What is the result of 1 + 2?\nA. 3\nB. 12\nC. 22\nD. 32",
+    "answer": "A"
+  },
+  {
+    "input": "What is the result of 1 + 3?\nA. 4\nB. 13\nC. 23\nD. 33",
+    "answer": "A"
+  },
+  {
+    "input": "What is the result of 1 + 4?\nA. 5\nB. 14\nC. 24\nD. 34",
+    "answer": "A"
+  }
+]
