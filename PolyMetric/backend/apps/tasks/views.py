@@ -334,7 +334,12 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
                     summary.correct = win_count  # 胜场仅记录完全胜利
                     summary.total = total_items
                     # 胜率 = (胜场 + 0.5 * 平局) / 总数
-                    summary.accuracy = (win_count + 0.5 * tie_count) / total_items
+                    accuracy_val = (win_count + 0.5 * tie_count) / total_items
+                    summary.accuracy = accuracy_val
+                    
+                    # [Fix] 同时更新 task.accuracy，因为前端读取的是 task.accuracy
+                    task.accuracy = accuracy_val
+                    task.save(update_fields=['accuracy', 'status'])
             
             summary.save()
 

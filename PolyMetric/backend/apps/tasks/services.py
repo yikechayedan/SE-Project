@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 # ===================== 生图模型识别关键字 =====================
 # 只要模型名称包含以下任一关键字（不区分大小写），系统将自动切换至生图接口
-IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo", "mj", "sd", "dalle"]
+# [Fix] Removed "turbo" to prevent misidentifying chat models like ERNIE-Turbo as image gen models
+IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "mj", "sd", "dalle"]
 # ============================================================
 
 def load_generated_image_as_base64(relative_path):

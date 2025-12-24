@@ -736,7 +736,8 @@ def run_single_item_logic(item_id: int, phase='both'):
             
         def is_image_gen_model_local(name):
             if not name: return False
-            keywords = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo", "mj", "sd", "dalle"]
+            # [Fix] Removed "turbo" to align with global config
+            keywords = ["wanx", "cogview", "seedream", "t2i", "flux", "mj", "sd", "dalle"]
             return any(k in name.lower() for k in keywords)
 
         # ---------- 处理不同测评类型的逻辑 ----------
@@ -838,11 +839,18 @@ def run_single_item_logic(item_id: int, phase='both'):
                         from apps.tasks.services import load_generated_image_as_base64
                         img1_b64 = load_generated_image_as_base64(ans1)
                         img2_b64 = load_generated_image_as_base64(ans2)
+                        
                         if img1_b64 and img2_b64:
                             judge_images = [img1_b64, img2_b64]
-                            # 清洗 Prompt 中的 Markdown 路径
+                            
+                            # 清洗 Prompt：移除原始的 Markdown 图片链接，改为占位符
                             import re
-                            judge_prompt = re.sub(r'\!\[Generated Image\]\(.*?\)', '[生成的图片]', judge_prompt)
+                            # 先移除所有的 markdown 图片语法
+                            judge_prompt = re.sub(r'\!\[.*?\]\(.*?\)', '[已附带生成的图片]', judge_prompt)
+                            
+                            # 额外添加提示，明确图片顺序
+                            judge_prompt += "\n\n【注意】\n我已经为你附带了两张图片作为输入：\n- 第一张图片对应【模型 A】\n- 第二张图片对应【模型 B】\n请结合这两张图片进行评判。"
+                            
                             logger.info(f"Task {task.id}: Extracted 2 images and cleaned prompt for adversarial judge")
 
                     raw_judge = call_llm_api(
