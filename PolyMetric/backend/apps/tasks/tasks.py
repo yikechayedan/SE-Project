@@ -177,7 +177,12 @@ def analyze_dataset_capability(self, dataset_id):
         # 更新数据集
         dataset.capability_tag = capability
         dataset.capability_dimension = capability
-        dataset.save(update_fields=["capability_tag", "capability_dimension"])
+        dataset.is_verified = (capability != "other")
+        dataset.save(update_fields=[
+            "capability_tag",
+            "capability_dimension",
+            "is_verified",
+        ])
         
         return f"Dataset {dataset_id} capability analyzed and set to: {capability}"
         
