@@ -99,12 +99,12 @@
             v-loading="rankingLoading"
           >
             <el-table-column label="排名" width="80" align="center">
-              <template #default="{ row, $index }">
+              <template #default="{ row }">
                 <div class="rank-cell">
-                  <el-icon v-if="row.rank === 1" class="rank-icon gold"><Medal /></el-icon>
-                  <el-icon v-else-if="row.rank === 2" class="rank-icon silver"><Medal /></el-icon>
-                  <el-icon v-else-if="row.rank === 3" class="rank-icon bronze"><Medal /></el-icon>
-                  <span v-else class="rank-number">{{ row.rank }}</span>
+                  <el-icon v-if="row.displayRank === 1" class="rank-icon gold"><Medal /></el-icon>
+                  <el-icon v-else-if="row.displayRank === 2" class="rank-icon silver"><Medal /></el-icon>
+                  <el-icon v-else-if="row.displayRank === 3" class="rank-icon bronze"><Medal /></el-icon>
+                  <span v-else class="rank-number">{{ row.displayRank }}</span>
                 </div>
               </template>
             </el-table-column>
@@ -204,6 +204,27 @@
                   }">{{ row.codeScore.toFixed(1) }}</span>
                   <el-icon v-if="row.trends.code > 0" class="mini-trend-up"><Top /></el-icon>
                   <el-icon v-else-if="row.trends.code < 0" class="mini-trend-down"><Bottom /></el-icon>
+                </div>
+              </template>
+            </el-table-column>
+
+            <!-- 多模态 -->
+            <el-table-column 
+              prop="multimodalScore" 
+              label="多模态" 
+              width="100" 
+              align="center"
+              :class-name="selectedDataset === 'multimodal' ? 'highlight-col' : ''"
+            >
+              <template #default="{ row }">
+                <div class="score-with-trend">
+                  <span :style="{ 
+                    color: getScoreColor(row.multimodalScore),
+                    fontWeight: selectedDataset === 'multimodal' ? 'bold' : 'normal',
+                    fontSize: selectedDataset === 'multimodal' ? '16px' : '14px'
+                  }">{{ row.multimodalScore.toFixed(1) }}</span>
+                  <el-icon v-if="row.trends.multimodal > 0" class="mini-trend-up"><Top /></el-icon>
+                  <el-icon v-else-if="row.trends.multimodal < 0" class="mini-trend-down"><Bottom /></el-icon>
                 </div>
               </template>
             </el-table-column>
@@ -608,11 +629,33 @@ const formatTime = (dateStr) => {
 // 排行榜数据
 const rankings = ref([])
 
+// 计算排序后的排行榜数据
+const sortedRankings = computed(() => {
+  const data = [...rankings.value]
+  const sortMap = {
+    'comprehensive': 'overallScore',
+    'language': 'languageScore',
+    'math': 'reasoningScore',
+    'code': 'codeScore',
+    'multimodal': 'multimodalScore'
+  }
+  const key = sortMap[selectedDataset.value] || 'overallScore'
+  
+  // 执行前端排序
+  data.sort((a, b) => (b[key] || 0) - (a[key] || 0))
+  
+  // 重新映射排名映射（用于显示）
+  return data.map((item, index) => ({
+    ...item,
+    displayRank: index + 1
+  }))
+})
+
 // 计算当前页显示的排行榜数据
 const paginatedRankings = computed(() => {
   const start = (rankingPage.value - 1) * rankingPageSize.value
   const end = start + rankingPageSize.value
-  return rankings.value.slice(start, end)
+  return sortedRankings.value.slice(start, end)
 })
 
 // 获取排行榜数据（使用真实数据，带兜底逻辑）
@@ -656,11 +699,13 @@ const fetchRankings = async () => {
         languageScore: item.scores?.language || 0,
         reasoningScore: item.scores?.math || 0,
         codeScore: item.scores?.code || 0,
+        multimodalScore: item.scores?.multimodal || 0,
         trends: {
             overall: trendMap[item.trends?.overall] || 0,
             language: trendMap[item.trends?.language] || 0,
             math: trendMap[item.trends?.math] || 0,
-            code: trendMap[item.trends?.code] || 0
+            code: trendMap[item.trends?.code] || 0,
+            multimodal: trendMap[item.trends?.multimodal] || 0
         }
       }
     })
