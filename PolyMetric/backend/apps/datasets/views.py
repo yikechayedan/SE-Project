@@ -28,7 +28,7 @@ User = get_user_model()
 
 class DatasetViewSet(viewsets.ModelViewSet):
     """
-    数据集视图集 - 业界标准实现
+    数据集视图集 - 自动验证版本
     
     功能：
     - 列表/详情查询
@@ -37,6 +37,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
     - 文件下载
     - 文件预览（动态读取，不存数据库）
     - 关注/取消关注
+    - 自动验证：格式验证通过 + 能力分析成功 = is_verified=True
     """
     queryset = Dataset.objects.all()
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -62,8 +63,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated]
         elif self.action in ["update", "partial_update", "destroy"]:
             permission_classes = [IsAuthenticated, IsCreatorOrAdminOrPublic]
-        elif self.action == "verify":
-            permission_classes = [IsAdminUser]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -229,141 +228,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
                 )
 
     @action(detail=True, methods=["get"])
-    def image(self, request, pk=None):
-        """获取数据集中的图片文件"""
-        dataset = self.get_object()
-        
-        # 检查数据集是否有文件
-        if not dataset.has_file():
-            return Response(
-                {"code": 404, "msg": "该数据集没有上传文件"},
-                status=404
-                )
-        
-        # 检查数据集是否包含图片
-        if not dataset.has_images:
-            return Response(
-                {"code": 404, "msg": "该数据集不包含图片"},
-                status=404
-                )
-        
-        # 获取图片文件名
-        image_filename = request.query_params.get("filename")
-        if not image_filename:
-            return Response(
-                {"code": 400, "msg": "缺少filename参数"},
-                status=400
-                )
-        
-        try:
-            file_path = dataset.file_path.path
-            if not os.path.exists(file_path):
-                return Response(
-                    {"code": 404, "msg": "数据集文件不存在"},
-                    status=404
-                    )
-            
-            # 从ZIP文件中提取图片
-            with zipfile.ZipFile(file_path, 'r') as zf:
-                if image_filename not in zf.namelist():
-                    return Response(
-                        {"code": 404, "msg": f"图片文件 {image_filename} 不存在"},
-                        status=404
-                        )
-                
-                # 检查文件是否为图片
-                image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
-                if not any(image_filename.lower().endswith(ext) for ext in image_extensions):
-                    return Response(
-                        {"code": 400, "msg": "请求的文件不是图片文件"},
-                        status=400
-                        )
-                
-                # 读取图片文件
-                with zf.open(image_filename) as img_file:
-                    img_data = img_file.read()
-                    
-                # 根据文件扩展名确定Content-Type
-                ext = os.path.splitext(image_filename)[1].lower()
-                content_type = {
-                    '.jpg': 'image/jpeg',
-                    '.jpeg': 'image/jpeg',
-                    '.png': 'image/png',
-                    '.gif': 'image/gif',
-                    '.bmp': 'image/bmp',
-                    '.webp': 'image/webp',
-                    '.svg': 'image/svg+xml'
-                }.get(ext, 'application/octet-stream')
-                
-                return FileResponse(
-                    io.BytesIO(img_data),
-                    content_type=content_type
-                )
-                
-        except Exception as e:
-            return Response(
-                {"code": 500, "msg": f"获取图片失败: {str(e)}"},
-                status=500
-                )
-
-    @action(detail=True, methods=["get"])
-    def images(self, request, pk=None):
-        """获取数据集中的所有图片文件列表"""
-        dataset = self.get_object()
-        
-        # 检查数据集是否有文件
-        if not dataset.has_file():
-            return Response(
-                {"code": 404, "msg": "该数据集没有上传文件"},
-                status=404
-                )
-        
-        # 检查数据集是否包含图片
-        if not dataset.has_images:
-            return Response(
-                {"code": 404, "msg": "该数据集不包含图片"},
-                status=404
-                )
-        
-        try:
-            file_path = dataset.file_path.path
-            if not os.path.exists(file_path):
-                return Response(
-                    {"code": 404, "msg": "数据集文件不存在"},
-                    status=404
-                    )
-            
-            # 从ZIP文件中获取所有图片文件
-            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg']
-            image_files = []
-            
-            with zipfile.ZipFile(file_path, 'r') as zf:
-                for filename in zf.namelist():
-                    if any(filename.lower().endswith(ext) for ext in image_extensions) and not filename.endswith('/'):
-                        # 生成图片访问URL
-                        image_url = request.build_absolute_uri(f"/api/datasets/{dataset.id}/image/?filename={filename}")
-                        image_files.append({
-                            "filename": filename,
-                            "url": image_url,
-                            "size": zf.getinfo(filename).file_size
-                        })
-            
-            return Response({
-                "code": 200,
-                "msg": "获取图片列表成功",
-                "data": {
-                    "images": image_files,
-                    "total": len(image_files)
-                }
-            })
-            
-        except Exception as e:
-            return Response(
-                {"code": 500, "msg": f"获取图片列表失败: {str(e)}"},
-                status=500
-                )
-
-    @action(detail=True, methods=["get"])
     def preview(self, request, pk=None):
         """
         预览数据集内容 - 业界标准实现
@@ -448,7 +312,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
                     if data and isinstance(data[0], dict):
                         result["headers"] = list(data[0].keys())
                 elif isinstance(data, dict):
-                    # 查找数据数组
+                    # 查找数据数组键
                     for key in ['data', 'items', 'records', 'rows', 'samples']:
                         if key in data and isinstance(data[key], list):
                             items = data[key]
@@ -578,7 +442,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
         """获取我关注的数据集"""
         follows = DatasetFollow.objects.filter(user=request.user)
         datasets = [f.dataset for f in follows]
-        serializer = DatasetSerializer(
+        serializer = self.get_serializer(
             datasets, 
             many=True, 
             context={"request": request}
@@ -599,7 +463,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
     def my_datasets(self, request):
         """获取我创建的数据集"""
         queryset = Dataset.objects.filter(creator=request.user)
-        serializer = DatasetSerializer(
+        serializer = self.get_serializer(
             queryset, 
             many=True, 
             context={"request": request}
@@ -610,22 +474,6 @@ class DatasetViewSet(viewsets.ModelViewSet):
             "data": serializer.data
         })
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
-    def verify(self, request, pk=None):
-        """审核数据集（管理员）"""
-        dataset = self.get_object()
-        dataset.is_verified = True
-        dataset.save()
-        
-        # 如果数据集正在处理中，且格式验证失败，重新触发分析
-        if dataset.capability_tag == "other" and dataset.has_file():
-            from apps.tasks.tasks import analyze_dataset_capability
-            analyze_dataset_capability.delay(dataset.id)
-        
-        return Response({
-            "code": 200,
-            "msg": "数据集审核通过"
-        })
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
@@ -730,18 +578,25 @@ class DatasetViewSet(viewsets.ModelViewSet):
                     if key in data and isinstance(data[key], list):
                         entries = data[key]
                         break
-                else:
-                    # 如果没有找到数组，将整个对象作为一个条目
+                
+                # 如果是测评数据集，检查是否有特定测评类型的数据结构
+                for evaluation_type in ['subjective', 'objective', 'adversarial']:
+                    if evaluation_type in data and isinstance(data[evaluation_type], list):
+                        entries = data[evaluation_type]
+                        break
+                
+                # 如果都没有找到，返回空列表
+                if not entries:
                     entries = [data]
-        
+                    
         elif file_format == "zip":
             with open(file_path, 'rb') as f:
                 zip_content = f.read()
             
             with zipfile.ZipFile(io.BytesIO(zip_content), 'r') as zf:
-                # 查找data.json或第一个json文件
+                # 查找JSON文件
                 json_files = [
-                    f for f in zf.namelist() 
+                    f for f in zf.namelist()
                     if f.lower().endswith('.json') and not f.endswith('/')
                 ]
                 
@@ -752,8 +607,8 @@ class DatasetViewSet(viewsets.ModelViewSet):
                 target_file = "data.json" if "data.json" in json_files else json_files[0]
                 
                 with zf.open(target_file) as f:
-                    content = f.read()
-                    data = json.loads(content.decode('utf-8'))
+                    json_content = f.read()
+                    data = json.loads(json_content.decode('utf-8'))
                     
                     # 处理不同JSON结构
                     if isinstance(data, list):
@@ -764,8 +619,15 @@ class DatasetViewSet(viewsets.ModelViewSet):
                             if key in data and isinstance(data[key], list):
                                 entries = data[key]
                                 break
-                        else:
-                            # 如果没有找到数组，将整个对象作为一个条目
+                        
+                        # 如果是测评数据集，检查是否有特定测评类型的数据结构
+                        for evaluation_type in ['subjective', 'objective', 'adversarial']:
+                            if evaluation_type in data and isinstance(data[evaluation_type], list):
+                                entries = data[evaluation_type]
+                                break
+                        
+                        # 如果都没有找到，返回空列表
+                        if not entries:
                             entries = [data]
         
         # 提取字段列表（从第一条数据）
@@ -777,7 +639,28 @@ class DatasetViewSet(viewsets.ModelViewSet):
                 fields.insert(0, "id")
         
         return entries, fields
-    
+
+    @action(detail=True, methods=["get"])
+    def capability_status(self, request, pk=None):
+        """查询数据集能力分析状态"""
+        dataset = self.get_object()
+        
+        # 检查是否正在处理
+        is_processing = dataset.capability_tag == "processing"
+        
+        return Response({
+            "code": 200,
+            "msg": "查询成功",
+            "data": {
+                "dataset_id": dataset.id,
+                "capability_tag": dataset.capability_tag,
+                "capability_dimension": dataset.capability_dimension,
+                "is_processing": is_processing,
+                "is_verified": dataset.is_verified,
+                "has_file": dataset.has_file()
+            }
+        })
+
     @action(detail=False, methods=["get"])
     def user_followed(self, request):
         """获取关注的数据集列表，支持user_id参数"""
@@ -823,53 +706,4 @@ class DatasetViewSet(viewsets.ModelViewSet):
             "code": 200,
             "msg": "查询成功",
             "data": serializer.data
-        })
-    
-class FollowedDatasetsListAPIView(generics.ListAPIView):
-    serializer_class = DatasetSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user_id = self.request.query_params.get('user_id')
-        
-        if user_id:
-            try:
-                target_user = User.objects.get(id=user_id)
-            except User.DoesNotExist:
-                return Dataset.objects.none()
-                
-            if target_user != self.request.user and not target_user.show_followed_datasets:
-                return Dataset.objects.none()
-                
-            queryset = Dataset.objects.filter(followers__user=target_user)
-        else:
-            queryset = Dataset.objects.filter(followers__user=self.request.user)
-            
-        return queryset.prefetch_related(
-            models.Prefetch(
-                'followers',
-                queryset=DatasetFollow.objects.filter(user=self.request.user if not user_id else target_user),
-                to_attr='datasetfollow'
-            )
-        ).order_by('-followers__created_at')
-
-    @action(detail=True, methods=["get"])
-    def capability_status(self, request, pk=None):
-        """查询数据集能力分析状态"""
-        dataset = self.get_object()
-        
-        # 检查是否正在处理
-        is_processing = dataset.capability_tag == "processing"
-        
-        return Response({
-            "code": 200,
-            "msg": "查询成功",
-            "data": {
-                "dataset_id": dataset.id,
-                "capability_tag": dataset.capability_tag,
-                "capability_dimension": dataset.capability_dimension,
-                "is_processing": is_processing,
-                "is_verified": dataset.is_verified,
-                "has_file": dataset.has_file()
-            }
         })

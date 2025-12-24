@@ -296,7 +296,7 @@ import io
 def load_dataset_entries(dataset: Dataset):
     """
     从 Dataset.file_path 读取数据
-    支持 JSON 和 ZIP (读取内部 data.json)
+    支持 JSON、ZIP (读取内部 data.json) 和 CSV
     """
     if not dataset.file_path:
         raise ValueError("Dataset has no file")
@@ -309,6 +309,81 @@ def load_dataset_entries(dataset: Dataset):
             if not isinstance(data, list):
                 raise ValueError("Dataset JSON must be a list")
             return data
+
+    elif file_format == "csv":
+        try:
+            import csv
+            import io
+            
+            # 读取文件内容
+            with open(dataset.file_path.path, 'rb') as f:
+                content = f.read()
+            
+            # 尝试多种编码
+            text = None
+            for encoding in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
+                try:
+                    text = content.decode(encoding)
+                    break
+                except:
+                    continue
+            
+            if text is None:
+                raise ValueError("无法识别CSV文件编码")
+            
+            # 解析CSV
+            reader = csv.DictReader(io.StringIO(text))
+            data = list(reader)
+            
+            if not data:
+                raise ValueError("CSV文件为空")
+            
+            # 根据数据集的评测类型转换字段
+            evaluation_type = dataset.evaluation_type
+            converted_data = []
+            
+            for row in data:
+                item = {}
+                
+                # 通用字段
+                if 'input' in row:
+                    item['input'] = row['input']
+                elif 'question' in row:
+                    item['input'] = row['question']
+                elif 'prompt' in row:
+                    item['input'] = row['prompt']
+                elif 'text' in row:
+                    item['input'] = row['text']
+                else:
+                    # 如果没有找到输入字段，使用第一个字段
+                    first_key = next(iter(row.keys()))
+                    item['input'] = row[first_key]
+                
+                # 根据评测类型添加特定字段
+                if evaluation_type == 'subjective':
+                    if 'reference' in row:
+                        item['reference'] = row['reference']
+                    elif 'answer' in row:
+                        item['reference'] = row['answer']
+                    elif 'target' in row:
+                        item['reference'] = row['target']
+                
+                elif evaluation_type == 'objective':
+                    if 'answer' in row:
+                        item['answer'] = row['answer']
+                    elif 'label' in row:
+                        item['answer'] = row['label']
+                    elif 'target' in row:
+                        item['answer'] = row['target']
+                
+                # 对抗评测只需要input字段，已在上面处理
+                
+                converted_data.append(item)
+            
+            return converted_data
+            
+        except Exception as e:
+            raise ValueError(f"Failed to read CSV dataset: {e}")
 
     elif file_format == "zip":
         try:
@@ -331,7 +406,6 @@ def load_dataset_entries(dataset: Dataset):
             raise ValueError(f"Failed to read ZIP dataset: {e}")
 
     else:
-        # 暂时不支持 CSV 用于评测 (因为需要复杂结构)
         raise ValueError(f"Unsupported format for evaluation: {file_format}")
 
 

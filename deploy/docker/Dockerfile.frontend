@@ -1,4 +1,5 @@
 # Frontend Dockerfile for PolyMetric Vue Application
+# 改回官方镜像名（本地已拉取，无需下载）
 FROM node:20-alpine AS builder
 
 # 设置工作目录
@@ -26,6 +27,7 @@ RUN npm run build
 # ===================================
 # 生产环境镜像（多阶段构建，减小体积）
 # ===================================
+# 改回官方镜像名（本地已拉取）
 FROM nginx:alpine
 
 # 复制构建产物

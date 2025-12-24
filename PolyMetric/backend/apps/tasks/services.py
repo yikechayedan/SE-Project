@@ -44,8 +44,10 @@ def call_llm_api(prompt: str, model_name: str, images: list = None, max_retries:
     """
     使用 OpenAI SDK（Paratera 接入）
     images: list of base64 strings
+    增强了错误处理和超时机制
     """
     import base64
+    import httpx
     
     def get_mime_type(b64_str):
         try:
@@ -58,6 +60,11 @@ def call_llm_api(prompt: str, model_name: str, images: list = None, max_retries:
         return "image/jpeg" # 兜底
 
     backoff = 2
+    
+    # 检查prompt长度，避免过长导致API调用失败
+    if len(prompt) > 10000:
+        logger.warning(f"Prompt is too long ({len(prompt)} chars), truncating...")
+        prompt = prompt[:9500] + "...[内容已截断]"
     
     if images:
         content_payload = [{"type": "text", "text": prompt}]
@@ -78,76 +85,67 @@ def call_llm_api(prompt: str, model_name: str, images: list = None, max_retries:
 
     for attempt in range(max_retries + 1):
         try:
-            model_lower = model_name.lower()
-            # [Fix] 针对生图模型，直接使用 images.generate 接口，避开网关对 chat 接口的字符串校验
-            if any(k in model_lower for k in ["wanx", "cogview", "seedream"]):
-                try:
-                    client = OpenAI(api_key=settings.LLM_API_KEY, base_url=settings.LLM_BASE_URL)
-                    response = client.images.generate(
-                        model=model_name,
-                        prompt=prompt,
-                        n=1,
-                        # 部分模型可能需要特定尺寸，此处先使用默认
-                    )
-                    image_url = response.data[0].url
-                    if image_url:
-                        return _save_remote_image(image_url)
-                    raise Exception("No image URL returned from SDK")
-                except Exception as e:
-                    logger.warning(f"T2I SDK call failed: {e}. Trying raw request as fallback.")
-                    # 如果 SDK 调用也失败，尝试之前的原生 requests 方式
-                    headers = {
-                        "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                        "Content-Type": "application/json"
-                    }
-                    payload = {
-                        "model": model_name,
-                        "messages": messages,
-                        "stream": False
-                    }
-                    base = settings.LLM_BASE_URL.rstrip('/')
-                    if not base.endswith('/v1'):
-                         base += '/v1'
-                    url = f"{base}/chat/completions"
-
-                    resp = requests.post(url, json=payload, headers=headers, timeout=120)
-                    content_type = resp.headers.get("Content-Type", "")
-                    
-                    if "application/json" in content_type:
-                        data = resp.json()
-                        if 'error' in data:
-                            raise Exception(f"API Error: {data['error'].get('message', 'Unknown error')}")
-                            
-                        content = data['choices'][0]['message']['content']
-                        if isinstance(content, list):
-                            for part in content:
-                                if isinstance(part, dict) and 'url' in part:
-                                    return _save_remote_image(part['url'])
-                        return str(content)
-                    
-                    resp.raise_for_status()
-                    return _save_remote_image(url) # 兜底
-
-            client = OpenAI(api_key=settings.LLM_API_KEY, base_url=settings.LLM_BASE_URL)
+            # 增加超时时间，特别是对于CSV数据分析任务
+            timeout = 120.0 if len(prompt) > 5000 else 60.0
+            
+            client = OpenAI(
+                api_key=settings.LLM_API_KEY,
+                base_url=settings.LLM_BASE_URL,
+                timeout=timeout,
+                max_retries=0, # 我们自己在外层控制重试，禁用 SDK 内部重试以免混淆
+                # 添加更多连接配置
+                http_client=httpx.Client(
+                    timeout=timeout,
+                    limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+                )
+            )
 
             response = client.chat.completions.create(
                 model=model_name,
                 messages=messages,
+                # 添加更多参数以提高稳定性
+                temperature=0.1,  # 降低随机性
+                max_tokens=1000,   # 限制输出长度
             )
             
             content = response.choices[0].message.content
             if not content:
                 raise ValueError("Empty response from LLM")
                 
+            logger.info(f"LLM API success on attempt {attempt+1}")
             return content
 
         except Exception as e:
+            error_str = str(e).lower()
+            
+            # 记录详细错误信息
+            logger.error(f"LLM API error (Attempt {attempt+1}/{max_retries}): {e}")
+            logger.error(f"Error type: {type(e).__name__}")
+            
             if attempt < max_retries:
-                sleep_time = backoff * (2 ** attempt)
+                # 根据错误类型调整重试时间
+                if "timeout" in error_str or "read timeout" in error_str:
+                    sleep_time = backoff * (2 ** attempt) * 2  # 超时错误等待更长时间
+                elif "rate limit" in error_str or "too many requests" in error_str:
+                    sleep_time = backoff * (3 ** attempt)  # 限流错误等待更长时间
+                else:
+                    sleep_time = backoff * (2 ** attempt)
+                
                 logger.warning(f"LLM API failed (Attempt {attempt+1}/{max_retries}). Retrying in {sleep_time}s... Error: {e}")
                 time.sleep(sleep_time)
             else:
                 logger.error(f"LLM API permanently failed after {max_retries} retries. Error: {e}")
-                return f"[Error] {str(e)}"
+                
+                # 返回更详细的错误信息
+                if "timeout" in error_str:
+                    return "[Error] API调用超时，请检查网络连接或稍后重试"
+                elif "connection" in error_str:
+                    return "[Error] 网络连接失败，请检查网络设置"
+                elif "rate limit" in error_str:
+                    return "[Error] API调用频率超限，请稍后重试"
+                elif "authentication" in error_str or "unauthorized" in error_str:
+                    return "[Error] API认证失败，请检查API密钥"
+                else:
+                    return f"[Error] {str(e)}"
                 
     return "[Error] Unknown failure"

@@ -107,11 +107,12 @@ def _mark_task_failed(task_id, error_msg):
     except:
         pass
 
-@shared_task(bind=True)
+@shared_task(bind=True, autoretry_for=(Exception,), retry_kwargs={'max_retries': 3, 'countdown': 60})
 def analyze_dataset_capability(self, dataset_id):
     """
     异步分析数据集能力维度
     在数据集上传后，通过Celery异步调用大模型判断数据集的能力维度
+    增加了自动重试机制和更好的错误处理
     """
     try:
         from apps.datasets.models import Dataset
@@ -160,7 +161,11 @@ def analyze_dataset_capability(self, dataset_id):
         try:
             capability = ai_judge_capability(samples)
         except Exception as ai_error:
-            # AI调用失败
+            # AI调用失败，记录详细错误信息
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"AI分析失败详情: {error_details}")
+            
             error_msg = f"AI分析失败: {str(ai_error)}"
             dataset.capability_tag = "analysis_failed"
             dataset.capability_dimension = "other"
@@ -172,6 +177,11 @@ def analyze_dataset_capability(self, dataset_id):
             else:
                 dataset.description = error_description.strip()
             dataset.save(update_fields=["description"])
+            
+            # 如果是网络或API问题，触发重试
+            if "timeout" in str(ai_error).lower() or "connection" in str(ai_error).lower():
+                raise self.retry(exc=ai_error, countdown=60)
+            
             return f"Dataset {dataset_id} AI analysis failed: {error_msg}"
         
         # 更新数据集
@@ -189,10 +199,12 @@ def analyze_dataset_capability(self, dataset_id):
     except Dataset.DoesNotExist:
         return f"Dataset {dataset_id} not found"
     except Exception as e:
-        error_msg = f"Error analyzing dataset {dataset_id}: {str(e)}"
-        print(error_msg)
+        # 记录详细错误信息
         import traceback
-        print(traceback.format_exc())
+        error_details = traceback.format_exc()
+        print(f"数据集分析错误详情: {error_details}")
+        
+        error_msg = f"Error analyzing dataset {dataset_id}: {str(e)}"
         
         # 尝试更新数据集为错误状态
         try:
@@ -209,6 +221,10 @@ def analyze_dataset_capability(self, dataset_id):
             dataset.save(update_fields=["description"])
         except:
             pass
+        
+        # 如果是重试次数未达到上限，触发重试
+        if self.request.retries < 3:
+            raise self.retry(exc=e, countdown=60 * (self.request.retries + 1))
             
         return error_msg
 
