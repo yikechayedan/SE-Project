@@ -18,10 +18,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # -----------------------------
 # 安全配置
 # -----------------------------
-SECRET_KEY = 'django-insecure-1234567890-change-this-in-production'
-DEBUG = True
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-1234567890-change-this-in-production')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["*"]   
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # -----------------------------
 # 已安装应用

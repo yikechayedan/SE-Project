@@ -6,6 +6,14 @@ export function register(data) {
   return request.post("/api/users/register/", data);
 }
 
+/**
+ * 发送注册验证码
+ * @param {string} email - 用户邮箱
+ */
+export function sendRegisterCode(email) {
+  return request.post("/api/users/register/send-code/", { email });
+}
+
 // 登录
 export function login(data) {
   return request.post("/api/users/login/", data);

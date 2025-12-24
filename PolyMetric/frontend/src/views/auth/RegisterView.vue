@@ -32,6 +32,28 @@
               class="tech-input"
             />
           </el-form-item>
+          
+          <el-form-item prop="code">
+            <div style="display: flex; width: 100%; gap: 10px;">
+              <el-input
+                v-model="registerForm.code"
+                placeholder="邮箱验证码"
+                prefix-icon="Key"
+                class="tech-input"
+                maxlength="6"
+              />
+              <el-button 
+                type="primary" 
+                :disabled="countdown > 0" 
+                :loading="codeLoading"
+                @click="handleSendCode"
+                class="code-btn"
+              >
+                {{ countdown > 0 ? `${countdown}s 后重试` : '发送验证码' }}
+              </el-button>
+            </div>
+          </el-form-item>
+
           <el-form-item prop="phone">
             <el-input
               v-model="registerForm.phone"
@@ -93,18 +115,21 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Message, Phone, Lock } from '@element-plus/icons-vue'
-import { register } from '@/api/users' 
+import { User, Message, Phone, Lock, Key } from '@element-plus/icons-vue'
+import { register, sendRegisterCode } from '@/api/users' 
 // 引入新创建的粒子组件 
 import ParticleBackground from '@/components/common/ParticleBackground.vue'
 
 const router = useRouter()
 const registerFormRef = ref(null)
 const loading = ref(false)
+const codeLoading = ref(false)
+const countdown = ref(0)
 
 const registerForm = reactive({
   username: '',
   email: '',
+  code: '',
   phone: '',
   password: '',
   confirmPassword: '',
@@ -128,8 +153,11 @@ const registerRules = {
     { required: true, message: '邮箱不能为空', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
+  code: [
+    { required: true, message: '验证码不能为空', trigger: 'blur' },
+    { len: 6, message: '验证码长度应为6位', trigger: 'blur' }
+  ],
   phone: [
-    { required: true, message: '手机号不能为空', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
   ],
   password: [
@@ -142,6 +170,38 @@ const registerRules = {
   ]
 }
 
+const handleSendCode = async () => {
+  // 只校验邮箱字段
+  registerFormRef.value.validateField('email', async (valid) => {
+    if (valid) {
+      codeLoading.value = true
+      try {
+        const res = await sendRegisterCode(registerForm.email)
+        // 检查后端返回的结构，根据文档应该是 { code: 200, msg: "..." }
+        if (res.code === 200 || (res.data && res.data.code === 200)) {
+           ElMessage.success('验证码已发送，请查收邮箱')
+           countdown.value = 60
+           const timer = setInterval(() => {
+             countdown.value--
+             if (countdown.value <= 0) {
+               clearInterval(timer)
+             }
+           }, 1000)
+        } else {
+           ElMessage.error(res.msg || (res.data && res.data.msg) || '发送失败')
+        }
+      } catch (error) {
+         const errorMsg = error.response?.data?.msg || '发送验证码失败，请重试'
+         ElMessage.error(errorMsg)
+      } finally {
+        codeLoading.value = false
+      }
+    } else {
+        ElMessage.warning('请先输入正确的邮箱地址')
+    }
+  })
+}
+
 const handleRegister = () => {
   registerFormRef.value.validate(async (valid) => {
     if (valid && registerForm.agree) {
@@ -151,9 +211,10 @@ const handleRegister = () => {
           username: registerForm.username,
           password: registerForm.password,
           email: registerForm.email,
-          phone: registerForm.phone
+          phone: registerForm.phone,
+          code: registerForm.code
         })
-        const data = res.data
+        const data = res.data || res // 兼容直接返回data的情况
         if (data.code === 200) {
           ElMessage.success('注册成功！请登录')
           router.push('/login')
@@ -217,6 +278,23 @@ const handleRegister = () => {
   box-shadow: 0 4px 15px rgba(103, 194, 58, 0.3); transition: all 0.3s;
 }
 .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(103, 194, 58, 0.4); }
+
+.code-btn {
+  background-color: #0d1117;
+  border-color: #67c23a;
+  color: #67c23a;
+  font-weight: 500;
+}
+.code-btn:hover, .code-btn:focus {
+  background-color: rgba(103, 194, 58, 0.1);
+  border-color: #67c23a;
+  color: #67c23a;
+}
+.code-btn.is-disabled {
+  background-color: #0d1117;
+  border-color: #30363d;
+  color: #8b949e;
+}
 
 .card-footer { text-align: center; margin-top: 15px; color: #8b949e; font-size: 14px; }
 .login-link { color: #67c23a; cursor: pointer; font-weight: 600; }
