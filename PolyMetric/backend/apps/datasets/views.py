@@ -134,6 +134,12 @@ class DatasetViewSet(viewsets.ModelViewSet):
             "data": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+    def perform_create(self, serializer):
+        serializer.save(creator=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)

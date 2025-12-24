@@ -5,7 +5,7 @@ import re
 from django.utils import timezone
 from django.db import transaction
 
-from .services import call_llm_api
+from .services import call_llm_api, IMAGE_GEN_MODEL_KEYWORDS
 from .models import EvaluationTask, EvaluationItem
 from apps.datasets.models import Dataset
 from .models import EvaluationSummary
@@ -93,8 +93,18 @@ def build_subjective_prompt(question, model_answer, reference=None):
 """.strip()
 
 
+def is_image_gen_model(model_name: str) -> bool:
+    """判断是否为文生图模型，逻辑与 services.py 保持一致"""
+    if not model_name: return False
+    name_lower = model_name.lower()
+    return any(k in name_lower for k in IMAGE_GEN_MODEL_KEYWORDS)
+
 def build_subjective_answer_prompt(item: EvaluationItem) -> str:
+    # [Fix] 如果是生图模型，直接返回纯文本题干，跳过模板包装
     text = get_item_text(item.content)
+    if is_image_gen_model(item.task.myModel.name):
+        return text
+        
     return f"""
 请认真回答下面的主观问题。
 
@@ -535,7 +545,7 @@ def reuse_task_items_model_aware(old_task, new_task):
     new_items_to_create = []
     
     entries = load_dataset_entries(new_task.dataset)
-    for entry in entries:
+    for i, entry in enumerate(entries):
         content, gold_answer = get_entry_data(entry)
         old_item = old_items.get(content)
         
@@ -577,7 +587,8 @@ def reuse_task_items_model_aware(old_task, new_task):
             correct_answer=gold_answer,
             predicted_answer=pred_1,
             predicted_answer_2=pred_2,
-            is_correct=is_correct  # 写入判分结果
+            is_correct=is_correct,  # 写入判分结果
+            dataset_index=i # 写入数据集索引
         ))
     
     EvaluationItem.objects.bulk_create(new_items_to_create)
@@ -619,7 +630,7 @@ def prepare_evaluation_items(task: EvaluationTask):
     entries = load_dataset_entries(task.dataset)
     items_to_create = []
 
-    for entry in entries:
+    for i, entry in enumerate(entries):
         content, gold_answer = get_entry_data(entry)
         
         if not content:
@@ -637,7 +648,8 @@ def prepare_evaluation_items(task: EvaluationTask):
                 content=content,
                 correct_answer=gold_answer,
                 predicted_answer=pred_1,
-                predicted_answer_2=pred_2
+                predicted_answer_2=pred_2,
+                dataset_index=i # 写入数据集索引
             )
         )
 

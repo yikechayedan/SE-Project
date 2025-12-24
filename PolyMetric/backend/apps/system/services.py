@@ -54,3 +54,24 @@ def log_task_complete(task_obj, user_obj=None):
         target_name=task_obj.name,
         message=f"评测任务「{task_obj.name}」已完成"
     )
+
+
+def log_task_create(task_obj, user_obj=None):
+    """
+    记录评测任务创建/启动的系统事件
+    """
+    actor_name = "系统"
+    actor_id = None
+    
+    if user_obj:
+        actor_name = user_obj.username
+        actor_id = user_obj.id
+
+    SystemEvent.objects.create(
+        event_type='task_create',
+        actor_id=actor_id,
+        actor_name=actor_name,
+        target_id=task_obj.id,
+        target_name=task_obj.name,
+        message=f"发起了新的评测任务「{task_obj.name}」"
+    )
