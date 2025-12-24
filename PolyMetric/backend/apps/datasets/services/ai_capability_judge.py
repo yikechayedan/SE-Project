@@ -33,50 +33,63 @@ language / reasoning / code / multimodal / other
 
 def ai_judge_capability(samples, dataset=None):
     """
-    调用大模型判断数据集能力标签，支持图像分析
-    完全仿照 run_logic.py 的图片发送逻辑
+    调用大模型判断数据集能力标签。
+    针对多模态数据集，优先抽样带图片的条目发送给视觉模型。
     """
     from apps.tasks.services import call_llm_api, load_image_from_dataset
 
     has_images = dataset.has_images if dataset else False
     images_to_send = []
     
-    # 1. 仿照 run_logic.py：如果是图像数据集，提取图片 Base64
+    # 1. 抽样策略优化：如果是多模态，尽量寻找带图片的样本
+    analysis_samples = []
     if has_images and dataset and dataset.file_path:
         try:
-            count = 0
+            # 第一轮：搜寻带图片的样本（最多 3 个）
+            img_count = 0
             for item in samples:
                 if isinstance(item, dict) and item.get('image'):
-                    # 调用与评测引擎相同的图片加载函数
                     img_data = load_image_from_dataset(dataset.file_path, item['image'])
                     if img_data:
                         images_to_send.append(img_data)
-                        count += 1
-                if count >= 3: break 
+                        analysis_samples.append(item)
+                        img_count += 1
+                if img_count >= 3: break
+            
+            # 第二轮：如果带图片的样本不足，补充一些文本样本凑齐上下文
+            if len(analysis_samples) < 5:
+                for item in samples:
+                    if item not in analysis_samples:
+                        analysis_samples.append(item)
+                    if len(analysis_samples) >= 5: break
         except Exception as e:
-            print(f"[Error] 提取分析样本图片失败: {e}")
+            print(f"[Error] 多模态样本提取失败: {e}")
+            analysis_samples = samples[:5]
+    else:
+        analysis_samples = samples[:5]
 
-    prompt = build_prompt(samples, has_images=has_images)
+    # 2. 构建 Prompt
+    prompt = build_prompt(analysis_samples, has_images=bool(images_to_send))
     
-    # 2. 选用授权列表中最稳定的多模态模型
-    model_name = "Qwen2.5-VL-72B-Instruct" if has_images else "DeepSeek-R1-0528"
+    # 3. 模型选择：只要有图片提取成功，就必须用多模态模型
+    model_name = "Qwen2.5-VL-72B-Instruct" if images_to_send else "DeepSeek-R1-0528"
 
-    print(f"[DEBUG] 数据集能力分析启动 - 模型: {model_name}, 样本数: {len(samples)}, 图片数: {len(images_to_send)}")
+    print(f"[DEBUG] AI 能力分析 - 类别: {dataset.category if dataset else 'unknown'}, 模型: {model_name}, 包含图片: {len(images_to_send)}")
 
-    # 3. 严格按照 call_llm_api 的签名调用，不改动该函数
     try:
+        # 4. 严格按照评测引擎验证过的签名调用
         response = call_llm_api(
             prompt=prompt,
             model_name=model_name,
             images=images_to_send if images_to_send else None
         )
         
-        if not isinstance(response, str):
+        if not response or not isinstance(response, str):
             return "other"
 
         tag = response.strip().lower()
         
-        # 结果匹配
+        # 结果映射
         valid_tags = ["language", "reasoning", "code", "multimodal", "other"]
         for valid_tag in valid_tags:
             if valid_tag in tag:
@@ -85,5 +98,5 @@ def ai_judge_capability(samples, dataset=None):
         return "other"
         
     except Exception as e:
-        print(f"[Error] AI 能力分析调用异常: {e}")
+        print(f"[Error] AI 能力分析异常: {e}")
         return "other"
