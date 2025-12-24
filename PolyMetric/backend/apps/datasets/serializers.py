@@ -204,10 +204,12 @@ class DatasetSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(f"第 {i+1} 条题目引用的图片 '{item['image']}' 在 ZIP 中不存在")
             
             elif category == "multimodal":
-                # 多模态数据集：采用“有图必检”原则（兼容纯文本和混合条目）
-                if "image" in item and item["image"]:
-                    if item["image"] not in zip_namelist:
-                        raise serializers.ValidationError(f"第 {i+1} 条多模态题目引用的图片 '{item['image']}' 在 ZIP 中不存在")
+                # 多模态数据集：采用“有图必检”原则（兼容纯文本条目和混合条目）
+                # 只有当字段存在且不为空时才校验
+                image_path = item.get("image")
+                if image_path: 
+                    if image_path not in zip_namelist:
+                        raise serializers.ValidationError(f"第 {i+1} 条多模态题目引用的图片 '{image_path}' 在 ZIP 中不存在")
 
             # 3. 客观题 A-D 选项正则校验
             if evaluation_type == "objective":
