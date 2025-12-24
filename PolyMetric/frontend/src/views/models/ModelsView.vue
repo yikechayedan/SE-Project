@@ -29,12 +29,12 @@
             <div class="hint">Text</div>
           </div>
           <div class="stat-card type-image">
-            <div class="label">图像生成</div>
+            <div class="label">生成图像</div>
             <div class="value">{{ imageModelCount }}</div>
             <div class="hint">Image</div>
           </div>
           <div class="stat-card type-multi">
-            <div class="label">多模态</div>
+            <div class="label">多模态识别</div>
             <div class="value">{{ multiModelCount }}</div>
             <div class="hint">Multi</div>
           </div>
@@ -86,8 +86,8 @@
         >
           <el-option label="全部类型" value="" />
           <el-option label="文本生成" value="text" />
-          <el-option label="图像生成" value="image" />
-          <el-option label="多模态" value="multimodal" />
+          <el-option label="生成图像" value="image" />
+          <el-option label="多模态识别" value="multimodal" />
           <el-option label="代码生成" value="code" />
         </el-select>
         <el-select
@@ -384,8 +384,8 @@ const formatDate = (dateStr) => {
 const getCategoryLabel = (category) => {
   const labels = {
     'text': '文本生成',
-    'image': '图像生成',
-    'multimodal': '多模态',
+    'image': '生成图像',
+    'multimodal': '多模态识别',
     'code': '代码生成'
   }
   return labels[category] || category || '未分类'

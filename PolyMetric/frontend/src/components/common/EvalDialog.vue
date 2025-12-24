@@ -103,7 +103,7 @@
                     effect="plain"
                     class="type-tag"
                   >
-                    {{ formatCategoryName(model.category) }}
+                    {{ formatModelCategoryName(model.category) }}
                   </el-tag>
                 </div>
               </el-option>
@@ -148,7 +148,7 @@
                     effect="plain"
                     class="type-tag"
                   >
-                    {{ formatCategoryName(model.category) }}
+                    {{ formatModelCategoryName(model.category) }}
                   </el-tag>
                 </div>
             </el-option>
@@ -290,10 +290,16 @@ const fetchModels = async () => {
 const filteredModelsList = computed(() => {
     let list = modelsList.value;
     const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+    
+    // [Rule] 对抗评测下，模型一必须是生图模型
+    if (form.value.method === "adversarial") {
+        list = list.filter(m => m.category === "image");
+    }
+
     if (selectedDataset) {
         // 根据数据集的评测类型过滤模型
         list = list.filter(model => {
-           return (selectedDataset.category === "image" || selectedDataset.category === "multimodel") ?
+           return (selectedDataset.category === "image" || selectedDataset.category === "multimodal" || selectedDataset.category === "multimodel") ?
                 model.category === "multimodal" :
                 true ;
         });
@@ -302,18 +308,24 @@ const filteredModelsList = computed(() => {
         return list;
     }
     const query = modelSearchQuery.value.toLowerCase();
-    return listfilter(model => 
+    return list.filter(model => 
         model.name.toLowerCase().includes(query)
     );
 })
 
 const filteredModel2sList = computed(() => {
     let list = modelsList.value;
+    
+    // [Rule] 对抗评测下，模型二也必须是生图模型
+    if (form.value.method === "adversarial") {
+        list = list.filter(m => m.category === "image");
+    }
+
     const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
     if (selectedDataset) {
         // 根据数据集的评测类型过滤模型
         list = list.filter(model => {
-           return (selectedDataset.category === "image" || selectedDataset.category === "multimodel") ?
+           return (selectedDataset.category === "image" || selectedDataset.category === "multimodal" || selectedDataset.category === "multimodel") ?
                 model.category === "multimodal" :
                 true ;
         });
@@ -330,14 +342,14 @@ const filteredModel2sList = computed(() => {
 
 const filteredJudgeModelsList = computed(() => {
     let list = modelsList.value;
-    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
-    if (selectedDataset) {
-        // 根据数据集的评测类型过滤模型
-        list = list.filter(model => {
-           return (selectedDataset.category === "image" || selectedDataset.category === "multimodel") ?
-                model.category === "multimodal" :
-                true ;
-        });
+
+    const m1 = modelsList.value.find(m => m.name === form.value.selectedModelName);
+    const m2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
+    const isT2I = (m1 && m1.category === "image") || (m2 && m2.category === "image");
+
+    // [Rule] 如果涉及生图模型评测，裁判必须是多模态识别模型
+    if (isT2I) {
+        list = list.filter(m => m.category === "multimodal");
     }
 
     if (!judgeModelSearchQuery.value) {
@@ -374,13 +386,14 @@ const filteredDatasetsList = computed(() => {
     let list = datasetsList.value;
     const selectedModel = modelsList.value.find(m => m.name === form.value.selectedModelName);
     const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
-    if (form.value.method) {
-        list = list.filter(dataset => {
-          return dataset.evaluation_type === form.value.method;
-        });
-    }
-
-    if(selectedModel || selectedModel2){
+    
+    // [New] 如果选了生图模型，强制只能选文本数据集 (Prompt)
+    const isImageModel = (selectedModel && selectedModel.category === 'image') || 
+                         (selectedModel2 && selectedModel2.category === 'image');
+    
+    if (isImageModel) {
+        list = list.filter(d => d.category === 'text');
+    } else if(selectedModel || selectedModel2){
       list = list.filter(dataset => {
           const isModelText = (selectedModel && selectedModel.category === "text");
           const isModel2Text = (selectedModel2 && selectedModel2.category === "text");
@@ -389,6 +402,12 @@ const filteredDatasetsList = computed(() => {
           }
           return true;
       })
+    }
+
+    if (form.value.method) {
+        list = list.filter(dataset => {
+          return dataset.evaluation_type === form.value.method;
+        });
     }
 
     if (!datasetSearchQuery.value) {
@@ -420,6 +439,25 @@ const handleClearDataset = () => {
   form.value.selectedDatasetName = '';
 };
 
+// [New] 监听模型选择，处理生图模型的自动冲突解决
+watch([() => form.value.selectedModelName, () => form.value.selectedModelName2], ([m1, m2]) => {
+    const model1 = modelsList.value.find(m => m.name === m1);
+    const model2 = modelsList.value.find(m => m.name === m2);
+    const isImageModel = (model1 && model1.category === 'image') || (model2 && model2.category === 'image');
+
+    if (isImageModel) {
+        // 1. 如果当前是客观评测，自动清空（因为生图模型不支持）
+        if (form.value.method === 'objective') {
+            form.value.method = '';
+        }
+        // 2. 如果当前选中的数据集不是文本类型，自动清空
+        const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+        if (selectedDataset && selectedDataset.category !== 'text') {
+            form.value.selectedDatasetName = '';
+        }
+    }
+});
+
 const handleClearModel1 = () => {
   form.value.selectedModelName = '';
 };
@@ -448,17 +486,24 @@ const handleRadioClick = (val) => {
 
 // 判定评测类型是否应该被禁用
 const isMethodDisabled = (methodType) => {
-    // 如果还没选数据集，则都不禁用
-    if (!form.value.selectedDatasetName) {
-        return false;
+    // 1. 根据数据集锁定
+    if (form.value.selectedDatasetName) {
+        const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+        if (selectedDataset && selectedDataset.evaluation_type) {
+            if (selectedDataset.evaluation_type !== methodType) return true;
+        }
     }
-    // 找到当前选中的数据集对象
-    const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
+
+    // 2. 根据模型锁定 (新逻辑：生图模型不支持客观评测)
+    const selectedModel = modelsList.value.find(m => m.name === form.value.selectedModelName);
+    const selectedModel2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
+    const isImageModel = (selectedModel && selectedModel.category === 'image') || 
+                         (selectedModel2 && selectedModel2.category === 'image');
     
-    // 如果数据集存在且有类型，则禁用掉所有不属于该类型的选项
-    if (selectedDataset && selectedDataset.evaluation_type) {
-        return selectedDataset.evaluation_type !== methodType;
+    if (isImageModel && methodType === 'objective') {
+        return true;
     }
+
     return false;
 };
 
@@ -498,6 +543,16 @@ const formatCategoryName = (category) => {
     image: '图像',
     multimodel: '多模态',
     multimodal: '多模态',
+  };
+  return map[category] || category;
+};
+
+const formatModelCategoryName = (category) => {
+  const map = {
+    text: '文本',
+    image: '生成图像',
+    multimodel: '多模态识别',
+    multimodal: '多模态识别',
   };
   return map[category] || category;
 };
@@ -565,6 +620,13 @@ const submitEval = async() => {
       selectedJudgeModel = modelsList.value.find(m => m.name === form.value.judgeModelName);
       if (!selectedJudgeModel) {
         ElMessage.error('请选择裁判模型');
+        return;
+      }
+      
+      // [Rule Check] 生图模型必须配多模态裁判
+      const isT2I = selectedModel.category === "image" || (selectedModel2 && selectedModel2.category === "image");
+      if (isT2I && selectedJudgeModel.category !== "multimodal") {
+        ElMessage.error('生图评测必须选择多模态识别模型作为裁判');
         return;
       }
     }

@@ -2,8 +2,11 @@
 
 import json
 import re
+import logging
 from django.utils import timezone
 from django.db import transaction
+
+logger = logging.getLogger(__name__)
 
 from .services import call_llm_api, IMAGE_GEN_MODEL_KEYWORDS
 from .models import EvaluationTask, EvaluationItem
@@ -730,9 +733,14 @@ def run_single_item_logic(item_id: int, phase='both'):
         # 定义一个辅助闭包，判断指定模型是否能看图
         def can_see(model_obj):
             return model_obj and model_obj.category == "multimodal"
+            
+        def is_image_gen_model_local(name):
+            if not name: return False
+            keywords = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo", "mj", "sd", "dalle"]
+            return any(k in name.lower() for k in keywords)
 
-        # 1. 客观评测
-        if method == "objective" and phase in ['generation', 'both']:
+        # ---------- 处理不同测评类型的逻辑 ----------
+        if method == "objective":
             if item.predicted_answer: return
             prompt = build_objective_prompt(item)
             # 按需发图
@@ -763,10 +771,28 @@ def run_single_item_logic(item_id: int, phase='both'):
             if phase in ['judging', 'both'] and task.judge_type == "model":
                 if item.predicted_answer and not item.predicted_answer.startswith("[Error]") and item.score is None:
                     judge_m = task.judge_model or task.myModel
+                    
+                    # [Fix] 核心逻辑：对齐题干发图方式
+                    judge_images = images # 默认使用题干图
+                    judge_prompt = build_subjective_judge_prompt(item)
+                    
+                    if is_image_gen_model_local(task.myModel.name):
+                        from apps.tasks.services import load_generated_image_as_base64
+                        gen_img_b64 = load_generated_image_as_base64(item.predicted_answer)
+                        if gen_img_b64:
+                            # 1. 替换图片：让裁判看生成的图
+                            judge_images = [gen_img_b64]
+                            # 2. 清洗 Prompt：从裁判提示词中移除 Markdown 图片标记，防止路径混淆
+                            # 我们只保留文本描述，不让裁判看到那个无效的 (/media/...) 链接
+                            import re
+                            judge_prompt = re.sub(r'\!\[Generated Image\]\(.*?\)', '[已附带生成的图片]', judge_prompt)
+                            logger.info(f"Task {task.id}: Image extracted and prompt cleaned for judge {judge_m.name}")
+
+                    # 3. 严格调用聊天接口发送 (与题干带图逻辑 100% 对齐)
                     raw_score = call_llm_api(
-                        build_subjective_judge_prompt(item), 
-                        judge_m.name,
-                        images=images if can_see(judge_m) else None
+                        prompt=judge_prompt, 
+                        model_name=judge_m.name,
+                        images=judge_images if (judge_images and can_see(judge_m)) else None
                     )
                     if raw_score.startswith("[Error]"): item.score = -1
                     else:
@@ -797,14 +823,32 @@ def run_single_item_logic(item_id: int, phase='both'):
                 if updated:
                     item.save(update_fields=["predicted_answer", "predicted_answer_2"])
 
-            if phase in ['judging', 'both'] and task.judge_type == "model" and item.preference is None:
-                ans1, ans2 = item.predicted_answer, item.predicted_answer_2
+            if phase in ['judging', 'both'] and task.judge_type == "model":
+                ans1 = item.predicted_answer
+                ans2 = item.predicted_answer_2
+                
                 if ans1 and ans2 and not (ans1.startswith("[Error]") or ans2.startswith("[Error]")):
                     judge_m = task.judge_model or task.myModel
+                    
+                    # [Fix] 对抗生图评测：将两张生成的图同时以 Base64 形式喂给裁判
+                    judge_images = images
+                    judge_prompt = build_adversarial_judge_prompt(item)
+                    
+                    if is_image_gen_model_local(task.myModel.name):
+                        from apps.tasks.services import load_generated_image_as_base64
+                        img1_b64 = load_generated_image_as_base64(ans1)
+                        img2_b64 = load_generated_image_as_base64(ans2)
+                        if img1_b64 and img2_b64:
+                            judge_images = [img1_b64, img2_b64]
+                            # 清洗 Prompt 中的 Markdown 路径
+                            import re
+                            judge_prompt = re.sub(r'\!\[Generated Image\]\(.*?\)', '[生成的图片]', judge_prompt)
+                            logger.info(f"Task {task.id}: Extracted 2 images and cleaned prompt for adversarial judge")
+
                     raw_judge = call_llm_api(
-                        build_adversarial_judge_prompt(item),
-                        judge_m.name,
-                        images=images if can_see(judge_m) else None
+                        prompt=judge_prompt,
+                        model_name=judge_m.name,
+                        images=judge_images if (judge_images and can_see(judge_m)) else None
                     )
                     item.preference = "error" if raw_judge.startswith("[Error]") else parse_adversarial_judge(raw_judge)
                     item.save(update_fields=["preference"])
