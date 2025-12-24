@@ -176,12 +176,27 @@
           <el-select v-model="form.judgeModelName" 
                      placeholder="选择裁判模型" 
                      :loading="modelLoading"
-                     style="flex: 1;"> <el-option
+                     style="flex: 1;"
+                     popper-class="dataset-select-popper"
+          > 
+            <el-option
               v-for="model in filteredJudgeModelsList"
               :key="model.id"
               :label="model.name"
               :value="model.name"
-            />
+            >
+              <div class="option-item" :title="model.name">
+                <span class="dataset-name-text">{{ model.name }}</span>
+                <el-tag 
+                  :type="getCategoryTag(model.category)" 
+                  size="small" 
+                  effect="plain"
+                  class="type-tag"
+                >
+                  {{ formatModelCategoryName(model.category) }}
+                </el-tag>
+              </div>
+            </el-option>
           </el-select>
 
           <el-input 
@@ -291,9 +306,12 @@ const filteredModelsList = computed(() => {
     let list = modelsList.value;
     const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
     
-    // [Rule] 对抗评测下，模型一必须是生图模型
-    if (form.value.method === "adversarial") {
-        list = list.filter(m => m.category === "image");
+    // [Rule] 对抗评测中，如果模型二选了生图模型，模型一也必须是生图模型
+    if (form.value.method === "adversarial" && form.value.selectedModelName2) {
+        const m2 = modelsList.value.find(m => m.name === form.value.selectedModelName2);
+        if (m2 && m2.category === 'image') {
+            list = list.filter(m => m.category === 'image');
+        }
     }
 
     if (selectedDataset) {
@@ -316,9 +334,12 @@ const filteredModelsList = computed(() => {
 const filteredModel2sList = computed(() => {
     let list = modelsList.value;
     
-    // [Rule] 对抗评测下，模型二也必须是生图模型
-    if (form.value.method === "adversarial") {
-        list = list.filter(m => m.category === "image");
+    // [Rule] 对抗评测中，如果模型一选了生图模型，模型二也必须是生图模型
+    if (form.value.method === "adversarial" && form.value.selectedModelName) {
+        const m1 = modelsList.value.find(m => m.name === form.value.selectedModelName);
+        if (m1 && m1.category === 'image') {
+            list = list.filter(m => m.category === 'image');
+        }
     }
 
     const selectedDataset = datasetsList.value.find(d => d.name === form.value.selectedDatasetName);
