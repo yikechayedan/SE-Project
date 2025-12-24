@@ -79,16 +79,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="is_public" label="状态" width="130" align="center">
+        <el-table-column prop="is_public" label="公开状态" width="100" align="center">
           <template #default="{ row }">
-            <div class="status-tags">
-              <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
-                {{ row.is_public ? '公开' : '私有' }}
-              </el-tag>
-              <el-tag :type="row.is_verified ? 'success' : 'warning'" size="small">
-                {{ row.is_verified ? '已审核' : '待审核' }}
-              </el-tag>
-            </div>
+            <el-tag :type="row.is_public ? 'success' : 'info'" size="small">
+              {{ row.is_public ? '公开' : '私有' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="上传时间" width="110" align="center">
@@ -96,7 +91,14 @@
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right" align="center">
+        <el-table-column label="审核状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="info" size="small" text @click="handlePreview(row)" :disabled="!row.has_file">
@@ -476,6 +478,24 @@ const editRules = {
 }
 
 // 工具函数
+const getStatusLabel = (status) => {
+  const map = {
+    'pending': '待审核',
+    'passed': '通过审核',
+    'rejected': '未通过'
+  }
+  return map[status] || '未知状态'
+}
+
+const getStatusType = (status) => {
+  const map = {
+    'pending': 'info',
+    'passed': 'success',
+    'rejected': 'danger'
+  }
+  return map[status] || ''
+}
+
 const getCategoryLabel = (category) => {
   const map = { image: '图像', text: '文本', multimodal: '多模态' }
   return map[category] || category || '未分类'
@@ -664,7 +684,7 @@ const submitUpload = async () => {
     })
     
     if (res.data?.code === 201 || res.data?.code === 200) {
-      ElMessage.success(res.data.msg || '上传成功')
+      ElMessage.success(res.data.msg || '上传成功，请等待审核')
       showUploadDialog.value = false
       resetUploadForm()
       fetchMyDatasets()

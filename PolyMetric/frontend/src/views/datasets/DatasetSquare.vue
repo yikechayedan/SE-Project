@@ -243,9 +243,9 @@
               </el-descriptions-item>
               <el-descriptions-item label="文件格式">{{ datasetDetail.file_format || '未知' }}</el-descriptions-item>
               <el-descriptions-item label="文件大小">{{ formatFileSize(datasetDetail.file_size) }}</el-descriptions-item>
-              <el-descriptions-item label="状态">
-                <el-tag :type="datasetDetail.is_verified ? 'success' : 'warning'" size="small">
-                  {{ datasetDetail.is_verified ? '已审核' : '待审核' }}
+              <el-descriptions-item label="审核状态">
+                <el-tag :type="getStatusType(datasetDetail.status)" size="small">
+                  {{ getStatusLabel(datasetDetail.status) }}
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="创建时间">{{ formatDate(datasetDetail.created_at) }}</el-descriptions-item>
@@ -684,7 +684,7 @@ const submitUpload = async () => {
     const res = await createDataset(formData)
     
     if (res.data?.code === 201 || res.data?.code === 200) {
-      ElMessage.success(res.data.msg || '上传成功')
+      ElMessage.success(res.data.msg || '上传成功，请等待审核')
       showUploadDialog.value = false
       resetUploadForm()
       // 刷新列表
@@ -738,6 +738,18 @@ const entriesTotal = ref(0)
 // 本地筛选后的数据集（并排序：关注 > 热度 > 上传时间）
 const filteredDatasets = computed(() => {
   let result = allDatasets.value
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+
+  // [Fix] 这里的过滤逻辑必须足够宽松：
+  // 1. 任何人都能看 passed 的
+  // 2. 自己能看自己的（无论什么状态，包括 pending 和 rejected）
+  result = result.filter(item => {
+    const isOwner = currentUser.id && item.creator_id === currentUser.id
+    const isPassed = item.status === 'passed'
+    // 弃用 is_verified，完全基于 status 和所有权
+    return isPassed || isOwner
+  })
+
   if (searchQuery.value.trim()) {
     const keyword = searchQuery.value.trim().toLowerCase()
     result = result.filter(item => item.name.toLowerCase().includes(keyword))
@@ -749,8 +761,15 @@ const filteredDatasets = computed(() => {
     result = result.filter(item => item.is_followed)
   }
   
-  // 排序：关注 > 热度 > 上传时间
+  // 排序：自己上传的 > 关注 > 热度 > 上传时间
   return result.sort((a, b) => {
+    // 0. My Datasets first (Priority 0)
+    const aIsMine = currentUser.id && a.creator_id === currentUser.id
+    const bIsMine = currentUser.id && b.creator_id === currentUser.id
+    if (aIsMine !== bIsMine) {
+      return aIsMine ? -1 : 1
+    }
+
     // 1. Followed (is_followed) - true first
     if (a.is_followed !== b.is_followed) {
       return a.is_followed ? -1 : 1
@@ -837,6 +856,24 @@ const formatDate = (dateStr) => {
 }
 
 // 分类英文转中文
+const getStatusLabel = (status) => {
+  const map = {
+    'pending': '待审核',
+    'passed': '通过审核',
+    'rejected': '未通过'
+  }
+  return map[status] || '未知状态'
+}
+
+const getStatusType = (status) => {
+  const map = {
+    'pending': 'info',
+    'passed': 'success',
+    'rejected': 'danger'
+  }
+  return map[status] || ''
+}
+
 const getCategoryLabel = (category) => {
   const labels = {
     'image': '图像',

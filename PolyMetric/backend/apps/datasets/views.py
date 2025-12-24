@@ -42,7 +42,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
     queryset = Dataset.objects.all()
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["category", "evaluation_type", "file_format", "is_public", "is_verified"]
+    filterset_fields = ["category", "evaluation_type", "file_format", "is_public", "status"]
     search_fields = ["name", "description", "creator__username"]
     ordering_fields = ["created_at", "updated_at", "sample_count", "file_size"]
 
@@ -70,12 +70,15 @@ class DatasetViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
-            return Dataset.objects.filter(is_public=True, is_verified=True)
+            # 未登录用户只能看到已通过审核的公开数据集
+            return Dataset.objects.filter(is_public=True, status='passed')
         elif user.is_staff:
+            # 管理员看全部
             return Dataset.objects.all()
         else:
+            # 登录用户看到：自己的全部数据集 + 别人已通过审核的公开数据集
             return Dataset.objects.filter(
-                models.Q(creator=user) | models.Q(is_public=True, is_verified=True)
+                models.Q(creator=user) | models.Q(is_public=True, status='passed')
             )
 
     def list(self, request, *args, **kwargs):
