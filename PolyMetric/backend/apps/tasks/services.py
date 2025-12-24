@@ -12,8 +12,39 @@ logger = logging.getLogger(__name__)
 
 # ===================== 生图模型识别关键字 =====================
 # 只要模型名称包含以下任一关键字（不区分大小写），系统将自动切换至生图接口
-IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo"]
+IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "turbo", "mj", "sd", "dalle"]
 # ============================================================
+
+def load_generated_image_as_base64(relative_path):
+    """
+    加载由模型生成的本地图片并转换为 Base64。
+    relative_path 格式通常为: generated_images/filename.png
+    """
+    import base64
+    from django.conf import settings
+    
+    if not relative_path: return None
+    
+    try:
+        # 去除可能存在的 markdown 格式头部 ![...](...)
+        path = relative_path
+        if "![" in path and "(" in path and ")" in path:
+            path = path.split("(")[1].split(")")[0]
+        
+        # 去除开头的 /media/
+        if path.startswith("/media/"):
+            path = path.replace("/media/", "", 1)
+            
+        full_path = os.path.join(settings.MEDIA_ROOT, path)
+        
+        if os.path.exists(full_path):
+            with open(full_path, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+        else:
+            logger.error(f"Generated image not found at: {full_path}")
+    except Exception as e:
+        logger.error(f"Error loading generated image: {e}")
+    return None
 
 def load_image_from_dataset(dataset_file_path, image_relative_path):
     """
