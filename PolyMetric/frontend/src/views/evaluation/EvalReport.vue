@@ -270,12 +270,12 @@ const parseContent = (fullText) => {
   if (!fullText) return { question: '', options: {} };
 
   // 匹配选项的正则表达式，假设格式为 A. xxx B. xxx ...
-  const optionLetters = ['A', 'B', 'C', 'D'];
+  const optionLetters = ['A', 'B', 'C', 'D', 'E'];
   let question = fullText;
   let options = {};
 
   // 寻找第一个选项出现的位置来截取问题
-  const firstOptionIndex = fullText.search(/[A-D]\.\s/);
+  const firstOptionIndex = fullText.search(/[A-E]\.\s/);
   
   if (firstOptionIndex !== -1) {
     question = fullText.substring(0, firstOptionIndex).trim();
