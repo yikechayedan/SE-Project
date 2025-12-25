@@ -683,11 +683,10 @@ const submitUpload = async () => {
     
     const res = await createDataset(formData)
     
-    if (res.data?.code === 201 || res.data?.code === 200) {
-      ElMessage.success(res.data.msg || '上传成功，请等待审核')
+    if (res.data.code === 201 || res.data.id) {
+      ElMessage.success('数据集已上传，正在审核中')
       showUploadDialog.value = false
       resetUploadForm()
-      // 刷新列表
       fetchAllDatasets()
     } else {
       console.error('Upload failed with response:', res.data)
@@ -805,7 +804,9 @@ const paginatedRankedDatasets = computed(() => {
 
 // Top 3 逻辑：按 热度 (star_count) 排序
 const rankedTop3 = computed(() => {
-  const sorted = [...allDatasets.value].sort((a, b) => {
+  // [Fix] 仅展示已审核通过的数据集
+  const auditedOnly = allDatasets.value.filter(item => item.status === 'passed')
+  const sorted = [...auditedOnly].sort((a, b) => {
     // Heat (star_count) - desc
     const starA = a.star_count || 0
     const starB = b.star_count || 0

@@ -63,6 +63,13 @@ class Dataset(models.Model):
         blank=True,
         null=True
     )
+    file_hash = models.CharField(
+        max_length=64, 
+        verbose_name="文件哈希(SHA-256)", 
+        blank=True, 
+        null=True,
+        db_index=True
+    )
     file_size = models.FloatField(verbose_name="文件大小(MB)", default=0.0)
     sample_count = models.IntegerField(verbose_name="样本数量", null=True, blank=True, default=0)
     

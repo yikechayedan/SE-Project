@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 # ===================== 生图模型识别关键字 =====================
 # 只要模型名称包含以下任一关键字（不区分大小写），系统将自动切换至生图接口
-# [Fix] Removed "turbo" to prevent misidentifying chat models like ERNIE-Turbo as image gen models
-IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream", "t2i", "flux", "mj", "sd", "dalle"]
+IMAGE_GEN_MODEL_KEYWORDS = ["wanx", "cogview", "seedream"]
 # ============================================================
 
 def load_generated_image_as_base64(relative_path):
@@ -198,43 +197,103 @@ def call_llm_api(prompt: str, model_name: str, images: list = None, max_retries:
             is_t2i_model = any(k in model_lower for k in IMAGE_GEN_MODEL_KEYWORDS)
             
             if is_t2i_model:
-                try:
-                    logger.info(f"Routing {model_name} to specialized T2I endpoint.")
-                    client = OpenAI(api_key=settings.LLM_API_KEY, base_url=settings.LLM_BASE_URL)
-                    # [Fix] 显式增加 size 参数，某些模型（如 WanX）在缺失规格参数时可能返回空结果
-                    response = client.images.generate(
-                        model=model_name,
-                        prompt=prompt,
-                        n=1,
-                        size="1024x1024" 
-                    )
-                    # [Fix] 增加长度校验，防止 list index out of range
-                    if hasattr(response, 'data') and len(response.data) > 0:
-                        image_url = response.data[0].url
-                        if image_url:
-                            return _save_remote_image(image_url)
-                    
-                    logger.error(f"T2I Response structure unexpected or empty: {response}")
-                    raise Exception(f"No image data in successful 200 response from {model_name}")
-                except Exception as e:
-                    logger.warning(f"T2I SDK call failed for {model_name}: {e}. Trying raw request fallback.")
-                    # 只有在 SDK 明确报错后才尝试 raw 模式，且 raw 模式下也要处理可能的 URL 列表
-                    headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}", "Content-Type": "application/json"}
-                    payload = {"model": model_name, "messages": messages, "stream": False}
-                    base = settings.LLM_BASE_URL.rstrip('/')
-                    if not base.endswith('/v1'): base += '/v1'
-                    
-                    # 尝试 chat 接口但手动解析 content 列表 (针对万一网关没拦截但返回 list 的情况)
-                    resp = requests.post(f"{base}/chat/completions", json=payload, headers=headers, timeout=120)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        content = data['choices'][0]['message']['content']
-                        if isinstance(content, list):
-                            for part in content:
-                                if isinstance(part, dict) and 'url' in part:
-                                    return _save_remote_image(part['url'])
-                        return str(content)
-                    raise e # 如果还是不行，抛出原始 SDK 错误
+                # ========================== WanX 系列特殊处理 ==========================
+                if "wanx" in model_lower:
+                    try:
+                        logger.info(f"Routing {model_name} to WanX specialized async endpoint.")
+                        base_url = settings.LLM_BASE_URL.rstrip('/')
+                        # 确保不包含 /v1 后缀，以便手动拼接 /v1/p003
+                        if base_url.endswith('/v1'):
+                            base_url = base_url[:-3]
+                        
+                        headers = {
+                            "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                            "Content-Type": "application/json"
+                        }
+                        
+                        # 第一步：发送生成请求
+                        gen_url = f"{base_url}/v1/p003/text2image"
+                        payload = {
+                            "model": model_name,
+                            "input": {"prompt": prompt},
+                            "parameters": {"size": "1024*1024", "n": 1}
+                        }
+                        
+                        gen_resp = requests.post(gen_url, headers=headers, json=payload, timeout=30)
+                        gen_resp.raise_for_status()
+                        gen_data = gen_resp.json()
+                        
+                        task_id = gen_data.get("output", {}).get("task_id")
+                        if not task_id:
+                            raise Exception(f"WanX task creation failed: {gen_data}")
+                            
+                        # 第二步：轮询任务结果
+                        poll_url = f"{base_url}/v1/p003/tasks/{task_id}"
+                        max_polls = 15 # 最大轮询次数
+                        poll_interval = 3 # 轮询间隔(秒)
+                        
+                        for i in range(max_polls):
+                            time.sleep(poll_interval)
+                            poll_resp = requests.get(poll_url, headers=headers, timeout=20)
+                            poll_resp.raise_for_status()
+                            poll_data = poll_resp.json()
+                            
+                            status = poll_data.get("output", {}).get("task_status")
+                            logger.info(f"WanX Task {task_id} status: {status}")
+                            
+                            if status == "SUCCEEDED":
+                                results = poll_data.get("output", {}).get("results", [])
+                                if results and "url" in results[0]:
+                                    return _save_remote_image(results[0]["url"])
+                                break
+                            elif status == "FAILED":
+                                raise Exception(f"WanX task failed: {poll_data}")
+                        
+                        raise Exception("WanX task polling timed out")
+                    except Exception as e:
+                        logger.error(f"WanX specialized call failed: {e}")
+                        # 万象不支持标准 SDK 路径，这里不继续 fallback 到 SDK，直接抛错以便进入重试
+                        raise e
+
+                # ========================== 其他生图模型 (GLM, Doubao 等) ==========================
+                else:
+                    try:
+                        logger.info(f"Routing {model_name} to standard OpenAI-compatible T2I endpoint.")
+                        client = OpenAI(api_key=settings.LLM_API_KEY, base_url=settings.LLM_BASE_URL)
+                        # [Fix] 显式增加 size 参数，某些模型（如 WanX）在缺失规格参数时可能返回空结果
+                        response = client.images.generate(
+                            model=model_name,
+                            prompt=prompt,
+                            n=1,
+                            size="1024x1024" 
+                        )
+                        # [Fix] 增加长度校验，防止 list index out of range
+                        if hasattr(response, 'data') and len(response.data) > 0:
+                            image_url = response.data[0].url
+                            if image_url:
+                                return _save_remote_image(image_url)
+                        
+                        logger.error(f"T2I Response structure unexpected or empty: {response}")
+                        raise Exception(f"No image data in successful 200 response from {model_name}")
+                    except Exception as e:
+                        logger.warning(f"T2I SDK call failed for {model_name}: {e}. Trying raw request fallback.")
+                        # 只有在 SDK 明确报错后才尝试 raw 模式，且 raw 模式下也要处理可能的 URL 列表
+                        headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}", "Content-Type": "application/json"}
+                        payload = {"model": model_name, "messages": messages, "stream": False}
+                        base = settings.LLM_BASE_URL.rstrip('/')
+                        if not base.endswith('/v1'): base += '/v1'
+                        
+                        # 尝试 chat 接口但手动解析 content 列表 (针对万一网关没拦截但返回 list 的情况)
+                        resp = requests.post(f"{base}/chat/completions", json=payload, headers=headers, timeout=120)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            content = data['choices'][0]['message']['content']
+                            if isinstance(content, list):
+                                for part in content:
+                                    if isinstance(part, dict) and 'url' in part:
+                                        return _save_remote_image(part['url'])
+                            return str(content)
+                        raise e # 如果还是不行，抛出原始 SDK 错误
 
             # 正常文本模型逻辑
             timeout = 120.0 if len(prompt) > 5000 else 60.0
