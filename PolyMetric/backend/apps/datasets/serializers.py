@@ -74,7 +74,25 @@ class DatasetSerializer(serializers.ModelSerializer):
         file_obj = validated_data.get("file_path")
         file_format = validated_data.get("file_format")
 
-        if file_obj and file_format:
+        # [Fix] 兼容去重逻辑：判断 file_obj 是文件对象还是字符串路径
+        is_deduplicated = isinstance(file_obj, str)
+
+        if is_deduplicated:
+            # 如果是去重命中，从已有数据集中拷贝元数据
+            existing = Dataset.objects.filter(file_path=file_obj).first()
+            if existing:
+                validated_data.update({
+                    "file_size": existing.file_size,
+                    "sample_count": existing.sample_count,
+                    "has_images": existing.has_images,
+                    "image_count": existing.image_count,
+                    "capability_tag": existing.capability_tag,
+                    "capability_dimension": existing.capability_dimension,
+                    "is_verified": existing.is_verified,
+                    "status": existing.status
+                })
+        elif file_obj and file_format:
+            # 正常上传流程
             file_format = file_format.lower()
             validated_data["file_size"] = round(file_obj.size / (1024 * 1024), 6)
             validated_data["sample_count"] = self._count_samples(file_obj, file_format)
@@ -93,7 +111,8 @@ class DatasetSerializer(serializers.ModelSerializer):
 
         dataset = super().create(validated_data)
         
-        if file_obj and validated_data.get("capability_tag") == "processing":
+        # 只有新文件才需要触发异步分析任务
+        if not is_deduplicated and file_obj and validated_data.get("capability_tag") == "processing":
             from apps.tasks.tasks import analyze_dataset_capability
             analyze_dataset_capability.delay(dataset.id)
         
@@ -104,7 +123,7 @@ class DatasetSerializer(serializers.ModelSerializer):
         if not instance.is_verified:
             raise serializers.ValidationError("只有已审核通过的数据集才能修改")
         
-        if file_obj:
+        if file_obj and not isinstance(file_obj, str):
             if instance.has_file():
                 try:
                     if os.path.exists(instance.file_path.path): os.remove(instance.file_path.path)
@@ -120,7 +139,7 @@ class DatasetSerializer(serializers.ModelSerializer):
             validated_data["capability_dimension"] = "other"
         
         dataset = super().update(instance, validated_data)
-        if file_obj and validated_data.get("capability_tag") == "processing":
+        if file_obj and not isinstance(file_obj, str) and validated_data.get("capability_tag") == "processing":
             from apps.tasks.tasks import analyze_dataset_capability
             analyze_dataset_capability.delay(dataset.id)
         return dataset
@@ -132,7 +151,8 @@ class DatasetSerializer(serializers.ModelSerializer):
         evaluation_type = attrs.get("evaluation_type", "subjective")
         category = attrs.get("category")
         
-        if file_obj:
+        # 如果是去重命中的字符串路径，跳过物理文件验证
+        if file_obj and not isinstance(file_obj, str):
             # 格式初检
             allowed_formats = ["csv", "json", "zip"]
             file_ext = file_obj.name.split(".")[-1].lower()

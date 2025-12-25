@@ -121,13 +121,47 @@ class DatasetViewSet(viewsets.ModelViewSet):
         })
 
     def create(self, request, *args, **kwargs):
+        # 提前提取文件进行哈希计算
+        uploaded_file = request.FILES.get('file_path')
+        file_hash = None
+        existing_file_path = None
+
+        if uploaded_file:
+            import hashlib
+            sha256 = hashlib.sha256()
+            for chunk in uploaded_file.chunks():
+                sha256.update(chunk)
+            file_hash = sha256.hexdigest()
+
+            # 查重
+            existing_dataset = Dataset.objects.filter(file_hash=file_hash).first()
+            if existing_dataset and existing_dataset.file_path:
+                existing_file_path = existing_dataset.file_path.name
+                print(f"DEBUG: Deduplication hit! Hash: {file_hash}")
+                print(f"DEBUG: Reusing existing physical file: {existing_file_path}")
+
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            self.perform_create(serializer)
+            if existing_file_path:
+                # 核心：如果命中，保存时指定路径，且继承原文件的审核状态
+                serializer.save(
+                    creator=self.request.user,
+                    file_hash=file_hash,
+                    file_path=existing_file_path,
+                    status=existing_dataset.status,
+                    is_verified=existing_dataset.is_verified
+                )
+            else:
+                # 正常保存新文件
+                serializer.save(
+                    creator=self.request.user, 
+                    file_hash=file_hash
+                )
+            
             headers = self.get_success_headers(serializer.data)
             return Response({
                 "code": 201,
-                "msg": "创建成功",
+                "msg": "已上传，正在审核中" if not existing_file_path else "已识别重复文件，已为您自动关联并上传",
                 "data": serializer.data
             }, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -138,7 +172,8 @@ class DatasetViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        # 此方法已被 create 中的逻辑覆盖，保持为空或默认即可
+        pass
 
     def perform_update(self, serializer):
         serializer.save()
@@ -177,15 +212,28 @@ class DatasetViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        # 删除关联文件
-        if instance.has_file():
-            try:
-                file_path = instance.file_path.path
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except:
-                pass
+        file_path_name = instance.file_path.name if instance.file_path else None
+        
+        # 1. 先执行数据库记录删除
         self.perform_destroy(instance)
+        
+        # 2. 安全物理删除：检查是否还有其他数据集指向同一个物理文件
+        if file_path_name:
+            # 排除掉刚刚删除的 instance，看是否还有引用
+            is_referenced = Dataset.objects.filter(file_path=file_path_name).exists()
+            
+            if not is_referenced:
+                try:
+                    # 只有没有人引用时，才真正从磁盘删除
+                    full_path = os.path.join(settings.MEDIA_ROOT, file_path_name)
+                    if os.path.exists(full_path):
+                        os.remove(full_path)
+                        print(f"DEBUG: Physical file deleted (no more references): {file_path_name}")
+                except Exception as e:
+                    print(f"DEBUG: Failed to delete physical file: {e}")
+            else:
+                print(f"DEBUG: Physical file kept (still referenced by other datasets): {file_path_name}")
+
         return Response(
             {"code": 200, "msg": "删除成功"}, 
             status=status.HTTP_200_OK
