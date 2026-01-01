@@ -149,11 +149,9 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
     # -----------------------------
     def retrieve(self, request, *args, **kwargs):
         task = self.get_object()
-    
-        # 权限检查
-        perm = self._check_owner_or_admin(request, task)
-        if perm is not None:
-            return perm
+
+        # [Public] 评测广场模式：允许登录用户查看任意评测详情
+        # 原有的权限检查已移除，实现报告公开化
 
         serializer = self.get_serializer(task)
         data = serializer.data
@@ -242,6 +240,11 @@ class EvaluationTaskViewSet(viewsets.ModelViewSet):
             task = EvaluationTask.objects.get(pk=pk)
         except EvaluationTask.DoesNotExist:
             return Response({"error": "Task not found"}, status=400)
+
+        # 【安全加固】仅任务创建者或管理员可提交评分
+        user = request.user
+        if not (user.is_staff or task.creator_id == user.id):
+            return Response({"error": "您没有权限对该任务进行人工评分"}, status=status.HTTP_403_FORBIDDEN)
 
         # method 直接以任务本身为准，不强依赖前端传的 method
         method = task.method

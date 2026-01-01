@@ -277,6 +277,13 @@ const initData = async () => {
     try {
         const res = await getPendingItems(props.taskId, props.reviewerId);
         
+        // [Safety Check] 校验权限
+        if (res.data.creator && props.reviewerId != res.data.creator) {
+            ElMessage.error('权限不足：仅任务创建者可进行人工评分');
+            router.push({ name: 'Evaluation' });
+            return;
+        }
+
         // 1. 基础数据赋值
         allItemIds.value = res.data.all_item_ids || [];
         pendingItemIds.value = res.data.pending_item_ids || []; 
@@ -401,7 +408,11 @@ const executeSubmit = async (isFinal) => {
             }
         }
     } catch (error) {
-        ElMessage.error('提交失败');
+        if (error.response && error.response.status === 403) {
+            ElMessage.error('提交失败：您没有权限对该任务进行人工评分');
+        } else {
+            ElMessage.error('提交失败');
+        }
     } finally {
         submitting.value = false;
     }
