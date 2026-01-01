@@ -277,6 +277,13 @@ const initData = async () => {
   try {
     const res = await getPendingItems(props.taskId, props.reviewerId);
     
+    // [Safety Check] 校验权限：只有创建者或管理员能评分
+    if (res.data.creator && props.reviewerId != res.data.creator) {
+        ElMessage.error('权限不足：仅任务创建者可进行人工评分');
+        router.push({ name: 'Evaluation' });
+        return;
+    }
+
     allItemIds.value = res.data.all_item_ids || [];
     pendingItemIds.value = res.data.pending_item_ids || []; // 注意：此处根据你后端返回的 key 名对齐
     totalCount.value = res.data.total_count || 0;

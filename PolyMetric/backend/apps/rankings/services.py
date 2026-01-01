@@ -9,6 +9,9 @@ def _get_dataset_dimension(dataset):
     if hasattr(dataset, 'capability_dimension') and dataset.capability_dimension:
         # 如果是 'other'，尝试回退到旧的推断逻辑（兼容旧数据）
         if dataset.capability_dimension != 'other':
+            # 映射: dataset 'reasoning' -> ranking 'math'
+            if dataset.capability_dimension == 'reasoning':
+                return 'math'
             return dataset.capability_dimension
             
     # --- 旧的兼容逻辑 (Fallback) ---

@@ -108,6 +108,7 @@
               v-if="scope.row.status === 'pending'" 
               type="success" class="custom-action-btn" size="small"
               :loading="loadingTasks[scope.row.id]"
+              :disabled="scope.row.creator !== currentUserId"
               @click="handleRunEvaluation(scope.row)"
             >
               <el-icon v-if="!loadingTasks[scope.row.id]"><VideoPlay /></el-icon>
@@ -115,7 +116,7 @@
             </el-button>
 
             <el-button 
-              v-if="scope.row.status === 'awaiting_human_judge'" 
+              v-if="scope.row.status === 'awaiting_human_judge' && scope.row.creator === currentUserId" 
               type="warning" class="custom-action-btn" size="small"
               @click="handleStartEvaluation(scope.row)"
             >
