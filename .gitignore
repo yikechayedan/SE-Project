@@ -47,6 +47,7 @@ PolyMetric/backend/media/
 
 ### Frontend Build ###
 dist/
+PolyMetric/frontend/dist_electron/
 .cache/
 *.tsbuildinfo
 
