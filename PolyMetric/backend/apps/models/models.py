@@ -11,7 +11,6 @@ class My_Model(models.Model):
             ('text', '文本生成'),
             ('image', '图像生成'),
             ('multimodal', '多模态'),
-            ('code', '代码生成'),
         ],
         default='text',
         verbose_name='类型'

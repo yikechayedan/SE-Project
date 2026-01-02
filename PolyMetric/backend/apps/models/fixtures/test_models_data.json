@@ -37,7 +37,7 @@
     "fields": {
       "name": "CodeLlama 70B",
       "company": "Meta",
-      "category": "code",
+      "category": "text",
       "parameter_size": "70B",
       "description": "专为代码生成优化的大模型，支持Python/Java/JS等20+编程语言，开源可商用",
       "version": "70B-Instruct",

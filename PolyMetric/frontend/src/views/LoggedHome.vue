@@ -80,6 +80,12 @@
                 <span>综合能力排行榜</span>
               </div>
               <div class="header-right">
+                <el-select v-model="selectedCategory" placeholder="模型类型" size="small" style="width: 120px;">
+                  <el-option label="全部模型" value="" />
+                  <el-option label="文本生成" value="text" />
+                  <el-option label="图像生成" value="image" />
+                  <el-option label="多模态" value="multimodal" />
+                </el-select>
                 <el-select v-model="selectedDataset" placeholder="选择数据集" size="small" style="width: 140px;">
                   <el-option label="综合评测" value="comprehensive" />
                   <el-option label="语言理解" value="language" />
@@ -131,16 +137,19 @@
             >
               <template #default="{ row }">
                 <div class="score-with-trend">
-                  <div style="flex: 1; min-width: 80px;">
-                    <el-progress 
-                      :percentage="row.overallScore" 
-                      :stroke-width="8"
-                      :color="getScoreColor(row.overallScore)"
-                      :format="() => row.overallScore.toFixed(1)"
-                    />
-                  </div>
-                  <el-icon v-if="row.trends.overall > 0" class="mini-trend-up"><Top /></el-icon>
-                  <el-icon v-else-if="row.trends.overall < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  <template v-if="row.overallScore > 0">
+                    <div style="flex: 1; min-width: 80px;">
+                      <el-progress 
+                        :percentage="row.overallScore" 
+                        :stroke-width="8"
+                        :color="getScoreColor(row.overallScore)"
+                        :format="() => row.overallScore.toFixed(1)"
+                      />
+                    </div>
+                    <el-icon v-if="row.trends.overall > 0" class="mini-trend-up"><Top /></el-icon>
+                    <el-icon v-else-if="row.trends.overall < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  </template>
+                  <span v-else style="color: #909399; font-size: 13px;">N/A</span>
                 </div>
               </template>
             </el-table-column>
@@ -155,13 +164,16 @@
             >
               <template #default="{ row }">
                 <div class="score-with-trend">
-                  <span :style="{ 
-                    color: getScoreColor(row.languageScore),
-                    fontWeight: selectedDataset === 'language' ? 'bold' : 'normal',
-                    fontSize: selectedDataset === 'language' ? '16px' : '14px'
-                  }">{{ row.languageScore.toFixed(1) }}</span>
-                  <el-icon v-if="row.trends.language > 0" class="mini-trend-up"><Top /></el-icon>
-                  <el-icon v-else-if="row.trends.language < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  <template v-if="row.languageScore > 0">
+                    <span :style="{ 
+                      color: getScoreColor(row.languageScore),
+                      fontWeight: selectedDataset === 'language' ? 'bold' : 'normal',
+                      fontSize: selectedDataset === 'language' ? '16px' : '14px'
+                    }">{{ row.languageScore.toFixed(1) }}</span>
+                    <el-icon v-if="row.trends.language > 0" class="mini-trend-up"><Top /></el-icon>
+                    <el-icon v-else-if="row.trends.language < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  </template>
+                  <span v-else style="color: #909399; font-size: 13px;">N/A</span>
                 </div>
               </template>
             </el-table-column>
@@ -176,13 +188,16 @@
             >
               <template #default="{ row }">
                 <div class="score-with-trend">
-                  <span :style="{ 
-                    color: getScoreColor(row.reasoningScore),
-                    fontWeight: selectedDataset === 'math' ? 'bold' : 'normal',
-                    fontSize: selectedDataset === 'math' ? '16px' : '14px'
-                  }">{{ row.reasoningScore.toFixed(1) }}</span>
-                  <el-icon v-if="row.trends.math > 0" class="mini-trend-up"><Top /></el-icon>
-                  <el-icon v-else-if="row.trends.math < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  <template v-if="row.reasoningScore > 0">
+                    <span :style="{ 
+                      color: getScoreColor(row.reasoningScore),
+                      fontWeight: selectedDataset === 'math' ? 'bold' : 'normal',
+                      fontSize: selectedDataset === 'math' ? '16px' : '14px'
+                    }">{{ row.reasoningScore.toFixed(1) }}</span>
+                    <el-icon v-if="row.trends.math > 0" class="mini-trend-up"><Top /></el-icon>
+                    <el-icon v-else-if="row.trends.math < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  </template>
+                  <span v-else style="color: #909399; font-size: 13px;">N/A</span>
                 </div>
               </template>
             </el-table-column>
@@ -197,13 +212,16 @@
             >
               <template #default="{ row }">
                 <div class="score-with-trend">
-                  <span :style="{ 
-                    color: getScoreColor(row.codeScore),
-                    fontWeight: selectedDataset === 'code' ? 'bold' : 'normal',
-                    fontSize: selectedDataset === 'code' ? '16px' : '14px'
-                  }">{{ row.codeScore.toFixed(1) }}</span>
-                  <el-icon v-if="row.trends.code > 0" class="mini-trend-up"><Top /></el-icon>
-                  <el-icon v-else-if="row.trends.code < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  <template v-if="row.codeScore > 0">
+                    <span :style="{ 
+                      color: getScoreColor(row.codeScore),
+                      fontWeight: selectedDataset === 'code' ? 'bold' : 'normal',
+                      fontSize: selectedDataset === 'code' ? '16px' : '14px'
+                    }">{{ row.codeScore.toFixed(1) }}</span>
+                    <el-icon v-if="row.trends.code > 0" class="mini-trend-up"><Top /></el-icon>
+                    <el-icon v-else-if="row.trends.code < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  </template>
+                  <span v-else style="color: #909399; font-size: 13px;">N/A</span>
                 </div>
               </template>
             </el-table-column>
@@ -218,13 +236,16 @@
             >
               <template #default="{ row }">
                 <div class="score-with-trend">
-                  <span :style="{ 
-                    color: getScoreColor(row.multimodalScore),
-                    fontWeight: selectedDataset === 'multimodal' ? 'bold' : 'normal',
-                    fontSize: selectedDataset === 'multimodal' ? '16px' : '14px'
-                  }">{{ row.multimodalScore.toFixed(1) }}</span>
-                  <el-icon v-if="row.trends.multimodal > 0" class="mini-trend-up"><Top /></el-icon>
-                  <el-icon v-else-if="row.trends.multimodal < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  <template v-if="row.multimodalScore > 0">
+                    <span :style="{ 
+                      color: getScoreColor(row.multimodalScore),
+                      fontWeight: selectedDataset === 'multimodal' ? 'bold' : 'normal',
+                      fontSize: selectedDataset === 'multimodal' ? '16px' : '14px'
+                    }">{{ row.multimodalScore.toFixed(1) }}</span>
+                    <el-icon v-if="row.trends.multimodal > 0" class="mini-trend-up"><Top /></el-icon>
+                    <el-icon v-else-if="row.trends.multimodal < 0" class="mini-trend-down"><Bottom /></el-icon>
+                  </template>
+                  <span v-else style="color: #909399; font-size: 13px;">N/A</span>
                 </div>
               </template>
             </el-table-column>
@@ -421,6 +442,7 @@ const router = useRouter()
 const showTutorial = ref(false)
 const tutorialStep = ref(0)
 const showEvalDialog = ref(false)
+const selectedCategory = ref('')
 const selectedDataset = ref('comprehensive')
 const rankingLoading = ref(false)
 let dataTimer = null
@@ -631,7 +653,13 @@ const rankings = ref([])
 
 // 计算排序后的排行榜数据
 const sortedRankings = computed(() => {
-  const data = [...rankings.value]
+  let data = [...rankings.value]
+  
+  // 前端分类筛选
+  if (selectedCategory.value) {
+    data = data.filter(item => item.category === selectedCategory.value)
+  }
+
   const sortMap = {
     'comprehensive': 'overallScore',
     'language': 'languageScore',
@@ -694,6 +722,7 @@ const fetchRankings = async () => {
         id: item.model_id,
         name: item.name,
         company: item.company || 'Unknown',
+        category: item.category,
         color: getModelColor(item.category),
         overallScore: item.scores?.overall || 0,
         languageScore: item.scores?.language || 0,
@@ -732,7 +761,6 @@ const getModelColor = (category) => {
   const colors = {
     'text': '#409eff',
     'image': '#e6a23c', 
-    'code': '#67c23a',
     'multimodal': '#9b59b6'
   }
   return colors[category] || '#909399'

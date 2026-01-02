@@ -39,7 +39,7 @@ models_data = [
     {"name": "Qwen3-235B-Instruct", "company": "Alibaba", "category": "text", "parameter_size": "235B", "description": "旗舰指令微调模型", "version": "Qwen3"},
     {"name": "Qwen3-235B-Thinking", "company": "Alibaba", "category": "text", "parameter_size": "235B", "description": "旗舰推理增强模型", "version": "Qwen3"},
     {"name": "Qwen-Long", "company": "Alibaba", "category": "text", "parameter_size": "Unknown", "description": "长文本专家", "version": "Long"},
-    {"name": "Qwen3-Coder-Plus", "company": "Alibaba", "category": "code", "parameter_size": "Unknown", "description": "代码能力增强模型", "version": "Coder"},
+    {"name": "Qwen3-Coder-Plus", "company": "Alibaba", "category": "text", "parameter_size": "Unknown", "description": "代码能力增强模型", "version": "Coder"},
     {"name": "Qwen2.5-VL-72B-Instruct", "company": "Alibaba", "category": "multimodal", "parameter_size": "72B", "description": "顶级视觉语言模型", "version": "2.5-VL"},
     {"name": "Qwen3-VL-235B-Instruct", "company": "Alibaba", "category": "multimodal", "parameter_size": "235B", "description": "Qwen3 旗舰视觉模型", "version": "3-VL"},
     

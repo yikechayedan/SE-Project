@@ -38,11 +38,6 @@
             <div class="value">{{ multiModelCount }}</div>
             <div class="hint">Multi</div>
           </div>
-          <div class="stat-card type-code">
-            <div class="label">代码生成</div>
-            <div class="value">{{ codeModelCount }}</div>
-            <div class="hint">Code</div>
-          </div>
         </div>
       </div>
       <div class="hero-right">
@@ -88,7 +83,6 @@
           <el-option label="文本生成" value="text" />
           <el-option label="生成图像" value="image" />
           <el-option label="多模态识别" value="multimodal" />
-          <el-option label="代码生成" value="code" />
         </el-select>
         <el-select
           v-model="companyFilter"
@@ -342,7 +336,6 @@ const totalStars = computed(() => allModels.value.reduce((acc, m) => acc + (m.st
 const textModelCount = computed(() => allModels.value.filter(m => m.category === 'text').length)
 const imageModelCount = computed(() => allModels.value.filter(m => m.category === 'image').length)
 const multiModelCount = computed(() => allModels.value.filter(m => m.category === 'multimodal').length)
-const codeModelCount = computed(() => allModels.value.filter(m => m.category === 'code').length)
 
 const rankedModels = computed(() => filteredModels.value.map((item, idx) => ({ ...item, _rank: idx + 1 })))
 const paginatedRankedModels = computed(() => {
@@ -385,8 +378,7 @@ const getCategoryLabel = (category) => {
   const labels = {
     'text': '文本生成',
     'image': '生成图像',
-    'multimodal': '多模态识别',
-    'code': '代码生成'
+    'multimodal': '多模态识别'
   }
   return labels[category] || category || '未分类'
 }
@@ -395,8 +387,7 @@ const getCategoryType = (category) => {
   const types = {
     'text': 'primary',
     'image': 'success',
-    'multimodal': 'warning',
-    'code': 'info'
+    'multimodal': 'warning'
   }
   return types[category] || ''
 }
