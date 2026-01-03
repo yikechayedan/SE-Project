@@ -656,12 +656,16 @@ const submitEval = async() => {
       "name": form.value.taskName,
       "description": form.value.description,
       "method": form.value.method,
-      "judge_type": form.value.method === 'objective' ? 'model' : (form.value.type === "model" ? "model" : "human"),
       "dataset": selectedDataset.id,
       "myModel": selectedModel.id,
       "myModel_2": selectedModel2 ? selectedModel2.id : null,
       "judge_model": selectedJudgeModel ? selectedJudgeModel.id : null
     };
+
+    // 只有非客观评测才需要 judge_type 字段
+    if (form.value.method !== 'objective') {
+      requestBody.judge_type = form.value.type === "model" ? "model" : "human";
+    }
     
     try {
       const response = await createEvaluationTask(requestBody);
