@@ -644,6 +644,12 @@ const submitEval = async() => {
         return;
       }
       
+      // [Rule Check] 裁判模型不能是生图模型
+      if (selectedJudgeModel.category === 'image') {
+        ElMessage.error('裁判模型不能是生图模型');
+        return;
+      }
+
       // [Rule Check] 生图模型必须配多模态裁判
       const isT2I = selectedModel.category === "image" || (selectedModel2 && selectedModel2.category === "image");
       if (isT2I && selectedJudgeModel.category !== "multimodal") {

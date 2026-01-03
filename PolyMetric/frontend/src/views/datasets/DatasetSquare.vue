@@ -1249,7 +1249,7 @@ const handleToggleFollowInDialog = async () => {
       }
     } catch (error) {
       console.error('获取数据集条目失败:', error)
-      ElMessage.error('获取数据集预览失败')
+      ElMessage.warning('暂不支持ZIP格式预览')
       datasetEntries.value = []
       entriesTotal.value = 0
       entryFields.value = []
