@@ -236,7 +236,7 @@ const formatTaskDisplay = (task) => {
         taskName: task.name,
         model: task.myModel_name,
         data: task.dataset_name,
-        type: task.judge_type,
+        type: task.method === 'objective' ? 'model' : task.judge_type,
         time: task.created_at ? new Date(task.created_at).toLocaleDateString() : 'N/A',
         update: task.updated_at ? new Date(task.updated_at).toLocaleDateString() : 'N/A',
     };

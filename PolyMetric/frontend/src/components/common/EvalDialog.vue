@@ -591,7 +591,7 @@ const handleClose = () => {
       selectedModelName2: '',
       selectedDatasetName: '', 
       method: 'objective',
-      type: 'human',
+      type: 'model',
       judgeModelName: ''
     };
     emit('close') 
@@ -656,7 +656,7 @@ const submitEval = async() => {
       "name": form.value.taskName,
       "description": form.value.description,
       "method": form.value.method,
-      "judge_type": form.value.type === "model" ? "model" : "human",
+      "judge_type": form.value.method === 'objective' ? 'model' : (form.value.type === "model" ? "model" : "human"),
       "dataset": selectedDataset.id,
       "myModel": selectedModel.id,
       "myModel_2": selectedModel2 ? selectedModel2.id : null,

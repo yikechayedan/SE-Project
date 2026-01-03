@@ -26,7 +26,7 @@ models_data = [
         "score_base": 95.0  # 基准分
     },
     {
-        "name": "DeepSeek-V3", "company": "DeepSeek", "category": "text", "parameter_size": "671B", "description": "主力通用模型", "version": "V3",
+        "name": "DeepSeek-V3.2", "company": "DeepSeek", "category": "text", "parameter_size": "671B", "description": "主力通用模型", "version": "V3.2",
         "score_base": 92.0
     },
     {
@@ -40,11 +40,11 @@ models_data = [
 
     # Alibaba Qwen 系列
     {
-        "name": "Qwen3-235B-Instruct", "company": "Alibaba", "category": "text", "parameter_size": "235B", "description": "旗舰指令微调模型", "version": "Qwen3",
+        "name": "Qwen3-235B-A22B-Instruct-2507", "company": "Alibaba", "category": "text", "parameter_size": "235B", "description": "旗舰指令微调模型", "version": "Qwen3",
         "score_base": 94.0
     },
     {
-        "name": "Qwen3-235B-Thinking", "company": "Alibaba", "category": "text", "parameter_size": "235B", "description": "旗舰推理增强模型", "version": "Qwen3",
+        "name": "Qwen3-235B-A22B-Thinking-2507", "company": "Alibaba", "category": "text", "parameter_size": "235B", "description": "旗舰推理增强模型", "version": "Qwen3",
         "score_base": 93.5
     },
     {
@@ -60,7 +60,7 @@ models_data = [
         "score_base": 91.0
     },
     {
-        "name": "Qwen3-VL-235B-Instruct", "company": "Alibaba", "category": "multimodal", "parameter_size": "235B", "description": "Qwen3 旗舰视觉模型", "version": "3-VL",
+        "name": "Qwen3-VL-235B-A22B-Instruct", "company": "Alibaba", "category": "multimodal", "parameter_size": "235B", "description": "Qwen3 旗舰视觉模型", "version": "3-VL",
         "score_base": 93.0
     },
     
@@ -96,7 +96,7 @@ models_data = [
         "score_base": 88.5
     },
     {
-        "name": "GLM-4V-Plus", "company": "Zhipu AI", "category": "multimodal", "parameter_size": "Unknown", "description": "旗舰级多模态模型", "version": "4V-Plus",
+        "name": "GLM-4V-Plus-0111", "company": "Zhipu AI", "category": "multimodal", "parameter_size": "Unknown", "description": "旗舰级多模态模型", "version": "4V-Plus",
         "score_base": 92.5
     },
     {
@@ -132,17 +132,17 @@ models_data = [
 
     # Baidu (文心一言)
     {
-        "name": "ERNIE-4.5-Turbo", "company": "Baidu", "category": "text", "parameter_size": "Unknown", "description": "文心最新性能增强版", "version": "4.5-Turbo",
+        "name": "ERNIE-4.5-Turbo-128K", "company": "Baidu", "category": "text", "parameter_size": "Unknown", "description": "文心最新性能增强版", "version": "4.5-Turbo",
         "score_base": 89.5
     },
     {
-        "name": "ERNIE-4.5-Turbo-VL", "company": "Baidu", "category": "multimodal", "parameter_size": "Unknown", "description": "文心最新多模态模型", "version": "4.5-VL",
+        "name": "ERNIE-4.5-Turbo-VL-32K", "company": "Baidu", "category": "multimodal", "parameter_size": "Unknown", "description": "文心最新多模态模型", "version": "4.5-VL",
         "score_base": 88.5
     },
 
     # Baichuan (百川)
     {
-        "name": "Baichuan-M2", "company": "Baichuan", "category": "text", "parameter_size": "Unknown", "description": "百川旗舰通用模型", "version": "M2",
+        "name": "Baichuan-M2-128K", "company": "Baichuan", "category": "text", "parameter_size": "Unknown", "description": "百川旗舰通用模型", "version": "M2",
         "score_base": 88.0
     },
 ]
