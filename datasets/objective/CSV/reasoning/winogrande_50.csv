@@ -1,0 +1,386 @@
+input,answer
+"Joe immediately went to bakery before the bank because the _ had a substantial supply of what he wanted.
+
+Question: In this sentence, who does the blank refer to?
+
+A. bakery
+B. bank
+",B
+"I had to read an entire story for class tomorrow. Luckily, the _ was canceled.
+
+Question: In this sentence, who does the blank refer to?
+
+A. story
+B. class
+",B
+"I had to read an entire story for class tomorrow. Luckily, the _ was short.
+
+Question: In this sentence, who does the blank refer to?
+
+A. story
+B. class
+",A
+"He had enough time between classes to go to a cafe or to the library. He went to the _ because his paper could wait.
+
+Question: In this sentence, who does the blank refer to?
+
+A. cafe
+B. library
+",A
+"He had enough time between classes to go to a cafe or to the library. He went to the _ because his paper was due soon.
+
+Question: In this sentence, who does the blank refer to?
+
+A. cafe
+B. library
+",B
+"Lindsey like to read graphic novels but Natalie liked classic literature to read. _ bought the new Frank Miller comic at the book store.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Lindsey
+B. Natalie
+",A
+"Michael just bought brand new wheels for his truck unlike Leslie because _ wheels were new and perfect.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Michael
+B. Leslie
+",B
+"Michael just bought brand new wheels for his truck unlike Leslie because _ wheels were old and used.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Michael
+B. Leslie
+",A
+"Leslie was nervous around parrots but Neil was not, since _ was bitten by a bird early in life.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Leslie
+B. Neil
+",A
+"Christmas was a special holiday to Eric but not Adam since _ was a Jew.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Eric
+B. Adam
+",B
+"To make frosting I needed pudding that was at a store 15 minutes away but pre-made frosting was at a store 5 minutes away.  The _ was closer.
+
+Question: In this sentence, who does the blank refer to?
+
+A. pudding
+B. frosting
+",B
+"Benjamin was chosen instead of Brett to be the makeup artist for the play because _ was less experienced.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Benjamin
+B. Brett
+",B
+"Cynthia violated the rights of Amy, because _ had too much passivity with other people.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Cynthia
+B. Amy
+",B
+"They had to eat a lot to gain the strength they had lost and be able to work, the _ was too much.
+
+Question: In this sentence, who does the blank refer to?
+
+A. work
+B. strength
+",A
+"They had to eat a lot to gain the strength they had lost and be able to work, the _ was too little.
+
+Question: In this sentence, who does the blank refer to?
+
+A. work
+B. strength
+",B
+"The roof of Rachel's home is old and falling apart, while Betty's is new. The home value of _ is lower.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Rachel
+B. Betty
+",A
+"All the clutter in the house excited Leslie but not Derrick because cleaning energized _ very much.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Leslie
+B. Derrick
+",A
+"The portions of food today were bigger than the sizes yesterday because the _ fed more people.
+
+Question: In this sentence, who does the blank refer to?
+
+A. portions
+B. sizes
+",A
+"Since Craig threw aluminum cans in the trash and Benjamin recycled, _ was environmentally irresponsible.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Craig
+B. Benjamin
+",A
+"Christine was going to Jessica's house to do some cleaning in the kitchen, because _ was a energetic person.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Christine
+B. Jessica
+",A
+"The students were at their desks taking tests with pencils, they used the _ to hold the papers.
+
+Question: In this sentence, who does the blank refer to?
+
+A. desks
+B. pencils
+",A
+"Mary thought poodles were a cool dog but Rachel thought Great Danes were cooler. _ bought a small dog bed for their pet.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Mary
+B. Rachel
+",A
+"Mary thought poodles were a cool dog but Rachel thought Great Danes were cooler. _ bought a gigantic dog bed for their pet.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Mary
+B. Rachel
+",B
+"Leslie had a lot of issues that Kyle was tired of dealing with, so _ felt abandoned when they finally moved out.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Leslie
+B. Kyle
+",A
+"Jessica enjoyed a simple, basic life with Betty, but _ was bored having a quiet existence.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Jessica
+B. Betty
+",B
+"I wanted to build a bathroom on the third floor of the house but I couldn't because the _ would be too full.
+
+Question: In this sentence, who does the blank refer to?
+
+A. bathroom
+B. floor
+",B
+"Joel researched laws and helped to open a preschool for Eric. Because _ is very good with kids.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Joel
+B. Eric
+",B
+"Tanya told Emily she couldn't come to work because her cat had an infection, but _ was lying.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Tanya
+B. Emily
+",A
+"Angela thinks her husband might be cheating with Lindsey, and _ confesses at the dinner party.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Angela
+B. Lindsey
+",B
+"Donald's understanding of math isn't as good as Joseph's, so _ is more likely a professor.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Donald
+B. Joseph
+",B
+"Brian was jealous of Brett's new car because _ couldn't afford to buy a new car.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Brian
+B. Brett
+",A
+"The man used  his eyes to read the letters but the _ were too small.
+
+Question: In this sentence, who does the blank refer to?
+
+A. letters
+B. eyes
+",A
+"Jill was on a budget so she only bought a new dress for the ceremony and wore an old hat. She figured the _ would be less noticeable.
+
+Question: In this sentence, who does the blank refer to?
+
+A. dress
+B. hat
+",B
+"Jill was on a budget so she only bought a new dress for the ceremony and wore an old hat. She figured the _ would be more noticeable.
+
+Question: In this sentence, who does the blank refer to?
+
+A. dress
+B. hat
+",A
+"On Monday, Patricia made Felicia eggs for an early breakfast, but _ does not like fried eggs.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Patricia
+B. Felicia
+",B
+"Since Craig wears clear contacts and William wears colored ones, it is safe to assume that _ loves the color of their eyes.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Craig
+B. William
+",A
+"Since Craig wears clear contacts and William wears colored ones, it is safe to assume that _ dislikes the color of their eyes.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Craig
+B. William
+",B
+"It was easy for Angela to become a vegetarian although Kayla couldn't do it. _ really missed the taste of chicken.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Angela
+B. Kayla
+",B
+"Hunter was a better baker than Logan so _ made the kitchen a mess when they tried to make an apple pie.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Hunter
+B. Logan
+",B
+"Tanya spent more on the children's birthday party than Amy. _ thought a magician was a good use of funds.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Tanya
+B. Amy
+",A
+"Judy bought new brushes to paint the etched glasses crack but it didn't fit. The _ was too wide.
+
+Question: In this sentence, who does the blank refer to?
+
+A. brush
+B. crack
+",A
+"Judy bought new brushes to paint the etched glasses crack but it didn't fit. The _ was too narrow.
+
+Question: In this sentence, who does the blank refer to?
+
+A. brush
+B. crack
+",B
+"I look forward to the Sunday newspaper so I can look at the comics.  This is the only reason I still get the _ in this day and age.
+
+Question: In this sentence, who does the blank refer to?
+
+A. newspaper
+B. comics
+",A
+"Jennifer was more of a morning person than Natalie although _ always went to bed early and got a good night's rest.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Jennifer
+B. Natalie
+",B
+"Jennifer was more of a morning person than Natalie because _ always went to bed early and got a good night's rest.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Jennifer
+B. Natalie
+",A
+"Alcohol is a love of Matthew's, but Ryan can't stand the stuff because _ is a sober alcoholic.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Matthew
+B. Ryan
+",B
+"Joe brought the horse out to the country quite a distance and gave him food but the _ was too much.
+
+Question: In this sentence, who does the blank refer to?
+
+A. food
+B. distance
+",B
+"Randy gave their heart to Brian, and _ soon told them that they should have kept their heart to themselves.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Randy
+B. Brian
+",B
+"Nick wanted to play a game on the floor, but Dennis was hesitant because of his knees. _ was disappointed.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Nick
+B. Dennis
+",A
+"Although she was being prosecuted, Monica was welcomed into the sanctuary of the church by Samantha because _ was a sinful criminal.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Monica
+B. Samantha
+",A
+"The battle was less fierce than the great war, because the _ lasted one year.
+
+Question: In this sentence, who does the blank refer to?
+
+A. battle
+B. war
+",B
+"Laura used too much super glue on Erins hands, so _ needed to get to the doctor to separate their hands.
+
+Question: In this sentence, who does the blank refer to?
+
+A. Laura
+B. Erin
+",B
+"James panicked when his phone fell on the table thinking it will break but the _ is soft.
+
+Question: In this sentence, who does the blank refer to?
+
+A. phone
+B. table
+",B
+"James panicked when his phone fell on the table thinking it will break but the _ is strong.
+
+Question: In this sentence, who does the blank refer to?
+
+A. phone
+B. table
+",A
+"John cannot touch the cup as it was just brought out of the refrigerator. He wanted some air to blow around it. The _ is very warm.
+
+Question: In this sentence, who does the blank refer to?
+
+A. cup
+B. air
+",B
