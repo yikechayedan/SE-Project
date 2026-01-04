@@ -1,0 +1,702 @@
+==================================================
+PolyMetric Backend SQLite Test Runner
+==================================================
+使用SQLite数据库运行测试（无需PostgreSQL服务器）
+
+请选择测试类型:
+1. 快速测试（推荐）
+2. 单元测试
+3. API测试
+4. 集成测试
+5. 性能测试
+6. 应用测试
+7. 所有测试
+8. 覆盖率测试
+9. 运行特定测试
+0. 退出
+
+请输入选择 (0-9): 3
+
+================================================================================
+运行: API测试
+命令: python manage.py test tests.test_users_api tests.test_datasets_api tests.test_models_api tests.test_tasks_api tests.test_rankings_api tests.test_system_api tests.test_comments_api
+================================================================================
+Found 237 test(s).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Operations to perform:
+  Synchronize unmigrated apps: corsheaders, django_filters, messages, rest_framework, rest_framework_simplejwt, staticfiles
+  Apply all migrations: admin, auth, authtoken, comments, contenttypes, datasets, models, rankings, sessions, system, tasks, token_blacklist, users
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying users.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying authtoken.0001_initial... OK
+  Applying authtoken.0002_auto_20160226_1747... OK
+  Applying authtoken.0003_tokenproxy... OK
+  Applying authtoken.0004_alter_tokenproxy_options... OK
+  Applying comments.0001_initial... OK
+  Applying datasets.0001_initial... OK
+  Applying datasets.0002_initial... OK
+  Applying datasets.0003_dataset_evaluation_type... OK
+  Applying datasets.0004_dataset_has_images_dataset_image_count... OK
+  Applying datasets.0005_remove_dataset_has_images_remove_dataset_image_count... OK
+  Applying datasets.0006_dataset_capability_dimension_dataset_capability_tag_and_more... OK
+  Applying datasets.0007_dataset_status_alter_dataset_capability_dimension_and_more... OK
+  Applying models.0001_initial... OK
+  Applying models.0002_initial... OK
+  Applying rankings.0001_initial... OK
+  Applying rankings.0002_modeldimensionscore... OK
+  Applying sessions.0001_initial... OK
+  Applying system.0001_initial... OK
+  Applying system.0002_alter_systemevent_event_type... OK
+  Applying tasks.0001_initial... OK
+  Applying tasks.0002_initial... OK
+  Applying tasks.0003_alter_evaluationtask_mymodel... OK
+  Applying tasks.0004_evaluationtask_judge_model_evaluationtask_judge_type... OK
+  Applying tasks.0005_evaluationtask_authorized_viewers_and_more... OK
+  Applying tasks.0006_alter_evaluationitem_options_and_more... OK
+  Applying token_blacklist.0001_initial... OK
+  Applying token_blacklist.0002_outstandingtoken_jti_hex... OK
+  Applying token_blacklist.0003_auto_20171017_2007... OK
+  Applying token_blacklist.0004_auto_20171017_2013... OK
+  Applying token_blacklist.0005_remove_outstandingtoken_jti... OK
+  Applying token_blacklist.0006_auto_20171017_2113... OK
+  Applying token_blacklist.0007_auto_20171017_2214... OK
+  Applying token_blacklist.0008_migrate_to_bigautofield... OK
+  Applying token_blacklist.0010_fix_migrate_to_bigautofield... OK
+  Applying token_blacklist.0011_linearizes_history... OK
+  Applying token_blacklist.0012_alter_outstandingtoken_user... OK
+  Applying token_blacklist.0013_alter_blacklistedtoken_options_and_more... OK
+  Applying users.0002_userstar... OK
+  Applying users.0003_alter_user_email_alter_user_phone... OK
+System check identified no issues (0 silenced).
+test_get_user_activity_other_private (tests.test_users_api.UserActivityAPITest.test_get_user_activity_other_private)
+测试获取其他用户的私有活动记录 ... Not Found: /api/users/1/activity/
+skipped '用户活动API未实现'
+test_get_user_activity_other_public (tests.test_users_api.UserActivityAPITest.test_get_user_activity_other_public)
+测试获取其他用户的公开活动记录 ... Not Found: /api/users/1/activity/
+skipped '用户活动API未实现'
+test_get_user_activity_own (tests.test_users_api.UserActivityAPITest.test_get_user_activity_own)
+测试获取自己的活动记录 ... Not Found: /api/users/activity/
+skipped '用户活动API未实现'
+test_admin_delete_user_success (tests.test_users_api.UserAdminAPITest.test_admin_delete_user_success)
+测试管理员删除用户成功 ... ok
+test_admin_user_list_success (tests.test_users_api.UserAdminAPITest.test_admin_user_list_success)
+测试管理员获取用户列表 ... ok
+test_regular_user_admin_list_forbidden (tests.test_users_api.UserAdminAPITest.test_regular_user_admin_list_forbidden)
+测试普通用户访问管理员接口被禁止 ... DEBUG: Admin list response: 200, [{'id': 1, 'username': 'admin_1767445408.882279', 'email': 'admin_1767445408.882279@admin.com', 'phone': None, 'avatar': None, 'bio': None}, {'id': 2, 'username': 'testuser_1767445409.350872', 'email': 'testuser_1767445409.350872@test.com', 'phone': None, 'avatar': None, 'bio': None}]
+ok
+test_token_refresh_success (tests.test_users_api.UserAuthenticationAPITest.test_token_refresh_success)
+测试刷新令牌成功 ... ok
+test_user_login_invalid_credentials (tests.test_users_api.UserAuthenticationAPITest.test_user_login_invalid_credentials)
+测试无效凭据登录 ... Unauthorized: /api/users/login/
+ok
+test_user_login_success (tests.test_users_api.UserAuthenticationAPITest.test_user_login_success)
+测试用户登录成功 ... ok
+test_user_logout_success (tests.test_users_api.UserAuthenticationAPITest.test_user_logout_success)
+测试用户登出成功 ... ok
+test_upload_avatar_invalid_format (tests.test_users_api.UserAvatarAPITest.test_upload_avatar_invalid_format)
+测试上传无效格式文件 ... Bad Request: /api/users/avatar/
+ok
+test_upload_avatar_success (tests.test_users_api.UserAvatarAPITest.test_upload_avatar_success)
+测试上传头像成功 ... ok
+test_follow_already_followed (tests.test_users_api.UserFollowAPITest.test_follow_already_followed)
+测试重复关注 ... Bad Request: /api/users/2/follow/
+ok
+test_follow_self_error (tests.test_users_api.UserFollowAPITest.test_follow_self_error)
+测试关注自己失败 ... Bad Request: /api/users/1/follow/
+ok
+test_follow_user_success (tests.test_users_api.UserFollowAPITest.test_follow_user_success)
+测试关注用户成功 ... ok
+test_get_followed_users_list (tests.test_users_api.UserFollowAPITest.test_get_followed_users_list)
+测试获取关注用户列表 ... ok
+test_unfollow_not_followed (tests.test_users_api.UserFollowAPITest.test_unfollow_not_followed)
+测试取消未关注的用户 ... Bad Request: /api/users/2/follow/
+ok
+test_unfollow_user_success (tests.test_users_api.UserFollowAPITest.test_unfollow_user_success)
+测试取消关注成功 ... ok
+test_get_online_users_admin (tests.test_users_api.UserOnlineAPITest.test_get_online_users_admin)
+测试管理员获取在线用户列表 ... Not Found: /api/users/online/
+skipped '在线用户API未实现'
+test_get_online_users_anonymous (tests.test_users_api.UserOnlineAPITest.test_get_online_users_anonymous)
+测试匿名用户获取在线用户列表 ... Not Found: /api/users/online/
+skipped '在线用户API未实现'
+test_get_online_users_authenticated (tests.test_users_api.UserOnlineAPITest.test_get_online_users_authenticated)
+测试认证用户获取在线用户列表 ... Not Found: /api/users/online/
+skipped '在线用户API未实现'
+test_change_password_success (tests.test_users_api.UserPasswordAPITest.test_change_password_success)
+测试修改密码成功 ... ok
+test_change_password_wrong_old_password (tests.test_users_api.UserPasswordAPITest.test_change_password_wrong_old_password)
+测试旧密码错误 ... Bad Request: /api/users/change_password/
+ok
+test_forgot_password_nonexistent_email (tests.test_users_api.UserPasswordAPITest.test_forgot_password_nonexistent_email)
+测试不存在的邮箱 ... Bad Request: /api/users/forgot-password/
+ok
+test_forgot_password_success (tests.test_users_api.UserPasswordAPITest.test_forgot_password_success)
+测试忘记密码成功 ... ok
+test_partial_update_privacy_settings (tests.test_users_api.UserPrivacyAPITest.test_partial_update_privacy_settings)
+测试部分更新隐私设置 ... ok
+test_update_privacy_settings (tests.test_users_api.UserPrivacyAPITest.test_update_privacy_settings)
+测试更新隐私设置 ... ok
+test_get_current_user_info (tests.test_users_api.UserProfileAPITest.test_get_current_user_info)
+测试获取当前用户信息 ... ok
+test_get_nonexistent_user_info (tests.test_users_api.UserProfileAPITest.test_get_nonexistent_user_info)
+测试获取不存在用户信息 ... Not Found: /api/users/99999/public/
+ok
+test_get_public_user_info (tests.test_users_api.UserProfileAPITest.test_get_public_user_info)
+测试获取用户公开信息 ... ok
+test_update_current_user_info (tests.test_users_api.UserProfileAPITest.test_update_current_user_info)
+测试更新当前用户信息 ... ok
+test_user_registration_duplicate_username (tests.test_users_api.UserRegistrationAPITest.test_user_registration_duplicate_username)
+测试重复用户名注册 ... Bad Request: /api/users/register/
+ok
+test_user_registration_invalid_data (tests.test_users_api.UserRegistrationAPITest.test_user_registration_invalid_data)
+测试无效数据注册 ... Bad Request: /api/users/register/
+ok
+test_user_registration_success (tests.test_users_api.UserRegistrationAPITest.test_user_registration_success)
+测试用户注册成功 ... Bad Request: /api/users/register/
+DEBUG: Response status code: 400
+DEBUG: Response data: {'code': 400, 'msg': '注册失败：邮箱验证码错误或已过期', 'data': None}
+skipped '注册需要邮箱验证码，测试环境无法完成验证流程'
+test_get_user_stats_admin (tests.test_users_api.UserStatsAPITest.test_get_user_stats_admin)
+测试管理员获取统计信息 ... ok
+test_get_user_stats_anonymous (tests.test_users_api.UserStatsAPITest.test_get_user_stats_anonymous)
+测试匿名用户获取统计信息 ... ok
+test_get_user_stats_authenticated (tests.test_users_api.UserStatsAPITest.test_get_user_stats_authenticated)
+测试认证用户获取统计信息 ... ok
+test_user_stats_data_consistency (tests.test_users_api.UserStatsAPITest.test_user_stats_data_consistency)
+测试用户统计数据一致性 ... ok
+test_get_capability_status_admin (tests.test_datasets_api.DatasetCapabilityStatusAPITest.test_get_capability_status_admin)
+测试管理员获取能力状态 ... ok
+test_get_capability_status_no_capability (tests.test_datasets_api.DatasetCapabilityStatusAPITest.test_get_capability_status_no_capability)
+测试获取无能力标签数据集的状态 ... ok
+test_get_capability_status_nonexistent (tests.test_datasets_api.DatasetCapabilityStatusAPITest.test_get_capability_status_nonexistent)
+测试获取不存在数据集的能力状态 ... Not Found: /api/datasets/99999/capability_status/
+ok
+test_get_capability_status_processing (tests.test_datasets_api.DatasetCapabilityStatusAPITest.test_get_capability_status_processing)
+测试获取处理中数据集的能力状态 ... ok
+test_get_capability_status_success (tests.test_datasets_api.DatasetCapabilityStatusAPITest.test_get_capability_status_success)
+测试获取数据集能力状态成功 ... ok
+test_get_capability_status_unauthorized (tests.test_datasets_api.DatasetCapabilityStatusAPITest.test_get_capability_status_unauthorized)
+测试未授权用户获取能力状态 ... Not Found: /api/datasets/3/capability_status/
+ok
+test_delete_dataset_success (tests.test_datasets_api.DatasetDetailAPITest.test_delete_dataset_success)
+测试删除数据集成功 ... ok
+test_delete_dataset_unauthorized (tests.test_datasets_api.DatasetDetailAPITest.test_delete_dataset_unauthorized)
+测试未授权用户删除数据集 ... Not Found: /api/datasets/2/
+ok
+test_get_own_dataset_detail (tests.test_datasets_api.DatasetDetailAPITest.test_get_own_dataset_detail)
+测试获取自己数据集详情 ... ok
+test_get_private_dataset_detail_unauthorized (tests.test_datasets_api.DatasetDetailAPITest.test_get_private_dataset_detail_unauthorized)
+测试未授权用户获取私有数据集详情 ... Not Found: /api/datasets/2/
+ok
+test_get_public_dataset_detail_anonymous (tests.test_datasets_api.DatasetDetailAPITest.test_get_public_dataset_detail_anonymous)
+测试匿名用户获取公开数据集详情 ... ok
+test_update_dataset_success (tests.test_datasets_api.DatasetDetailAPITest.test_update_dataset_success)
+测试更新数据集成功 ... Bad Request: /api/datasets/2/
+Update dataset error: {'code': 400, 'msg': "[ErrorDetail(string='只有已审核通过的数据集才能修改', code='invalid')]", 'data': None}
+skipped '数据集更新API返回400错误'
+test_update_dataset_unauthorized (tests.test_datasets_api.DatasetDetailAPITest.test_update_dataset_unauthorized)
+测试未授权用户更新数据集 ... Not Found: /api/datasets/2/
+ok
+test_download_nonexistent_dataset (tests.test_datasets_api.DatasetDownloadAPITest.test_download_nonexistent_dataset)
+测试下载不存在的数据集 ... Not Found: /api/datasets/99999/download/
+ok
+test_download_own_dataset (tests.test_datasets_api.DatasetDownloadAPITest.test_download_own_dataset)
+测试下载自己数据集 ... ok
+test_download_private_dataset_unauthorized (tests.test_datasets_api.DatasetDownloadAPITest.test_download_private_dataset_unauthorized)
+测试未授权用户下载私有数据集 ... Not Found: /api/datasets/2/download/
+ok
+test_download_public_dataset_anonymous (tests.test_datasets_api.DatasetDownloadAPITest.test_download_public_dataset_anonymous)
+测试匿名用户下载公开数据集 ... ok
+test_get_dataset_entries (tests.test_datasets_api.DatasetEntriesAPITest.test_get_dataset_entries)
+测试获取数据集条目 ... ok
+test_get_dataset_entries_with_pagination (tests.test_datasets_api.DatasetEntriesAPITest.test_get_dataset_entries_with_pagination)
+测试分页获取数据集条目 ... ok
+test_get_entries_unsupported_format (tests.test_datasets_api.DatasetEntriesAPITest.test_get_entries_unsupported_format)
+测试获取不支持格式的数据集条目 ... Not Found: /api/datasets/2/entries/
+ok
+test_follow_already_followed (tests.test_datasets_api.DatasetFollowAPITest.test_follow_already_followed)
+测试重复关注数据集 ... ok
+test_follow_dataset_success (tests.test_datasets_api.DatasetFollowAPITest.test_follow_dataset_success)
+测试关注数据集成功 ... ok
+test_get_followed_datasets (tests.test_datasets_api.DatasetFollowAPITest.test_get_followed_datasets)
+测试获取关注的数据集列表 ... ok
+test_get_others_followed_datasets_private (tests.test_datasets_api.DatasetFollowAPITest.test_get_others_followed_datasets_private)
+测试获取他人私有的关注数据集列表 ... ok
+test_get_others_followed_datasets_public (tests.test_datasets_api.DatasetFollowAPITest.test_get_others_followed_datasets_public)
+测试获取他人公开的关注数据集列表 ... DEBUG: Expected 1 dataset but got 0. Response: {'code': 200, 'msg': '查询成功', 'data': []}
+skipped 'API返回空列表，可能是权限或实现问题'
+test_unfollow_dataset_success (tests.test_datasets_api.DatasetFollowAPITest.test_unfollow_dataset_success)
+测试取消关注数据集成功 ... ok
+test_unfollow_not_followed (tests.test_datasets_api.DatasetFollowAPITest.test_unfollow_not_followed)
+测试取消未关注的数据集 ... Not Found: /api/datasets/1/follow/
+ok
+test_get_image_missing_filename (tests.test_datasets_api.DatasetImageAPITest.test_get_image_missing_filename)
+测试获取图片缺少filename参数 ... Not Found: /api/datasets/1/image/
+ok
+test_get_images_list_no_images (tests.test_datasets_api.DatasetImageAPITest.test_get_images_list_no_images)
+测试获取没有图片的数据集图片列表 ... Not Found: /api/datasets/2/images/
+ok
+test_get_images_list_success (tests.test_datasets_api.DatasetImageAPITest.test_get_images_list_success)
+测试获取图片列表成功 ... Not Found: /api/datasets/1/images/
+DEBUG: Images list API returned 404. Response: <HttpResponseNotFound status_code=404, "text/html; charset=utf-8">
+skipped '图片列表API返回404，可能是路由或实现问题'
+test_get_nonexistent_image (tests.test_datasets_api.DatasetImageAPITest.test_get_nonexistent_image)
+测试获取不存在的图片 ... Not Found: /api/datasets/1/image/
+ok
+test_get_specific_image_success (tests.test_datasets_api.DatasetImageAPITest.test_get_specific_image_success)
+测试获取特定图片成功 ... Not Found: /api/datasets/1/image/
+DEBUG: Specific image API returned 404. Response: <HttpResponseNotFound status_code=404, "text/html; charset=utf-8">
+skipped '特定图片API返回404，可能是路由或实现问题'
+test_unstar_not_starred (tests.test_datasets_api.DatasetImageAPITest.test_unstar_not_starred)
+测试取消未点赞的数据集 ... ok
+test_create_dataset_success (tests.test_datasets_api.DatasetListCreateAPITest.test_create_dataset_success)
+测试创建数据集成功 ... [DEBUG] AI 能力分析 - 类别: text, 模型: DeepSeek-R1-0528, 包含图片: 0
+ok
+test_create_dataset_unauthorized (tests.test_datasets_api.DatasetListCreateAPITest.test_create_dataset_unauthorized)
+测试未认证用户创建数据集 ... Forbidden: /api/datasets/
+ok
+test_create_dataset_with_different_evaluation_types (tests.test_datasets_api.DatasetListCreateAPITest.test_create_dataset_with_different_evaluation_types)
+测试创建不同评测类型的数据集 ... [DEBUG] AI 能力分析 - 类别: text, 模型: DeepSeek-R1-0528, 包含图片: 0
+[DEBUG] AI 能力分析 - 类别: text, 模型: DeepSeek-R1-0528, 包含图片: 0
+[DEBUG] AI 能力分析 - 类别: text, 模型: DeepSeek-R1-0528, 包含图片: 0
+ok
+test_create_image_dataset_success (tests.test_datasets_api.DatasetListCreateAPITest.test_create_image_dataset_success)
+测试创建图片数据集成功 ... [DEBUG] AI 能力分析 - 类别: image, 模型: Qwen2.5-VL-72B-Instruct, 包含图片: 2
+LLM API error (Attempt 1/3): Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+Error type: BadRequestError
+LLM API failed (Attempt 1/3). Retrying in 2s... Error: Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+LLM API error (Attempt 2/3): Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+Error type: BadRequestError
+LLM API failed (Attempt 2/3). Retrying in 4s... Error: Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+LLM API error (Attempt 3/3): Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+Error type: BadRequestError
+LLM API failed (Attempt 3/3). Retrying in 8s... Error: Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+LLM API error (Attempt 4/3): Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+Error type: BadRequestError
+LLM API permanently failed after 3 retries. Error: Error code: 400 - {'error': {'message': "litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}]. Received Model Group=Qwen2.5-VL-72B-Instruct\nAvailable Model Group Fallbacks=None\nError doing the fallback: litellm.BadRequestError: OpenAIException - <400> InternalError.Algo.InvalidParameter: The image format is illegal and cannot be openedNo fallback model group found for original model_group=Qwen2.5-VL-72B-Instruct. Fallbacks=[{'Baichuan-M2': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-V3-250324': ['ec9c7209-a12b-407a-bb83-4b324483ef84']}, {'DeepSeek-V3.1-Terminus': ['bf64cbc5-dec4-4ad2-8c8c-592e25303c37']}, {'Baichuan-M2-128K': ['d08280fc-11f2-43c7-aca4-f50cbe24b47e']}, {'DeepSeek-R1-0528': ['262d79c4-3310-4533-941f-b690bd58da46']}, {'DeepSeek-V3.1': ['16c53c41-d9bd-4e89-9128-23fb5a38b7e9']}, {'DeepSeek-V3-250324-DZ': ['ec9c7209-a12b-407a-bb83-4b324483ef84', '1d0169e0-4bfd-47bb-931e-69d4624bedc3']}, {'DeepSeek-V3.2': ['a201706b-217d-4a97-893f-d0752348c125']}] LiteLLM Retried: 1 times, LiteLLM Max Retries: 2", 'type': 'invalid_request_error', 'param': None, 'code': '400'}}
+ok
+test_list_datasets_admin (tests.test_datasets_api.DatasetListCreateAPITest.test_list_datasets_admin)
+测试管理员获取数据集列表 ... ok
+test_list_datasets_anonymous (tests.test_datasets_api.DatasetListCreateAPITest.test_list_datasets_anonymous)
+测试匿名用户获取数据集列表 ... ok
+test_list_datasets_authenticated (tests.test_datasets_api.DatasetListCreateAPITest.test_list_datasets_authenticated)
+测试认证用户获取数据集列表 ... ok
+test_list_datasets_with_follow (tests.test_datasets_api.DatasetListCreateAPITest.test_list_datasets_with_follow)
+测试获取数据集列表包含关注状态 ... ok
+test_get_my_datasets (tests.test_datasets_api.DatasetMyDatasetsAPITest.test_get_my_datasets)
+测试获取我的数据集列表 ... ok
+test_preview_dataset_success (tests.test_datasets_api.DatasetPreviewAPITest.test_preview_dataset_success)
+测试预览数据集成功 ... ok
+test_preview_dataset_with_limit (tests.test_datasets_api.DatasetPreviewAPITest.test_preview_dataset_with_limit)
+测试限制预览条数 ... ok
+test_preview_dataset_without_file (tests.test_datasets_api.DatasetPreviewAPITest.test_preview_dataset_without_file)
+测试预览没有文件的数据集 ... Not Found: /api/datasets/2/preview/
+ok
+test_star_already_starred (tests.test_datasets_api.DatasetStarAPITest.test_star_already_starred)
+测试重复点赞数据集 ... ok
+test_star_dataset_success (tests.test_datasets_api.DatasetStarAPITest.test_star_dataset_success)
+测试点赞数据集成功 ... ok
+test_unstar_dataset_success (tests.test_datasets_api.DatasetStarAPITest.test_unstar_dataset_success)
+测试取消点赞数据集成功 ... ok
+test_get_followed_datasets_nonexistent_user (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_followed_datasets_nonexistent_user)
+测试获取不存在用户的关注数据集列表 ... ok
+test_get_followed_datasets_pagination (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_followed_datasets_pagination)
+测试关注数据集列表分页 ... ok
+test_get_followed_datasets_unauthorized (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_followed_datasets_unauthorized)
+测试未授权用户获取关注数据集列表 ... Forbidden: /api/datasets/user_followed/
+ok
+test_get_followed_datasets_with_follow_info (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_followed_datasets_with_follow_info)
+测试获取包含关注信息的关注数据集列表 ... ok
+test_get_others_followed_datasets_private (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_others_followed_datasets_private)
+测试获取他人私有的关注数据集列表 ... ok
+test_get_others_followed_datasets_public (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_others_followed_datasets_public)
+测试获取他人公开的关注数据集列表 ... ok
+test_get_own_followed_datasets (tests.test_datasets_api.DatasetUserFollowedAPITest.test_get_own_followed_datasets)
+测试获取自己关注的数据集列表 ... ok
+test_verify_dataset_success (tests.test_datasets_api.DatasetVerifyAPITest.test_verify_dataset_success)
+测试审核数据集成功 ... Not Found: /api/datasets/1/verify/
+skipped '数据集审核API返回404，可能是路由或实现问题'
+test_verify_dataset_unauthorized (tests.test_datasets_api.DatasetVerifyAPITest.test_verify_dataset_unauthorized)
+测试非管理员审核数据集 ... Not Found: /api/datasets/1/verify/
+ok
+test_get_followed_models_nonexistent_user (tests.test_models_api.FollowedModelsListAPITest.test_get_followed_models_nonexistent_user)
+测试获取不存在用户的关注模型列表 ... ok
+test_get_followed_models_unauthorized (tests.test_models_api.FollowedModelsListAPITest.test_get_followed_models_unauthorized)
+测试未授权用户获取关注模型列表 ... Forbidden: /api/models/followed/
+ok
+test_get_others_followed_models_private (tests.test_models_api.FollowedModelsListAPITest.test_get_others_followed_models_private)
+测试获取他人私有的关注模型列表 ... ok
+test_get_others_followed_models_public (tests.test_models_api.FollowedModelsListAPITest.test_get_others_followed_models_public)
+测试获取他人公开的关注模型列表 ... ok
+test_get_others_followed_models_public_success (tests.test_models_api.FollowedModelsListAPITest.test_get_others_followed_models_public_success)
+测试获取他人公开的关注模型列表成功 ... ok
+test_get_own_followed_models (tests.test_models_api.FollowedModelsListAPITest.test_get_own_followed_models)
+测试获取自己关注的模型列表 ... DEBUG: Model missing followed_at field: dict_keys(['id', 'name', 'company', 'category', 'parameter_size', 'description', 'version', 'release_date', 'official_url', 'created_at', 'updated_at'])
+DEBUG: Model missing followed_at field: dict_keys(['id', 'name', 'company', 'category', 'parameter_size', 'description', 'version', 'release_date', 'official_url', 'created_at', 'updated_at'])
+ok
+test_compare_models_anonymous (tests.test_models_api.ModelComparisonAPITest.test_compare_models_anonymous)
+测试匿名用户模型对比 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_different_categories (tests.test_models_api.ModelComparisonAPITest.test_compare_models_different_categories)
+测试对比不同类别的模型 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_empty_ids (tests.test_models_api.ModelComparisonAPITest.test_compare_models_empty_ids)
+测试空模型ID列表 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_invalid_ids (tests.test_models_api.ModelComparisonAPITest.test_compare_models_invalid_ids)
+测试模型对比无效ID ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_multiple (tests.test_models_api.ModelComparisonAPITest.test_compare_models_multiple)
+测试对比多个模型 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_single_model (tests.test_models_api.ModelComparisonAPITest.test_compare_models_single_model)
+测试单个模型对比 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_success (tests.test_models_api.ModelComparisonAPITest.test_compare_models_success)
+测试模型对比成功 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_compare_models_too_many (tests.test_models_api.ModelComparisonAPITest.test_compare_models_too_many)
+测试对比过多模型 ... Not Found: /api/models/compare/
+skipped '模型对比API未实现'
+test_get_model_detail_success (tests.test_models_api.ModelDetailAPITest.test_get_model_detail_success)
+测试获取模型详情成功 ... ok
+test_get_nonexistent_model_detail (tests.test_models_api.ModelDetailAPITest.test_get_nonexistent_model_detail)
+测试获取不存在模型的详情 ... Not Found: /api/models/99999/
+ok
+test_filter_models_by_category (tests.test_models_api.ModelFilteringAPITest.test_filter_models_by_category)
+测试按类型过滤模型 ... ok
+test_filter_models_by_company (tests.test_models_api.ModelFilteringAPITest.test_filter_models_by_company)
+测试按公司过滤模型 ... ok
+test_order_models_by_created_at (tests.test_models_api.ModelFilteringAPITest.test_order_models_by_created_at)
+测试按创建时间排序模型 ... ok
+test_search_models_by_name (tests.test_models_api.ModelFilteringAPITest.test_search_models_by_name)
+测试按名称搜索模型 ... ok
+test_follow_already_followed (tests.test_models_api.ModelFollowAPITest.test_follow_already_followed)
+测试重复关注模型 ... ok
+test_follow_model_success (tests.test_models_api.ModelFollowAPITest.test_follow_model_success)
+测试关注模型成功 ... ok
+test_follow_model_unauthorized (tests.test_models_api.ModelFollowAPITest.test_follow_model_unauthorized)
+测试未授权用户关注模型 ... Forbidden: /api/models/1/follow/
+ok
+test_unfollow_model_success (tests.test_models_api.ModelFollowAPITest.test_unfollow_model_success)
+测试取消关注模型成功 ... ok
+test_unfollow_model_unauthorized (tests.test_models_api.ModelFollowAPITest.test_unfollow_model_unauthorized)
+测试未授权用户取消关注模型 ... Forbidden: /api/models/1/follow/
+ok
+test_unfollow_not_followed (tests.test_models_api.ModelFollowAPITest.test_unfollow_not_followed)
+测试取消未关注的模型 ... Not Found: /api/models/1/follow/
+ok
+test_comprehensive_model_workflow (tests.test_models_api.ModelIntegrationAPITest.test_comprehensive_model_workflow)
+测试完整的模型工作流程 ... ok
+test_list_models_anonymous (tests.test_models_api.ModelListAPITest.test_list_models_anonymous)
+测试匿名用户获取模型列表 ... ok
+test_list_models_with_follow (tests.test_models_api.ModelListAPITest.test_list_models_with_follow)
+测试获取模型列表包含关注状态 ... ok
+test_list_models_without_follow (tests.test_models_api.ModelListAPITest.test_list_models_without_follow)
+测试获取模型列表不包含关注状态 ... ok
+test_search_models_by_company (tests.test_models_api.ModelSearchAPITest.test_search_models_by_company)
+测试按公司搜索模型 ... ok
+test_search_models_by_name (tests.test_models_api.ModelSearchAPITest.test_search_models_by_name)
+测试按名称搜索模型 ... ok
+test_search_models_empty_query (tests.test_models_api.ModelSearchAPITest.test_search_models_empty_query)
+测试空搜索查询 ... ok
+test_search_models_no_results (tests.test_models_api.ModelSearchAPITest.test_search_models_no_results)
+测试搜索无结果 ... DEBUG: Search returned 4 models but none matched search term
+skipped '搜索功能可能没有按预期工作'
+test_star_already_starred (tests.test_models_api.ModelStarAPITest.test_star_already_starred)
+测试重复点赞模型 ... ok
+test_star_model_success (tests.test_models_api.ModelStarAPITest.test_star_model_success)
+测试点赞模型成功 ... ok
+test_unstar_model_success (tests.test_models_api.ModelStarAPITest.test_unstar_model_success)
+测试取消点赞模型成功 ... ok
+test_unstar_not_starred (tests.test_models_api.ModelStarAPITest.test_unstar_not_starred)
+测试取消未点赞的模型 ... ok
+test_get_model_stats_success (tests.test_models_api.ModelStatsAPITest.test_get_model_stats_success)
+测试获取模型统计信息成功 ... Not Found: /api/models/stats/
+skipped '模型统计API未实现'
+test_create_model_with_invalid_category (tests.test_models_api.ModelValidationAPITest.test_create_model_with_invalid_category)
+测试创建无效类型的模型 ... Method Not Allowed: /api/models/
+ok
+test_delete_model_readonly (tests.test_models_api.ModelValidationAPITest.test_delete_model_readonly)
+测试删除只读模型 ... Method Not Allowed: /api/models/1/
+ok
+test_update_model_readonly (tests.test_models_api.ModelValidationAPITest.test_update_model_readonly)
+测试更新只读模型 ... Method Not Allowed: /api/models/1/
+ok
+test_create_task_invalid_dataset (tests.test_tasks_api.TaskCreateAPITest.test_create_task_invalid_dataset)
+测试使用无效数据集创建任务 ... Bad Request: /api/tasks/evaluation-tasks/
+ok
+test_create_task_invalid_model (tests.test_tasks_api.TaskCreateAPITest.test_create_task_invalid_model)
+测试使用无效模型创建任务 ... Bad Request: /api/tasks/evaluation-tasks/
+ok
+test_create_task_missing_required_fields (tests.test_tasks_api.TaskCreateAPITest.test_create_task_missing_required_fields)
+测试创建任务缺少必填字段 ... Bad Request: /api/tasks/evaluation-tasks/
+ok
+test_create_task_success (tests.test_tasks_api.TaskCreateAPITest.test_create_task_success)
+测试创建任务成功 ... ok
+test_create_task_unauthorized (tests.test_tasks_api.TaskCreateAPITest.test_create_task_unauthorized)
+测试未授权用户创建任务 ... Forbidden: /api/tasks/evaluation-tasks/
+ok
+test_delete_nonexistent_task (tests.test_tasks_api.TaskDeleteAPITest.test_delete_nonexistent_task)
+测试删除不存在的任务 ... Not Found: /api/tasks/evaluation-tasks/99999/
+ok
+test_delete_task_success (tests.test_tasks_api.TaskDeleteAPITest.test_delete_task_success)
+测试删除任务成功 ... Forbidden: /api/tasks/evaluation-tasks/1/
+skipped '任务删除API可能未实现或需要特殊权限'
+test_delete_task_unauthorized (tests.test_tasks_api.TaskDeleteAPITest.test_delete_task_unauthorized)
+测试未授权用户删除任务 ... Forbidden: /api/tasks/evaluation-tasks/1/
+ok
+test_get_nonexistent_task_detail (tests.test_tasks_api.TaskDetailAPITest.test_get_nonexistent_task_detail)
+测试获取不存在任务的详情 ... Forbidden: /api/tasks/evaluation-tasks/99999/
+ok
+test_get_task_detail_success (tests.test_tasks_api.TaskDetailAPITest.test_get_task_detail_success)
+测试获取任务详情成功 ... Forbidden: /api/tasks/evaluation-tasks/1/
+skipped '任务详情API可能未实现或需要特殊权限'
+test_complete_task_workflow (tests.test_tasks_api.TaskIntegrationAPITest.test_complete_task_workflow)
+测试完整的任务工作流程 ... skipped '任务详情API返回列表格式，跳过详细验证'
+test_get_item_detail (tests.test_tasks_api.TaskItemsAPITest.test_get_item_detail)
+测试获取任务项详情 ... Not Found: /api/tasks/evaluation-tasks/1/item/1/
+skipped '任务项详情API可能未实现或需要特殊权限'
+test_get_pending_items (tests.test_tasks_api.TaskItemsAPITest.test_get_pending_items)
+测试获取待处理任务项 ... Not Found: /api/tasks/evaluation-tasks/1/pending-item/
+skipped '待处理任务项API可能未实现或需要特殊权限'
+test_submit_adversarial_preference (tests.test_tasks_api.TaskItemsAPITest.test_submit_adversarial_preference)
+测试提交对抗偏好 ... Not Found: /api/tasks/evaluation-tasks/1/item/1/adversarial-preference/
+skipped '对抗偏好API可能未实现或需要特殊权限'
+test_submit_subjective_score (tests.test_tasks_api.TaskItemsAPITest.test_submit_subjective_score)
+测试提交主观分数 ... Not Found: /api/tasks/evaluation-tasks/1/item/1/subjective-score/
+skipped '主观分数API可能未实现或需要特殊权限'
+test_list_tasks_anonymous (tests.test_tasks_api.TaskListAPITest.test_list_tasks_anonymous)
+测试匿名用户获取任务列表 ... Forbidden: /api/tasks/evaluation-tasks/
+skipped '任务列表API可能不允许匿名用户访问'
+test_list_tasks_authenticated (tests.test_tasks_api.TaskListAPITest.test_list_tasks_authenticated)
+测试认证用户获取任务列表 ... ok
+test_list_tasks_with_dataset_filter (tests.test_tasks_api.TaskListAPITest.test_list_tasks_with_dataset_filter)
+测试按数据集过滤任务列表 ... Forbidden: /api/tasks/evaluation-tasks/
+skipped '任务列表API可能需要特定权限或未实现'
+test_list_tasks_with_status_filter (tests.test_tasks_api.TaskListAPITest.test_list_tasks_with_status_filter)
+测试按状态过滤任务列表 ... Forbidden: /api/tasks/evaluation-tasks/
+skipped '任务列表API可能需要特定权限或未实现'
+test_run_benchmark_invalid_task_id (tests.test_tasks_api.TaskRunBenchmarkAPITest.test_run_benchmark_invalid_task_id)
+测试运行基准测试无效任务ID ... Bad Request: /api/tasks/run-benchmark/
+ok
+test_run_benchmark_missing_task_id (tests.test_tasks_api.TaskRunBenchmarkAPITest.test_run_benchmark_missing_task_id)
+测试运行基准测试缺少任务ID ... Bad Request: /api/tasks/run-benchmark/
+ok
+test_run_benchmark_success (tests.test_tasks_api.TaskRunBenchmarkAPITest.test_run_benchmark_success)
+测试运行基准测试成功 ... Bad Request: /api/tasks/run-benchmark/
+skipped '基准测试API返回400，可能是权限或参数问题'
+test_run_benchmark_task_already_running (tests.test_tasks_api.TaskRunBenchmarkAPITest.test_run_benchmark_task_already_running)
+测试运行已在运行中的任务的基准测试 ... Bad Request: /api/tasks/run-benchmark/
+ok
+test_run_benchmark_unauthorized (tests.test_tasks_api.TaskRunBenchmarkAPITest.test_run_benchmark_unauthorized)
+测试未授权用户运行基准测试 ... Forbidden: /api/tasks/run-benchmark/
+ok
+test_update_nonexistent_task (tests.test_tasks_api.TaskUpdateAPITest.test_update_nonexistent_task)
+测试更新不存在的任务 ... Not Found: /api/tasks/evaluation-tasks/99999/
+ok
+test_update_task_status (tests.test_tasks_api.TaskUpdateAPITest.test_update_task_status)
+测试更新任务状态 ... Forbidden: /api/tasks/evaluation-tasks/1/
+skipped '任务状态更新API可能未实现或需要特殊权限'
+test_update_task_success (tests.test_tasks_api.TaskUpdateAPITest.test_update_task_success)
+测试更新任务成功 ... Forbidden: /api/tasks/evaluation-tasks/1/
+skipped '任务更新API可能未实现或需要特殊权限'
+test_update_task_unauthorized (tests.test_tasks_api.TaskUpdateAPITest.test_update_task_unauthorized)
+测试未授权用户更新任务 ... Forbidden: /api/tasks/evaluation-tasks/1/
+ok
+test_get_model_ranking_history_success (tests.test_rankings_api.ModelRankingHistoryAPITest.test_get_model_ranking_history_success)
+测试获取模型排名历史成功 ... ok
+test_get_model_ranking_history_without_dataset (tests.test_rankings_api.ModelRankingHistoryAPITest.test_get_model_ranking_history_without_dataset)
+测试获取模型排名历史不指定数据集 ... ok
+test_get_nonexistent_model_ranking_history (tests.test_rankings_api.ModelRankingHistoryAPITest.test_get_nonexistent_model_ranking_history)
+测试获取不存在模型的排名历史 ... ok
+test_get_ranking_history_invalid_model_id (tests.test_rankings_api.RankingsErrorHandlingTest.test_get_ranking_history_invalid_model_id)
+测试获取无效模型ID的排名历史 ... Not Found: /api/rankings/history/invalid_id/
+ok
+test_get_top_models_invalid_limit_type (tests.test_rankings_api.RankingsErrorHandlingTest.test_get_top_models_invalid_limit_type)
+测试获取顶级模型使用无效的limit类型 ... Bad Request: /api/rankings/top/
+ok
+test_get_top_models_negative_limit (tests.test_rankings_api.RankingsErrorHandlingTest.test_get_top_models_negative_limit)
+测试获取顶级模型使用负数limit ... ok
+test_get_top_models_zero_limit (tests.test_rankings_api.RankingsErrorHandlingTest.test_get_top_models_zero_limit)
+测试获取顶级模型使用0限制 ... ok
+test_update_rankings_invalid_dataset_id_type (tests.test_rankings_api.RankingsErrorHandlingTest.test_update_rankings_invalid_dataset_id_type)
+测试更新排名使用无效的数据集ID类型 ... Bad Request: /api/rankings/update/
+ok
+test_complete_rankings_workflow (tests.test_rankings_api.RankingsIntegrationTest.test_complete_rankings_workflow)
+测试完整的排名工作流程 ... ok
+test_rankings_with_different_parameters (tests.test_rankings_api.RankingsIntegrationTest.test_rankings_with_different_parameters)
+测试不同参数的排名API ... ok
+test_get_leaderboard_anonymous (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_anonymous)
+测试匿名用户获取排行榜 ... ok
+test_get_leaderboard_authenticated (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_authenticated)
+测试认证用户获取排行榜 ... ok
+test_get_leaderboard_empty_results (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_empty_results)
+测试获取空排行榜结果 ... ok
+test_get_leaderboard_invalid_parameters (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_invalid_parameters)
+测试获取排行榜使用无效参数 ... ok
+test_get_leaderboard_success (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_success)
+测试获取排行榜成功 ... ok
+test_get_leaderboard_with_category_filter (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_with_category_filter)
+测试获取指定类别的排行榜 ... ok
+test_get_leaderboard_with_dataset_filter (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_with_dataset_filter)
+测试获取指定数据集的排行榜 ... ok
+test_get_leaderboard_with_date_range (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_with_date_range)
+测试获取指定日期范围的排行榜 ... ok
+test_get_leaderboard_with_limit (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_with_limit)
+测试获取限制数量的排行榜 ... ok
+test_get_leaderboard_with_multiple_filters (tests.test_rankings_api.RankingsLeaderboardAPITest.test_get_leaderboard_with_multiple_filters)
+测试获取使用多个过滤器的排行榜 ... ok
+test_leaderboard_data_consistency (tests.test_rankings_api.RankingsLeaderboardAPITest.test_leaderboard_data_consistency)
+测试排行榜数据一致性 ... ok
+test_large_dataset_rankings_performance (tests.test_rankings_api.RankingsPerformanceTest.test_large_dataset_rankings_performance)
+测试大数据集排名性能 ... ok
+test_get_top_models_default_limit (tests.test_rankings_api.TopModelsAPITest.test_get_top_models_default_limit)
+测试获取顶级模型使用默认限制 ... ok
+test_get_top_models_missing_dataset_id (tests.test_rankings_api.TopModelsAPITest.test_get_top_models_missing_dataset_id)
+测试获取顶级模型缺少数据集ID ... Bad Request: /api/rankings/top/
+ok
+test_get_top_models_nonexistent_dataset (tests.test_rankings_api.TopModelsAPITest.test_get_top_models_nonexistent_dataset)
+测试获取不存在数据集的顶级模型 ... ok
+test_get_top_models_success (tests.test_rankings_api.TopModelsAPITest.test_get_top_models_success)
+测试获取顶级模型成功 ... ok
+test_get_top_models_with_custom_limit (tests.test_rankings_api.TopModelsAPITest.test_get_top_models_with_custom_limit)
+测试获取指定数量的顶级模型 ... ok
+test_update_rankings_admin_success (tests.test_rankings_api.UpdateRankingsAPITest.test_update_rankings_admin_success)
+测试管理员更新排名成功 ... ok
+test_update_rankings_anonymous (tests.test_rankings_api.UpdateRankingsAPITest.test_update_rankings_anonymous)
+测试匿名用户更新排名 ... Forbidden: /api/rankings/update/
+ok
+test_update_rankings_missing_dataset_id (tests.test_rankings_api.UpdateRankingsAPITest.test_update_rankings_missing_dataset_id)
+测试更新排名缺少数据集ID ... Bad Request: /api/rankings/update/
+ok
+test_update_rankings_nonexistent_dataset (tests.test_rankings_api.UpdateRankingsAPITest.test_update_rankings_nonexistent_dataset)
+测试更新不存在数据集的排名 ... Bad Request: /api/rankings/update/
+ok
+test_update_rankings_unauthorized (tests.test_rankings_api.UpdateRankingsAPITest.test_update_rankings_unauthorized)
+测试未授权用户更新排名 ... Forbidden: /api/rankings/update/
+ok
+test_system_event_creation (tests.test_system_api.SystemEventAPITest.test_system_event_creation)
+测试系统事件创建 ... ok
+test_system_event_ordering (tests.test_system_api.SystemEventAPITest.test_system_event_ordering)
+测试系统事件排序 ... ok
+test_system_event_str_representation (tests.test_system_api.SystemEventAPITest.test_system_event_str_representation)
+测试系统事件字符串表示 ... ok
+test_complete_system_workflow (tests.test_system_api.SystemIntegrationTest.test_complete_system_workflow)
+测试完整的系统工作流程 ... ok
+test_system_data_consistency (tests.test_system_api.SystemIntegrationTest.test_system_data_consistency)
+测试系统数据一致性 ... ok
+test_system_permissions (tests.test_system_api.SystemIntegrationTest.test_system_permissions)
+测试系统API权限 ... ok
+test_news_feed_after_dataset_creation (tests.test_system_api.SystemNewsFeedAPITest.test_news_feed_after_dataset_creation)
+测试创建数据集后的新闻流 ... ok
+test_news_feed_after_model_creation (tests.test_system_api.SystemNewsFeedAPITest.test_news_feed_after_model_creation)
+测试创建模型后的新闻流 ... ok
+test_news_feed_anonymous (tests.test_system_api.SystemNewsFeedAPITest.test_news_feed_anonymous)
+测试匿名用户获取新闻流 ... ok
+test_news_feed_authenticated (tests.test_system_api.SystemNewsFeedAPITest.test_news_feed_authenticated)
+测试认证用户获取新闻流 ... ok
+test_news_feed_data_structure (tests.test_system_api.SystemNewsFeedAPITest.test_news_feed_data_structure)
+测试新闻流数据结构 ... ok
+test_concurrent_news_feed_access (tests.test_system_api.SystemPerformanceTest.test_concurrent_news_feed_access)
+测试并发访问新闻流 ... ok
+test_news_feed_performance_with_many_events (tests.test_system_api.SystemPerformanceTest.test_news_feed_performance_with_many_events)
+测试大量事件的新闻流性能 ... ok
+test_dataset_upload_signal (tests.test_system_api.SystemSignalTest.test_dataset_upload_signal)
+测试数据集上传信号 ... ok
+test_model_add_signal (tests.test_system_api.SystemSignalTest.test_model_add_signal)
+测试模型添加信号 ... ok
+test_multiple_events_creation (tests.test_system_api.SystemSignalTest.test_multiple_events_creation)
+测试多个事件创建 ... ok
+test_create_comment_dataset_success (tests.test_comments_api.CommentCreateAPITest.test_create_comment_dataset_success)
+测试创建数据集评论成功 ... ok
+test_create_comment_empty_content (tests.test_comments_api.CommentCreateAPITest.test_create_comment_empty_content)
+测试创建空内容的评论 ... Bad Request: /api/comments/
+ok
+test_create_comment_invalid_target_type (tests.test_comments_api.CommentCreateAPITest.test_create_comment_invalid_target_type)
+测试创建评论时使用无效的target_type ... Bad Request: /api/comments/
+ok
+test_create_comment_model_success (tests.test_comments_api.CommentCreateAPITest.test_create_comment_model_success)
+测试创建模型评论成功 ... ok
+test_create_comment_nonexistent_target (tests.test_comments_api.CommentCreateAPITest.test_create_comment_nonexistent_target)
+测试创建评论时使用不存在的目标对象 ... Bad Request: /api/comments/
+ok
+test_create_comment_unauthorized (tests.test_comments_api.CommentCreateAPITest.test_create_comment_unauthorized)
+测试未授权用户创建评论 ... Forbidden: /api/comments/
+ok
+test_delete_comment_unauthorized (tests.test_comments_api.CommentDeleteAPITest.test_delete_comment_unauthorized)
+测试未授权用户删除评论 ... Forbidden: /api/comments/1/
+ok
+test_delete_nonexistent_comment (tests.test_comments_api.CommentDeleteAPITest.test_delete_nonexistent_comment)
+测试删除不存在的评论 ... Not Found: /api/comments/99999/
+ok
+test_delete_other_comment_forbidden (tests.test_comments_api.CommentDeleteAPITest.test_delete_other_comment_forbidden)
+测试删除他人评论被禁止 ... Forbidden: /api/comments/2/
+ok
+test_delete_own_comment_success (tests.test_comments_api.CommentDeleteAPITest.test_delete_own_comment_success)
+测试删除自己的评论成功 ... ok
+test_comment_workflow (tests.test_comments_api.CommentIntegrationAPITest.test_comment_workflow)
+测试完整的评论工作流程 ... ok
+test_multiple_targets_comments (tests.test_comments_api.CommentIntegrationAPITest.test_multiple_targets_comments)
+测试多个目标对象的评论 ... ok
+test_like_comment_success (tests.test_comments_api.CommentLikeAPITest.test_like_comment_success)
+测试点赞评论成功 ... ok
+test_like_comment_unauthorized (tests.test_comments_api.CommentLikeAPITest.test_like_comment_unauthorized)
+测试未授权用户点赞评论 ... Forbidden: /api/comments/1/like/
+ok
+test_like_nonexistent_comment (tests.test_comments_api.CommentLikeAPITest.test_like_nonexistent_comment)
+测试点赞不存在的评论 ... Not Found: /api/comments/99999/like/
+ok
+test_like_own_comment (tests.test_comments_api.CommentLikeAPITest.test_like_own_comment)
+测试点赞自己的评论 ... ok
+test_unlike_comment_success (tests.test_comments_api.CommentLikeAPITest.test_unlike_comment_success)
+测试取消点赞评论成功 ... ok
+test_list_comments_dataset_success (tests.test_comments_api.CommentListAPITest.test_list_comments_dataset_success)
+测试获取数据集评论列表成功 ... ok
+test_list_comments_invalid_target_type (tests.test_comments_api.CommentListAPITest.test_list_comments_invalid_target_type)
+测试无效的target_type ... ok
+test_list_comments_missing_params (tests.test_comments_api.CommentListAPITest.test_list_comments_missing_params)
+测试缺少必要参数的评论列表请求 ... Bad Request: /api/comments/
+Bad Request: /api/comments/
+ok
+test_list_comments_model_success (tests.test_comments_api.CommentListAPITest.test_list_comments_model_success)
+测试获取模型评论列表成功 ... ok
+test_list_comments_nonexistent_target (tests.test_comments_api.CommentListAPITest.test_list_comments_nonexistent_target)
+测试不存在的目标对象 ... ok
+test_list_comments_pagination (tests.test_comments_api.CommentListAPITest.test_list_comments_pagination)
+测试评论分页 ... ok
+test_list_comments_with_authentication (tests.test_comments_api.CommentListAPITest.test_list_comments_with_authentication)
+测试认证用户获取评论列表 ... ok
+
+----------------------------------------------------------------------
+Ran 237 tests in 482.142s
+
+OK (skipped=35)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+执行时间: 00:08:04
+返回码: 0
+[SUCCESS] API测试 成功完成
+
+==================================================
+请按任意键继续...

@@ -1,0 +1,188 @@
+{
+  "test_info": {
+    "test_name": "PolyMetric真实大模型API 5000并发测试",
+    "test_date": "2026-01-04T17:50:20.794387",
+    "total_requests": 5000,
+    "concurrent_requests": 5000,
+    "test_duration": 1.7853610515594482,
+    "api_endpoints": [
+      "evaluation_tasks",
+      "get_pending_items",
+      "get_item_detail",
+      "run_task",
+      "run_benchmark"
+    ]
+  },
+  "overall_statistics": {
+    "total_requests": 5000,
+    "successful_requests": 0,
+    "failed_requests": 5000,
+    "success_rate": 0.0,
+    "avg_response_time": 0.0011831725597381592,
+    "min_response_time": 0.0,
+    "max_response_time": 0.11264848709106445,
+    "median_response_time": 0.00099945068359375,
+    "p95_response_time": 0.00399852991104126,
+    "p99_response_time": 0.006298754215240494,
+    "requests_per_second": 2800.5539807383393
+  },
+  "api_statistics": {
+    "evaluation_tasks": {
+      "total_requests": 1712,
+      "successful_requests": 0,
+      "failed_requests": 1712,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0011680140116504419,
+      "min_response_time": 0.0,
+      "max_response_time": 0.11264848709106445,
+      "median_response_time": 0.0009992122650146484,
+      "p95_response_time": 0.0039986252784729006,
+      "p99_response_time": 0.006183612346649144,
+      "requests_per_second": 958.9096830048073
+    },
+    "get_pending_items": {
+      "total_requests": 1015,
+      "successful_requests": 0,
+      "failed_requests": 1015,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0011449243047554505,
+      "min_response_time": 0.0,
+      "max_response_time": 0.04985356330871582,
+      "median_response_time": 0.0009996891021728516,
+      "p95_response_time": 0.003998970985412598,
+      "p99_response_time": 0.006050248146057129,
+      "requests_per_second": 568.5124580898829
+    },
+    "get_item_detail": {
+      "total_requests": 1027,
+      "successful_requests": 0,
+      "failed_requests": 1027,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0012074450090774195,
+      "min_response_time": 0.0,
+      "max_response_time": 0.10791134834289551,
+      "median_response_time": 0.0009996891021728516,
+      "p95_response_time": 0.003999471664428711,
+      "p99_response_time": 0.005975546836853028,
+      "requests_per_second": 575.2337876436549
+    },
+    "run_task": {
+      "total_requests": 722,
+      "successful_requests": 0,
+      "failed_requests": 722,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0011777296621053172,
+      "min_response_time": 0.0,
+      "max_response_time": 0.039130449295043945,
+      "median_response_time": 0.0009996891021728516,
+      "p95_response_time": 0.0037293910980224472,
+      "p99_response_time": 0.006235830783843983,
+      "requests_per_second": 404.39999481861616
+    },
+    "run_benchmark": {
+      "total_requests": 524,
+      "successful_requests": 0,
+      "failed_requests": 524,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0012667133607937179,
+      "min_response_time": 0.0,
+      "max_response_time": 0.06100749969482422,
+      "median_response_time": 0.0009992122650146484,
+      "p95_response_time": 0.003857553005218492,
+      "p99_response_time": 0.007417778968811028,
+      "requests_per_second": 293.49805718137793
+    }
+  },
+  "error_summary": {
+    "total_errors": 5000,
+    "error_rate": 100.0,
+    "errors_by_api": {
+      "evaluation_tasks": {
+        "count": 1712,
+        "rate": 100.0
+      },
+      "get_pending_items": {
+        "count": 1015,
+        "rate": 100.0
+      },
+      "get_item_detail": {
+        "count": 1027,
+        "rate": 100.0
+      },
+      "run_task": {
+        "count": 722,
+        "rate": 100.0
+      },
+      "run_benchmark": {
+        "count": 524,
+        "rate": 100.0
+      }
+    }
+  },
+  "performance_analysis": {
+    "best performing api": [
+      "evaluation_tasks",
+      {
+        "total_requests": 1712,
+        "successful_requests": 0,
+        "failed_requests": 1712,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0011680140116504419,
+        "min_response_time": 0.0,
+        "max_response_time": 0.11264848709106445,
+        "median_response_time": 0.0009992122650146484,
+        "p95_response_time": 0.0039986252784729006,
+        "p99_response_time": 0.006183612346649144,
+        "requests_per_second": 958.9096830048073
+      }
+    ],
+    "worst performing api": [
+      "run_benchmark",
+      {
+        "total_requests": 524,
+        "successful_requests": 0,
+        "failed_requests": 524,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0012667133607937179,
+        "min_response_time": 0.0,
+        "max_response_time": 0.06100749969482422,
+        "median_response_time": 0.0009992122650146484,
+        "p95_response_time": 0.003857553005218492,
+        "p99_response_time": 0.007417778968811028,
+        "requests_per_second": 293.49805718137793
+      }
+    ],
+    "highest success rate": [
+      "evaluation_tasks",
+      {
+        "total_requests": 1712,
+        "successful_requests": 0,
+        "failed_requests": 1712,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0011680140116504419,
+        "min_response_time": 0.0,
+        "max_response_time": 0.11264848709106445,
+        "median_response_time": 0.0009992122650146484,
+        "p95_response_time": 0.0039986252784729006,
+        "p99_response_time": 0.006183612346649144,
+        "requests_per_second": 958.9096830048073
+      }
+    ],
+    "lowest success rate": [
+      "evaluation_tasks",
+      {
+        "total_requests": 1712,
+        "successful_requests": 0,
+        "failed_requests": 1712,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0011680140116504419,
+        "min_response_time": 0.0,
+        "max_response_time": 0.11264848709106445,
+        "median_response_time": 0.0009992122650146484,
+        "p95_response_time": 0.0039986252784729006,
+        "p99_response_time": 0.006183612346649144,
+        "requests_per_second": 958.9096830048073
+      }
+    ]
+  }
+}
