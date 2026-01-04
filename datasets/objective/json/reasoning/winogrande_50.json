@@ -1,0 +1,222 @@
+[
+{
+    "input": "Joe immediately went to bakery before the bank because the _ had a substantial supply of what he wanted.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. bakery\nB. bank\n",
+    "answer": "B"
+  },
+  {
+    "input": "I had to read an entire story for class tomorrow. Luckily, the _ was canceled.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. story\nB. class\n",
+    "answer": "B"
+  },
+  {
+    "input": "I had to read an entire story for class tomorrow. Luckily, the _ was short.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. story\nB. class\n",
+    "answer": "A"
+  },
+  {
+    "input": "He had enough time between classes to go to a cafe or to the library. He went to the _ because his paper could wait.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. cafe\nB. library\n",
+    "answer": "A"
+  },
+  {
+    "input": "He had enough time between classes to go to a cafe or to the library. He went to the _ because his paper was due soon.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. cafe\nB. library\n",
+    "answer": "B"
+  },
+  {
+    "input": "Lindsey like to read graphic novels but Natalie liked classic literature to read. _ bought the new Frank Miller comic at the book store.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Lindsey\nB. Natalie\n",
+    "answer": "A"
+  },
+  {
+    "input": "Michael just bought brand new wheels for his truck unlike Leslie because _ wheels were new and perfect.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Michael\nB. Leslie\n",
+    "answer": "B"
+  },
+  {
+    "input": "Michael just bought brand new wheels for his truck unlike Leslie because _ wheels were old and used.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Michael\nB. Leslie\n",
+    "answer": "A"
+  },
+  {
+    "input": "Leslie was nervous around parrots but Neil was not, since _ was bitten by a bird early in life.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Leslie\nB. Neil\n",
+    "answer": "A"
+  },
+  {
+    "input": "Christmas was a special holiday to Eric but not Adam since _ was a Jew.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Eric\nB. Adam\n",
+    "answer": "B"
+  },
+  {
+    "input": "To make frosting I needed pudding that was at a store 15 minutes away but pre-made frosting was at a store 5 minutes away.  The _ was closer.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. pudding\nB. frosting\n",
+    "answer": "B"
+  },
+  {
+    "input": "Benjamin was chosen instead of Brett to be the makeup artist for the play because _ was less experienced.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Benjamin\nB. Brett\n",
+    "answer": "B"
+  },
+  {
+    "input": "Cynthia violated the rights of Amy, because _ had too much passivity with other people.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Cynthia\nB. Amy\n",
+    "answer": "B"
+  },
+  {
+    "input": "They had to eat a lot to gain the strength they had lost and be able to work, the _ was too much.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. work\nB. strength\n",
+    "answer": "A"
+  },
+  {
+    "input": "They had to eat a lot to gain the strength they had lost and be able to work, the _ was too little.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. work\nB. strength\n",
+    "answer": "B"
+  },
+  {
+    "input": "The roof of Rachel's home is old and falling apart, while Betty's is new. The home value of _ is lower.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Rachel\nB. Betty\n",
+    "answer": "A"
+  },
+  {
+    "input": "All the clutter in the house excited Leslie but not Derrick because cleaning energized _ very much.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Leslie\nB. Derrick\n",
+    "answer": "A"
+  },
+  {
+    "input": "The portions of food today were bigger than the sizes yesterday because the _ fed more people.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. portions\nB. sizes\n",
+    "answer": "A"
+  },
+  {
+    "input": "Since Craig threw aluminum cans in the trash and Benjamin recycled, _ was environmentally irresponsible.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Craig\nB. Benjamin\n",
+    "answer": "A"
+  },
+  {
+    "input": "Christine was going to Jessica's house to do some cleaning in the kitchen, because _ was a energetic person.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Christine\nB. Jessica\n",
+    "answer": "A"
+  },
+  {
+    "input": "The students were at their desks taking tests with pencils, they used the _ to hold the papers.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. desks\nB. pencils\n",
+    "answer": "A"
+  },
+  {
+    "input": "Mary thought poodles were a cool dog but Rachel thought Great Danes were cooler. _ bought a small dog bed for their pet.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Mary\nB. Rachel\n",
+    "answer": "A"
+  },
+  {
+    "input": "Mary thought poodles were a cool dog but Rachel thought Great Danes were cooler. _ bought a gigantic dog bed for their pet.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Mary\nB. Rachel\n",
+    "answer": "B"
+  },
+  {
+    "input": "Leslie had a lot of issues that Kyle was tired of dealing with, so _ felt abandoned when they finally moved out.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Leslie\nB. Kyle\n",
+    "answer": "A"
+  },
+  {
+    "input": "Jessica enjoyed a simple, basic life with Betty, but _ was bored having a quiet existence.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Jessica\nB. Betty\n",
+    "answer": "B"
+  },
+  {
+    "input": "I wanted to build a bathroom on the third floor of the house but I couldn't because the _ would be too full.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. bathroom\nB. floor\n",
+    "answer": "B"
+  },
+  {
+    "input": "Joel researched laws and helped to open a preschool for Eric. Because _ is very good with kids.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Joel\nB. Eric\n",
+    "answer": "B"
+  },
+  {
+    "input": "Tanya told Emily she couldn't come to work because her cat had an infection, but _ was lying.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Tanya\nB. Emily\n",
+    "answer": "A"
+  },
+  {
+    "input": "Angela thinks her husband might be cheating with Lindsey, and _ confesses at the dinner party.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Angela\nB. Lindsey\n",
+    "answer": "B"
+  },
+  {
+    "input": "Donald's understanding of math isn't as good as Joseph's, so _ is more likely a professor.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Donald\nB. Joseph\n",
+    "answer": "B"
+  },
+  {
+    "input": "Brian was jealous of Brett's new car because _ couldn't afford to buy a new car.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Brian\nB. Brett\n",
+    "answer": "A"
+  },
+  {
+    "input": "The man used  his eyes to read the letters but the _ were too small.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. letters\nB. eyes\n",
+    "answer": "A"
+  },
+  {
+    "input": "Jill was on a budget so she only bought a new dress for the ceremony and wore an old hat. She figured the _ would be less noticeable.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. dress\nB. hat\n",
+    "answer": "B"
+  },
+  {
+    "input": "Jill was on a budget so she only bought a new dress for the ceremony and wore an old hat. She figured the _ would be more noticeable.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. dress\nB. hat\n",
+    "answer": "A"
+  },
+  {
+    "input": "On Monday, Patricia made Felicia eggs for an early breakfast, but _ does not like fried eggs.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Patricia\nB. Felicia\n",
+    "answer": "B"
+  },
+  {
+    "input": "Since Craig wears clear contacts and William wears colored ones, it is safe to assume that _ loves the color of their eyes.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Craig\nB. William\n",
+    "answer": "A"
+  },
+  {
+    "input": "Since Craig wears clear contacts and William wears colored ones, it is safe to assume that _ dislikes the color of their eyes.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Craig\nB. William\n",
+    "answer": "B"
+  },
+  {
+    "input": "It was easy for Angela to become a vegetarian although Kayla couldn't do it. _ really missed the taste of chicken.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Angela\nB. Kayla\n",
+    "answer": "B"
+  },
+  {
+    "input": "Hunter was a better baker than Logan so _ made the kitchen a mess when they tried to make an apple pie.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Hunter\nB. Logan\n",
+    "answer": "B"
+  },
+  {
+    "input": "Tanya spent more on the children's birthday party than Amy. _ thought a magician was a good use of funds.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Tanya\nB. Amy\n",
+    "answer": "A"
+  },
+  {
+    "input": "Judy bought new brushes to paint the etched glasses crack but it didn't fit. The _ was too wide.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. brush\nB. crack\n",
+    "answer": "A"
+  },
+  {
+    "input": "Judy bought new brushes to paint the etched glasses crack but it didn't fit. The _ was too narrow.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. brush\nB. crack\n",
+    "answer": "B"
+  },
+  {
+    "input": "I look forward to the Sunday newspaper so I can look at the comics.  This is the only reason I still get the _ in this day and age.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. newspaper\nB. comics\n",
+    "answer": "A"
+  },
+  {
+    "input": "Jennifer was more of a morning person than Natalie although _ always went to bed early and got a good night's rest.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Jennifer\nB. Natalie\n",
+    "answer": "B"
+  },
+  {
+    "input": "Jennifer was more of a morning person than Natalie because _ always went to bed early and got a good night's rest.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Jennifer\nB. Natalie\n",
+    "answer": "A"
+  },
+  {
+    "input": "Alcohol is a love of Matthew's, but Ryan can't stand the stuff because _ is a sober alcoholic.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Matthew\nB. Ryan\n",
+    "answer": "B"
+  },
+  {
+    "input": "Joe brought the horse out to the country quite a distance and gave him food but the _ was too much.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. food\nB. distance\n",
+    "answer": "B"
+  },
+  {
+    "input": "Randy gave their heart to Brian, and _ soon told them that they should have kept their heart to themselves.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Randy\nB. Brian\n",
+    "answer": "B"
+  },
+  {
+    "input": "Nick wanted to play a game on the floor, but Dennis was hesitant because of his knees. _ was disappointed.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Nick\nB. Dennis\n",
+    "answer": "A"
+  },
+  {
+    "input": "Although she was being prosecuted, Monica was welcomed into the sanctuary of the church by Samantha because _ was a sinful criminal.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Monica\nB. Samantha\n",
+    "answer": "A"
+  },
+  {
+    "input": "The battle was less fierce than the great war, because the _ lasted one year.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. battle\nB. war\n",
+    "answer": "B"
+  },
+  {
+    "input": "Laura used too much super glue on Erins hands, so _ needed to get to the doctor to separate their hands.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Laura\nB. Erin\n",
+    "answer": "B"
+  },
+  {
+    "input": "James panicked when his phone fell on the table thinking it will break but the _ is soft.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. phone\nB. table\n",
+    "answer": "B"
+  },
+  {
+    "input": "James panicked when his phone fell on the table thinking it will break but the _ is strong.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. phone\nB. table\n",
+    "answer": "A"
+  },
+  {
+    "input": "John cannot touch the cup as it was just brought out of the refrigerator. He wanted some air to blow around it. The _ is very warm.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. cup\nB. air\n",
+    "answer": "B"
+  }
+]
