@@ -44,7 +44,15 @@ def top_models(request):
     GET /api/rankings/top/?dataset_id=1&limit=10
     """
     dataset_id = request.query_params.get('dataset_id')
-    limit = int(request.query_params.get('limit', 10))
+    try:
+        limit = int(request.query_params.get('limit', 10))
+        if limit <= 0:
+            limit = 10
+    except (ValueError, TypeError):
+        return Response(
+            {"code": status.HTTP_400_BAD_REQUEST, "msg": "limit参数必须是正整数", "data": None},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     if not dataset_id:
         return Response(

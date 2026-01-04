@@ -79,14 +79,11 @@ class ModelFactory(factory.django.DjangoModelFactory):
     
     name = factory.Faker("company")
     company = factory.Faker("company")
-    category = factory.Iterator(["text", "image", "multimodal", "audio", "video"])
+    category = factory.Iterator(["text", "image", "multimodal", "code"])
     parameter_size = factory.Iterator(["1B", "7B", "13B", "70B", "100B+", "unknown"])
     description = factory.Faker("paragraph", nb_sentences=5)
-    version = factory.Faker("semver")
+    version = factory.LazyAttribute(lambda _: f"{factory.Faker('random_int', min=0, max=9)}.{factory.Faker('random_int', min=0, max=9)}.{factory.Faker('random_int', min=0, max=9)}")
     official_url = factory.Faker("url")
-    paper_url = factory.Faker("url")
-    github_url = factory.Faker("url")
-    license = factory.Iterator(["MIT", "Apache-2.0", "GPL-3.0", "BSD-3-Clause", "Proprietary"])
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
 
@@ -157,24 +154,37 @@ class EvaluationTaskFactory(factory.django.DjangoModelFactory):
     description = factory.Faker("paragraph", nb_sentences=3)
     method = factory.Iterator(["objective", "subjective", "adversarial"])
     status = factory.Iterator(["pending", "running", "completed", "failed"])
-    progress = factory.Faker("random_int", min=0, max=100)
     created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     
     # 新增字段
     judge_type = factory.Iterator(["human", "model"])
-    judge_model = factory.Maybe(
-        "judge_type",
-        yes_factory=factory.SubFactory(ModelFactory),
-        no_factory=None,
-        decider=lambda judge_type: judge_type == "model"
-    )
-    myModel_2 = factory.Maybe(
-        "method",
-        yes_factory=factory.SubFactory(ModelFactory),
-        no_factory=None,
-        decider=lambda method: method == "adversarial"
-    )
+    
+    @factory.post_generation
+    def judge_model(self, create, extracted, **kwargs):
+        """根据judge_type设置judge_model"""
+        if not create:
+            return
+        
+        if self.judge_type == "model":
+            if extracted:
+                self.judge_model = extracted
+            else:
+                self.judge_model = ModelFactory()
+            self.save()
+    
+    @factory.post_generation
+    def myModel_2(self, create, extracted, **kwargs):
+        """根据method设置myModel_2"""
+        if not create:
+            return
+        
+        if self.method == "adversarial":
+            if extracted:
+                self.myModel_2 = extracted
+            else:
+                self.myModel_2 = ModelFactory()
+            self.save()
     
     creator = factory.SubFactory(UserFactory)
     dataset = factory.SubFactory(DatasetFactory)
@@ -190,22 +200,22 @@ class EvaluationItemFactory(factory.django.DjangoModelFactory):
     content = factory.Faker("paragraph", nb_sentences=2)
     correct_answer = factory.Faker("sentence")
     predicted_answer = factory.Faker("sentence")
-    predicted_answer_2 = factory.Maybe(
-        "task__method",
-        yes_factory=factory.Faker("sentence"),
-        no_factory=None,
-        decider=lambda method: method == "adversarial"
-    )
+    predicted_answer_2 = None
     score = factory.Faker("random_int", min=1, max=10)
-    preference = factory.Maybe(
-        "task__method",
-        yes_factory=factory.Iterator(["left", "right", "tie"]),
-        no_factory=None,
-        decider=lambda method: method == "adversarial"
-    )
+    preference = None
     is_correct = factory.Faker("boolean")
-    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
-    updated_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    
+    @factory.post_generation
+    def setup_adversarial_fields(self, create, extracted, **kwargs):
+        """为对抗评测设置特殊字段"""
+        if not create:
+            return
+        
+        if self.task and self.task.method == "adversarial":
+            import factory.fuzzy
+            self.predicted_answer_2 = factory.Faker("sentence")
+            self.preference = factory.Iterator(["left", "right", "tie"])
+            self.save()
     
     task = factory.SubFactory(EvaluationTaskFactory)
 
@@ -250,12 +260,14 @@ class SystemEventFactory(factory.django.DjangoModelFactory):
         model = SystemEvent
     
     event_type = factory.Iterator([
-        "user_register", "user_login", "dataset_upload", "dataset_verify",
-        "model_add", "task_create", "task_complete", "follow", "unfollow"
+        "dataset_upload", "model_add", "rank_up", "task_complete", "task_create"
     ])
-    content = factory.Faker("paragraph", nb_sentences=2)
-    metadata = factory.LazyFunction(lambda: {})
-    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
+    actor_id = factory.Faker("random_int", min=1, max=100)
+    actor_name = factory.Faker("name")
+    target_id = factory.Faker("random_int", min=1, max=100)
+    target_name = factory.Faker("catch_phrase")
+    target_extra = factory.Faker("sentence")
+    message = factory.Faker("paragraph", nb_sentences=2)
 
 
 class BulkDataFactory:
@@ -292,7 +304,7 @@ class BulkDataFactory:
         models = ModelFactory.create_batch(10)
         
         # 创建数据集
-        datasets = DatasetFactory.create_batch(10, with_file=True)
+        datasets = DatasetFactory.create_batch(10)
         
         # 创建评测任务
         tasks = []
@@ -380,7 +392,7 @@ class ScenarioFactory:
         creator = UserFactory()
         reviewer = UserFactory()
         model = ModelFactory()
-        dataset = DatasetFactory(with_file=True)
+        dataset = DatasetFactory()
         
         # 创建不同类型的评测任务
         objective_task = EvaluationTaskFactory(
@@ -419,12 +431,71 @@ class ScenarioFactory:
         }
     
     @staticmethod
+    def create_complete_scenario():
+        """创建完整的测试场景"""
+        return BulkDataFactory.create_complete_scenario()
+
+
+class TestDataGenerator:
+    """测试数据生成器 - 提供便捷的测试数据创建方法"""
+    
+    @staticmethod
+    def create_user(**kwargs):
+        """创建用户"""
+        return UserFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_admin_user(**kwargs):
+        """创建管理员用户"""
+        return AdminUserFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_model(**kwargs):
+        """创建模型"""
+        return ModelFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_dataset(**kwargs):
+        """创建数据集"""
+        return DatasetFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_task(**kwargs):
+        """创建评测任务"""
+        return EvaluationTaskFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_evaluation_item(**kwargs):
+        """创建评测项"""
+        return EvaluationItemFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_user_follow(**kwargs):
+        """创建用户关注关系"""
+        return UserFollowFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_model_follow(**kwargs):
+        """创建模型关注关系"""
+        return ModelFollowFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_dataset_follow(**kwargs):
+        """创建数据集关注关系"""
+        return DatasetFollowFactory.create(**kwargs)
+    
+    @staticmethod
+    def create_system_event(**kwargs):
+        """创建系统事件"""
+        return SystemEventFactory.create(**kwargs)
+    
+    @staticmethod
     def create_performance_test_scenario():
         """创建性能测试场景"""
         # 创建大量数据
         users = UserFactory.create_batch(100)
         models = ModelFactory.create_batch(50)
-        datasets = DatasetFactory.create_batch(50, with_file=True)
+        datasets = DatasetFactory.create_batch(50)
         
         # 创建大量关注关系
         follows = []

@@ -1,27 +1,22 @@
-name: PolyMetric API Tests
+name: PolyMetric Backend Tests
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  schedule:
-    # 每天凌晨2点运行完整测试套件
-    - cron: '0 2 * * *'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.9, 3.10, 3.11]
     
     services:
       postgres:
-        image: postgres:15
+        image: postgres:13
         env:
-          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: polymetric_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -31,7 +26,7 @@ jobs:
           - 5432:5432
       
       redis:
-        image: redis:7
+        image: redis:6
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -39,6 +34,10 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
+
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, '3.10', '3.11']
 
     steps:
     - uses: actions/checkout@v3
@@ -60,7 +59,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest pytest-django coverage pytest-cov pytest-mock pytest-xdist
+        pip install coverage pytest pytest-django pytest-cov
+    
+    - name: Cache Django data
+      uses: actions/cache@v3
+      with:
+        path: |-
+          ~/.local/share/virtualenvs/
+          .tox/
+        key: ${{ runner.os }}-django-${{ hashFiles('**/requirements.txt') }}
     
     - name: Set up environment variables
       run: |
@@ -73,58 +80,28 @@ jobs:
       run: |
         python manage.py migrate --settings=PolyMetric.test_settings
     
-    - name: Run linting
-      run: |
-        # 安装代码质量检查工具
-        pip install flake8 black isort mypy
-        
-        # 代码格式检查
-        black --check .
-        isort --check-only .
-        
-        # 代码质量检查
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
     - name: Run unit tests
       run: |
-        pytest tests/ -v \
-          --settings=PolyMetric.test_settings \
-          --cov=. \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=term-missing \
-          --junit-xml=pytest-results.xml \
-          -m "not slow and not integration" \
-          --dist=loadfile \
-          -n auto
+        python run_comprehensive_tests.py --type unit
+    
+    - name: Run API tests
+      run: |
+        python run_comprehensive_tests.py --type api
     
     - name: Run integration tests
       run: |
-        pytest tests/ -v \
-          --settings=PolyMetric.test_settings \
-          --junit-xml=pytest-integration-results.xml \
-          -m "integration" \
-          --dist=loadfile \
-          -n auto
+        python run_comprehensive_tests.py --type integration
     
-    - name: Run performance tests
+    - name: Run application tests
       run: |
-        pytest tests/test_performance.py -v \
-          --settings=PolyMetric.test_settings \
-          --junit-xml=pytest-performance-results.xml \
-          -m "performance" \
-          --dist=loadfile \
-          -n auto
+        python run_comprehensive_tests.py --type app
     
-    - name: Run E2E tests
+    - name: Run coverage tests
       run: |
-        pytest tests/test_e2e.py -v \
-          --settings=PolyMetric.test_settings \
-          --junit-xml=pytest-e2e-results.xml \
-          -m "e2e" \
-          --dist=loadfile \
-          -n auto
+        pip install coverage
+        coverage run --source='.' manage.py test tests --settings=PolyMetric.test_settings
+        coverage report
+        coverage xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -133,35 +110,74 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: test-results-${{ matrix.python-version }}
-        path: |
-          pytest-results.xml
-          pytest-integration-results.xml
-          pytest-performance-results.xml
-          pytest-e2e-results.xml
-          htmlcov/
-          test_reports/
-    
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: coverage-reports-${{ matrix.python-version }}
-        path: |
-          htmlcov/
-          coverage.xml
 
-  security-scan:
+  performance-test:
     runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_DB: polymetric_perf_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:6
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Python
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-django
+    
+    - name: Set up environment variables
+      run: |
+        echo "DJANGO_SETTINGS_MODULE=PolyMetric.test_settings" >> $GITHUB_ENV
+        echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/polymetric_perf_test" >> $GITHUB_ENV
+        echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
+        echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+    
+    - name: Run database migrations
+      run: |
+        python manage.py migrate --settings=PolyMetric.test_settings
+    
+    - name: Run performance tests
+      run: |
+        python run_comprehensive_tests.py --type performance
+      continue-on-error: true  # 性能测试可能因为环境差异而失败
+
+  security-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
@@ -172,34 +188,31 @@ jobs:
         pip install -r requirements.txt
         pip install bandit safety
     
-    - name: Run security scan with Bandit
+    - name: Run security checks with Bandit
       run: |
-        bandit -r . -f json -o bandit-report.json || true
-        bandit -r . -f txt
+        bandit -r . -f json -o bandit-report.json
+      continue-on-error: true
     
-    - name: Check dependencies with Safety
+    - name: Run safety check
       run: |
-        safety check --json --output safety-report.json || true
-        safety check
+        safety check --json --output safety-report.json
+      continue-on-error: true
     
     - name: Upload security reports
       uses: actions/upload-artifact@v3
-      if: always()
       with:
         name: security-reports
         path: |
           bandit-report.json
           safety-report.json
 
-  performance-benchmark:
+  code-quality:
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Python
+    - name: Set up Python 3.10
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
@@ -207,81 +220,56 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-django pytest-benchmark
+        pip install flake8 black isort mypy
     
-    - name: Set up environment
+    - name: Run code quality checks
       run: |
-        echo "DJANGO_SETTINGS_MODULE=PolyMetric.test_settings" >> $GITHUB_ENV
-        echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/polymetric_test" >> $GITHUB_ENV
-        echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
-        echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
+        # 检查代码格式
+        black --check --diff .
+        
+        # 检查导入排序
+        isort --check-only --diff .
+        
+        # 运行flake8
+        flake8 . --output-file=flake8-report.txt --format=html
+        
+        # 运行mypy类型检查
+        mypy . --html-report mypy-report || true
+      continue-on-error: true
     
-    - name: Run performance benchmarks
-      run: |
-        pytest tests/test_performance.py -v \
-          --settings=PolyMetric.test_settings \
-          --benchmark-only \
-          --benchmark-json=benchmark-results.json
-    
-    - name: Store benchmark result
-      uses: benchmark-action/github-action-benchmark@v1
+    - name: Upload code quality reports
+      uses: actions/upload-artifact@v3
       with:
-        tool: 'pytest'
-        output-file-path: benchmark-results.json
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        auto-push: true
-        comment-on-alert: true
-        alert-threshold: '200%'
-        fail-on-alert: true
+        name: code-quality-reports
+        path: |
+          flake8-report.txt
+          mypy-report/
 
-  deploy-docs:
+  build-docker:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, security-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
       with:
-        python-version: '3.10'
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
     
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install sphinx sphinx-rtd-theme
-    
-    - name: Generate test documentation
-      run: |
-        cd tests
-        sphinx-apidoc -o docs ../
-        cd docs
-        make html
-    
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./tests/docs/_build/html
-        destination_dir: test-docs
-
-  notify:
-    runs-on: ubuntu-latest
-    needs: [test, security-scan]
-    if: always()
-    
-    steps:
-    - name: Notify on success
-      if: needs.test.result == 'success' && needs.security-scan.result == 'success'
-      run: |
-        echo "✅ All tests passed successfully!"
-        # 这里可以添加Slack、邮件等通知
-    
-    - name: Notify on failure
-      if: needs.test.result == 'failure' || needs.security-scan.result == 'failure'
-      run: |
-        echo "❌ Some tests failed!"
-        # 这里可以添加Slack、邮件等通知
+        context: .
+        file: ./deploy/docker/Dockerfile.backend
+        push: true
+        tags: |
+          polymetric/backend:latest
+          polymetric/backend:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.datasets.models import Dataset
 from apps.tasks.models import (
-    my_model,
+    My_Model,
     EvaluationTask,
     EvaluationItem,
 )
@@ -43,8 +43,8 @@ class EvaluationTaskAPITests(APITestCase):
             HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}"
         )
 
-        # ---- 创建模型（my_model）----
-        self.model = my_model.objects.create(
+        # ---- 创建模型（My_Model）----
+        self.model = My_Model.objects.create(
             name="Demo Model",
             description="model for test"
         )
@@ -53,28 +53,49 @@ class EvaluationTaskAPITests(APITestCase):
         self.dataset = Dataset.objects.create(
             name="Demo Dataset",
             description="Test dataset",
-            creator=self.user
+            creator=self.user,
+            file_format="json",  # 添加必需的file_format字段
+            evaluation_type="objective"  # 添加evaluation_type字段
         )
 
         # ---- 创建任务 ----
         self.task = EvaluationTask.objects.create(
             name="Test Task",
             dataset=self.dataset,
-            model=self.model
+            myModel=self.model,
+            creator=self.user,
+            method="subjective"  # 设置为subjective方法
+        )
+        
+        # ---- 创建对抗任务用于测试对抗偏好 ----
+        self.adversarial_task = EvaluationTask.objects.create(
+            name="Adversarial Test Task",
+            dataset=self.dataset,
+            myModel=self.model,
+            myModel_2=self.model,  # 对抗评测需要第二个模型
+            creator=self.user,
+            method="adversarial"  # 设置为adversarial方法
         )
 
         # ---- 创建任务项 ----
         self.item = EvaluationItem.objects.create(
             task=self.task,
-            input_text="Hello",
-            reference_answer="World"
+            content="Hello",
+            correct_answer="World"
+        )
+        
+        # ---- 为对抗任务创建任务项 ----
+        self.adversarial_item = EvaluationItem.objects.create(
+            task=self.adversarial_task,
+            content="Adversarial Hello",
+            correct_answer="Adversarial World"
         )
 
     # ------------------------------------------------------------
     # 1. 测试任务列表接口
     # ------------------------------------------------------------
     def test_list_tasks(self):
-        response = self.client.get("/api/tasks/")
+        response = self.client.get("/api/tasks/evaluation-tasks/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # ------------------------------------------------------------
@@ -84,16 +105,17 @@ class EvaluationTaskAPITests(APITestCase):
         data = {
             "name": "New Task",
             "dataset": self.dataset.id,
-            "model": self.model.id
+            "myModel": self.model.id,
+            "method": "objective"  # 添加必需的method字段
         }
-        response = self.client.post("/api/tasks/", data)
+        response = self.client.post("/api/tasks/evaluation-tasks/", data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # ------------------------------------------------------------
     # 3. 获取任务详情
     # ------------------------------------------------------------
     def test_retrieve_task_detail(self):
-        response = self.client.get(f"/api/tasks/{self.task.id}/")
+        response = self.client.get(f"/api/tasks/evaluation-tasks/{self.task.id}/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # ------------------------------------------------------------
@@ -103,9 +125,10 @@ class EvaluationTaskAPITests(APITestCase):
         data = {
             "name": "Updated Task",
             "dataset": self.dataset.id,
-            "model": self.model.id
+            "myModel": self.model.id,
+            "method": "objective"  # 添加必需的method字段
         }
-        response = self.client.put(f"/api/tasks/{self.task.id}/", data)
+        response = self.client.put(f"/api/tasks/evaluation-tasks/{self.task.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # ------------------------------------------------------------
@@ -113,21 +136,21 @@ class EvaluationTaskAPITests(APITestCase):
     # ------------------------------------------------------------
     def test_partial_update_task(self):
         data = {"name": "Partially Update"}
-        response = self.client.patch(f"/api/tasks/{self.task.id}/", data)
+        response = self.client.patch(f"/api/tasks/evaluation-tasks/{self.task.id}/", data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # ------------------------------------------------------------
     # 6. 删除任务
     # ------------------------------------------------------------
     def test_delete_task(self):
-        response = self.client.delete(f"/api/tasks/{self.task.id}/")
+        response = self.client.delete(f"/api/tasks/evaluation-tasks/{self.task.id}/")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     # ------------------------------------------------------------
     # 7. 获取待评测项 /pending-item
     # ------------------------------------------------------------
     def test_get_pending_items(self):
-        response = self.client.get(f"/api/tasks/{self.task.id}/pending-item/")
+        response = self.client.get(f"/api/tasks/evaluation-tasks/{self.task.id}/pending-item/?reviewer_id={self.user.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # ------------------------------------------------------------
@@ -135,7 +158,7 @@ class EvaluationTaskAPITests(APITestCase):
     # ------------------------------------------------------------
     def test_get_item_detail(self):
         response = self.client.get(
-            f"/api/tasks/{self.task.id}/item/{self.item.id}/"
+            f"/api/tasks/evaluation-tasks/{self.task.id}/item/{self.item.id}/"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -143,10 +166,16 @@ class EvaluationTaskAPITests(APITestCase):
     # 9. 主观分数提交（subjective-score）
     # ------------------------------------------------------------
     def test_submit_subjective_score(self):
-        data = {"score": 4}
+        data = {
+            "myModel": self.task.myModel.id,
+            "dataset": self.task.dataset.id,
+            "reviewer": self.user.id,
+            "itemID": self.item.id,
+            "score": 4
+        }
         response = self.client.post(
-            f"/api/tasks/{self.task.id}/item/{self.item.id}/subjective-score/",
-            data
+            f"/api/tasks/evaluation-tasks/{self.task.id}/",
+            data  # 使用任务级别的submit_score端点
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -154,10 +183,16 @@ class EvaluationTaskAPITests(APITestCase):
     # 10. 对抗偏好（adversarial-preference）
     # ------------------------------------------------------------
     def test_submit_adversarial_preference(self):
-        data = {"preferred": 1}
+        data = {
+            "myModel": self.adversarial_task.myModel.id,
+            "dataset": self.adversarial_task.dataset.id,
+            "reviewer": self.user.id,
+            "itemID": self.adversarial_item.id,
+            "preference": "left"
+        }
         response = self.client.post(
-            f"/api/tasks/{self.task.id}/item/{self.item.id}/adversarial-preference/",
-            data
+            f"/api/tasks/evaluation-tasks/{self.adversarial_task.id}/",
+            data  # 使用任务级别的submit_score端点
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
