@@ -11,8 +11,14 @@ RUN npm config set registry https://registry.npmmirror.com
 # 1. 只复制 package 文件（利用 Docker 缓存）
 COPY PolyMetric/frontend/package*.json ./
 
-# 2. 安装依赖（只有 package.json 改变时才重新执行）
-RUN npm install
+# 2. 安装依赖（关键修复）
+#    为了解决 npm 的 bug，我们先删除旧的 node_modules 和 package-lock.json
+#    确保 npm install 在一个完全干净的环境中运行。
+ENV ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+#    关键修复：在安装前，不仅要删除 node_modules，还要确保 package-lock.json 被删除。
+#    这会强制 npm 重新计算依赖树并生成一个全新的、与环境匹配的 lock 文件。
+#    注意：我们不再需要 --force 了，因为删除 lock 文件本身就是一种强制行为。
+RUN rm -rf node_modules package-lock.json && npm install
 
 # 3. 复制源代码（放在依赖安装之后）
 COPY PolyMetric/frontend ./

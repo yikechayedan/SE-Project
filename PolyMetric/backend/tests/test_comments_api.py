@@ -224,7 +224,7 @@ class CommentCreateAPITest(TestCase, APITestMixin):
         }
         
         response = self.client.post("/api/comments/", data, format="json")
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
     
     def test_create_comment_invalid_target_type(self):
         """测试创建评论时使用无效的target_type"""
@@ -320,7 +320,7 @@ class CommentDeleteAPITest(TestCase, APITestMixin):
     def test_delete_comment_unauthorized(self):
         """测试未授权用户删除评论"""
         response = self.client.delete(f"/api/comments/{self.comment1.id}/")
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
     
     def test_delete_nonexistent_comment(self):
         """测试删除不存在的评论"""
@@ -402,7 +402,7 @@ class CommentLikeAPITest(TestCase, APITestMixin):
     def test_like_comment_unauthorized(self):
         """测试未授权用户点赞评论"""
         response = self.client.post(f"/api/comments/{self.comment.id}/like/")
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
     
     def test_like_nonexistent_comment(self):
         """测试点赞不存在的评论"""

@@ -18,9 +18,17 @@ class UserTests(APITestCase):
         self.access_token = str(self.refresh_token.access_token)
 
     def test_register(self):
-        unique_username = "newuser"  # 使用唯一的用户名
-        self.user_data["username"] = unique_username
-        response = self.client.post("/api/users/register/", self.user_data, format="json")
+        import time
+        timestamp = int(time.time())
+        unique_username = f"newuser_{timestamp}"  # 使用时间戳确保唯一性
+        unique_email = f"newuser_{timestamp}@example.com"  # 使用时间戳确保唯一性
+        register_data = {
+            "username": unique_username,
+            "email": unique_email,
+            "phone": f"138{timestamp % 100000000:08d}",  # 生成随机手机号
+            "password": "testpassword"
+        }
+        response = self.client.post("/api/users/register/", register_data, format="json")
         print("REGISTER RESPONSE:", response.data)  # 打印错误信息
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["code"], 200)
@@ -36,7 +44,7 @@ class UserTests(APITestCase):
             "password": "testpassword"
         }, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data)
+        self.assertIn("access", response.data.get("data", {}))
 
     def test_get_user_info(self):
         response = self.client.get("/api/users/me/", HTTP_AUTHORIZATION=f"Bearer {self.access_token}")

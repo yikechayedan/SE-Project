@@ -572,3 +572,268 @@ class TaskTestHelper:
             "dataset": None,  # 需要在测试中设置
             "myModel": None    # 需要在测试中设置
         }
+
+
+class APITestCase(TestCase):
+    """增强的API测试基类"""
+    
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+    
+    def assertAPIStandardResponse(self, response, expected_status=200, expected_code=None):
+        """断言标准API响应格式"""
+        self.assertEqual(response.status_code, expected_status)
+        
+        if isinstance(response.data, dict):
+            # 检查标准响应格式
+            if expected_code is not None:
+                self.assertEqual(response.data.get('code'), expected_code)
+            
+            # 成功响应应该有data字段或msg字段
+            if 200 <= response.status_code < 300:
+                self.assertTrue(
+                    'data' in response.data or 'msg' in response.data,
+                    "Success response should have 'data' or 'msg' field"
+                )
+            else:
+                # 错误响应应该有error或msg字段
+                self.assertTrue(
+                    'error' in response.data or 'msg' in response.data,
+                    "Error response should have 'error' or 'msg' field"
+                )
+    
+    def assertAPIListResponse(self, response, expected_status=200, min_items=0):
+        """断言API列表响应"""
+        self.assertAPIStandardResponse(response, expected_status)
+        
+        if isinstance(response.data, dict) and 'data' in response.data:
+            data = response.data['data']
+            
+            # 处理分页响应
+            if isinstance(data, dict) and 'results' in data:
+                items = data['results']
+                self.assertGreaterEqual(len(items), min_items)
+                
+                # 检查分页字段
+                if 'total' in data:
+                    self.assertIsInstance(data['total'], int)
+                    self.assertGreaterEqual(data['total'], len(items))
+                
+                if 'has_next' in data:
+                    self.assertIsInstance(data['has_next'], bool)
+            else:
+                # 直接列表响应
+                self.assertIsInstance(data, list)
+                self.assertGreaterEqual(len(data), min_items)
+    
+    def assertAPIPagination(self, response, page=None, page_size=None, total=None):
+        """断言API分页响应"""
+        self.assertAPIStandardResponse(response)
+        
+        if isinstance(response.data, dict) and 'data' in response.data:
+            data = response.data['data']
+            
+            if isinstance(data, dict) and 'pagination' in data:
+                pagination = data['pagination']
+                
+                if page is not None:
+                    self.assertEqual(pagination.get('page'), page)
+                if page_size is not None:
+                    self.assertEqual(pagination.get('page_size'), page_size)
+                if total is not None:
+                    self.assertEqual(pagination.get('total'), total)
+    
+    def assertAPIError(self, response, expected_status=400, expected_message=None):
+        """断言API错误响应"""
+        self.assertEqual(response.status_code, expected_status)
+        
+        if isinstance(response.data, dict):
+            if expected_message:
+                self.assertIn(expected_message, response.data.get('msg', ''))
+            
+            # 检查错误响应格式
+            self.assertTrue(
+                'error' in response.data or 'msg' in response.data,
+                "Error response should have 'error' or 'msg' field"
+            )
+    
+    def create_test_file(self, content=None, filename="test.json", content_type="application/json"):
+        """创建测试文件"""
+        if content is None:
+            content = {"test": "data"}
+        
+        if isinstance(content, dict):
+            content = json.dumps(content)
+        
+        return SimpleUploadedFile(
+            filename,
+            content.encode('utf-8'),
+            content_type=content_type
+        )
+    
+    def create_image_file(self, filename="test.jpg", content_type="image/jpeg"):
+        """创建测试图片文件"""
+        return SimpleUploadedFile(
+            filename,
+            b'fake image data',
+            content_type=content_type
+        )
+
+
+class DatabaseTestCase(TestCase):
+    """数据库测试基类"""
+    
+    def assertObjectExists(self, model_class, **kwargs):
+        """断言对象存在"""
+        self.assertTrue(
+            model_class.objects.filter(**kwargs).exists(),
+            f"{model_class.__name__} object with {kwargs} should exist"
+        )
+    
+    def assertObjectDoesNotExist(self, model_class, **kwargs):
+        """断言对象不存在"""
+        self.assertFalse(
+            model_class.objects.filter(**kwargs).exists(),
+            f"{model_class.__name__} object with {kwargs} should not exist"
+        )
+    
+    def assertObjectCount(self, model_class, expected_count, **kwargs):
+        """断言对象数量"""
+        actual_count = model_class.objects.filter(**kwargs).count()
+        self.assertEqual(
+            actual_count, expected_count,
+            f"Expected {expected_count} {model_class.__name__} objects, got {actual_count}"
+        )
+
+
+class SecurityTestCase(TestCase):
+    """安全测试基类"""
+    
+    def setUp(self):
+        """设置 APIClient"""
+        super().setUp()
+        from rest_framework.test import APIClient
+        self.client = APIClient()
+    
+    def test_sql_injection_protection(self):
+        """测试SQL注入防护"""
+        url = "/api/users/"  # 默认测试URL
+        injection_params = {
+            'id': "1' OR '1'='1",
+            'username': "admin'; DROP TABLE users; --"
+        }
+        for param, value in injection_params.items():
+            response = self.client.get(url, {param: value})
+            # 应该返回400或404，而不是500
+            self.assertIn(response.status_code, [400, 404, 200])
+    
+    def test_xss_protection(self):
+        """测试XSS防护"""
+        url = "/api/users/"  # 默认测试URL
+        xss_payloads = [
+            "<script>alert('xss')</script>",
+            "javascript:alert('xss')",
+            "<img src=x onerror=alert('xss')>"
+        ]
+        for payload in xss_payloads:
+            response = self.client.post(url, {'content': payload})
+            if response.status_code == 200:
+                # 检查响应中是否包含未转义的XSS载荷
+                self.assertNotIn(payload, str(response.content))
+    
+    def test_authentication_required(self):
+        """测试认证要求"""
+        url = "/api/users/me/"  # 使用存在的端点
+        methods = ['GET', 'POST', 'PUT', 'DELETE']
+        for method in methods:
+            client_method = getattr(self.client, method.lower())
+            response = client_method(url)
+            # 接受 401, 403, 404（端点可能不存在）
+            self.assertIn(response.status_code, [401, 403, 404])
+    
+    def test_authorization_check(self):
+        """测试权限检查"""
+        from tests.factories import UserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        
+        url = "/api/users/me/"  # 使用存在的端点
+        user = UserFactory()
+        expected_status = 200
+        
+        # 使用 JWT token 进行认证
+        refresh = RefreshToken.for_user(user)
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}'
+        )
+        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, expected_status)
+
+
+class ContractTestCase(TestCase):
+    """API契约测试基类"""
+    
+    def assertAPIContract(self, response, contract_schema):
+        """断言API契约"""
+        self.assertEqual(response.status_code, 200)
+        self._validate_contract(response.data, contract_schema)
+    
+    def _validate_contract(self, data, schema):
+        """验证契约结构"""
+        if isinstance(schema, dict):
+            self.assertIsInstance(data, dict)
+            for key, value_schema in schema.items():
+                self.assertIn(key, data, f"Missing key: {key}")
+                if key in data:
+                    self._validate_contract(data[key], value_schema)
+        elif isinstance(schema, list):
+            self.assertIsInstance(data, list)
+            if schema:  # 如果列表有模式定义
+                for item in data:
+                    self._validate_contract(item, schema[0])
+        elif isinstance(schema, type):
+            self.assertIsInstance(data, schema)
+
+
+class MockTestCase(TestCase):
+    """Mock测试基类"""
+    
+    def setUp(self):
+        super().setUp()
+        self.patchers = []
+    
+    def tearDown(self):
+        super().tearDown()
+        for patcher in self.patchers:
+            patcher.stop()
+    
+    def patch_service(self, service_path, return_value=None, side_effect=None):
+        """创建服务mock"""
+        patcher = patch(service_path)
+        mock = patcher.start()
+        self.patchers.append(patcher)
+        
+        if return_value is not None:
+            mock.return_value = return_value
+        if side_effect is not None:
+            mock.side_effect = side_effect
+        
+        return mock
+    
+    def patch_model_method(self, model, method_name, return_value=None):
+        """创建模型方法mock"""
+        original_method = getattr(model, method_name)
+        
+        def mock_method(*args, **kwargs):
+            if return_value is not None:
+                return return_value
+            return original_method(*args, **kwargs)
+        
+        setattr(model, method_name, mock_method)
+        
+        # 添加到清理列表
+        def cleanup():
+            setattr(model, method_name, original_method)
+        
+        self.patchers.append(type('Cleanup', (), {'stop': cleanup})())

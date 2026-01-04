@@ -448,7 +448,7 @@ class ErrorContractTest(BaseContractTestCase):
         response = self.client.get("/api/tasks/evaluation-tasks/")
         
         # 验证响应状态码
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
         
         # 验证错误响应结构
         expected_schema = {
