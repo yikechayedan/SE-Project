@@ -1,0 +1,42 @@
+[
+{
+    "input": "Sarah was a much better surgeon than Maria so _ always got the easier cases.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Sarah\nB. Maria\n",
+    "answer": "B"
+  },
+  {
+    "input": "Sarah was a much better surgeon than Maria so _ always got the harder cases.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Sarah\nB. Maria\n",
+    "answer": "A"
+  },
+  {
+    "input": "They were worried the wine would ruin the bed and the blanket, but the _ was't ruined.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. blanket\nB. bed\n",
+    "answer": "B"
+  },
+  {
+    "input": "Terry tried to bake the eggplant in the toaster oven but the _ was too big.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. eggplant\nB. toaster\n",
+    "answer": "A"
+  },
+  {
+    "input": "At night, Jeffrey always stays up later than Hunter to watch TV because _ wakes up late.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Jeffrey\nB. Hunter\n",
+    "answer": "A"
+  },
+  {
+    "input": "The cat of Sarah has some mouth problems, so she takes it to see Maria. _ is a responsible cat owner.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Sarah\nB. Maria\n",
+    "answer": "A"
+  },
+  {
+    "input": "The home that my parents had when I was in school was a lot nicer than my house now because the _ was sophisticated.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. home\nB. house\n",
+    "answer": "A"
+  },
+  {
+    "input": "The home that my parents had when I was in school was a lot nicer than my house now because the _ is trashy.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. home\nB. house\n",
+    "answer": "B"
+  },
+  {
+    "input": "Natalie has a rich husband and lots of money, Jennifer is poor _ needs to make her clothes.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. Natalie\nB. Jennifer\n",
+    "answer": "B"
+  },
+  {
+    "input": "Joe immediately went to bakery before the bank because the _ had a limited supply of what he wanted.\n\nQuestion: In this sentence, who does the blank refer to?\n\nA. bakery\nB. bank\n",
+    "answer": "A"
+  }
+]
