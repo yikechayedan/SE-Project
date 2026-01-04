@@ -1,0 +1,16 @@
+input,answer
+机器学习是人工智能的一个分支，它使计算机系统能够从数据中学习和改进。机器学习主要包括哪些类型？\nA. 监督学习、无监督学习、强化学习\nB. 分类学习、回归学习、聚类学习\nC. 深度学习、浅层学习、迁移学习\nD. 有标签学习、无标签学习、半标签学习\n
+以下哪个不是深度学习框架？\nA. TensorFlow\nB. PyTorch\nC. Scikit-learn\nD. Keras,C
+在神经网络中，激活函数的主要作用是什么？\nA. 控制学习率\nB. 引入非线性变换\nC. 防止过拟合\nD. 加速训练过程,B
+下列哪种方法不属于正则化技术？\nA. L1正则化\nB. L2正则化\nC. Dropout\nD. 批量归一化,D
+在自然语言处理中，BERT模型的全称是什么？\nA. Bidirectional Encoder Representations from Transformers\nB. Basic Encoding Representation Transformer\nC. Binary Encoding for Relation Tracking\nD. Bidirectional Evaluation and Response Transformer,A
+卷积神经网络(CNN)主要用于处理哪种类型的数据？\nA. 文本数据\nB. 图像数据\nC. 音频数据\nD. 时间序列数据,B
+在机器学习中，什么是过拟合？\nA. 模型在训练数据上表现很好，但在测试数据上表现差\nB. 模型在训练数据和测试数据上都表现差\nC. 模型训练时间过长\nD. 模型参数过多,A
+支持向量机(SVM)的核心思想是什么？\nA. 最大化类别间间隔\nB. 最小化训练误差\nC. 最大化分类准确率\nD. 最小化模型复杂度,A
+在决策树算法中，信息增益主要用于什么？\nA. 选择最优分裂属性\nB. 剪枝操作\nC. 计算叶子节点数\nD. 评估模型性能,A
+下列哪个不是常见的聚类算法？\nA. K-means\nB. DBSCAN\nC. 层次聚类\nD. 随机森林,D
+在强化学习中，什么是奖励函数？\nA. 评估智能体行为好坏的函数\nB. 控制学习率的函数\nC. 决定动作选择的函数\nD. 更新网络权重的函数,A
+在自然语言处理中，词嵌入(Word Embedding)的主要目的是什么？\nA. 将词语转换为高维向量表示\nB. 计算词语的频率\nC. 提取语法特征\nD. 生成文本摘要,A
+在深度学习中，什么是反向传播算法？\nA. 根据损失函数计算梯度的方法\nB. 初始化网络权重的方法\nC. 选择激活函数的方法\nD. 优化学习率的方法,A
+在机器学习模型评估中，混淆矩阵主要用于什么？\nA. 评估分类模型性能\nB. 计算回归误差\nC. 可视化数据分布\nD. 检测异常值,A
+在集成学习中，随机森林主要基于哪种基础算法？\nA. 决策树\nB. 支持向量机\nC. 神经网络\nD. 朴素贝叶斯,A
