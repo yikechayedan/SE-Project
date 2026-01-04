@@ -1,0 +1,152 @@
+{
+  "test_info": {
+    "test_name": "PolyMetric大模型API 5000并发测试",
+    "test_date": "2026-01-04T17:35:07.711187",
+    "total_requests": 5000,
+    "concurrent_requests": 5000,
+    "test_duration": 1.881880521774292,
+    "api_endpoints": [
+      "evaluate_with_llm",
+      "chat_with_llm",
+      "llm_status"
+    ]
+  },
+  "overall_statistics": {
+    "total_requests": 5000,
+    "successful_requests": 0,
+    "failed_requests": 5000,
+    "success_rate": 0.0,
+    "avg_response_time": 0.0015168140888214112,
+    "min_response_time": 0.0,
+    "max_response_time": 0.07714104652404785,
+    "median_response_time": 0.0009996891021728516,
+    "p95_response_time": 0.005229961872100831,
+    "p99_response_time": 0.009633009433746342,
+    "requests_per_second": 2656.916813871825
+  },
+  "api_statistics": {
+    "evaluate_with_llm": {
+      "total_requests": 2016,
+      "successful_requests": 0,
+      "failed_requests": 2016,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0016351065465382167,
+      "min_response_time": 0.0,
+      "max_response_time": 0.07714104652404785,
+      "median_response_time": 0.0009996891021728516,
+      "p95_response_time": 0.0052928924560546875,
+      "p99_response_time": 0.010342824459075885,
+      "requests_per_second": 1071.26885935312
+    },
+    "chat_with_llm": {
+      "total_requests": 1472,
+      "successful_requests": 0,
+      "failed_requests": 1472,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0014255646130313044,
+      "min_response_time": 0.0,
+      "max_response_time": 0.06577372550964355,
+      "median_response_time": 0.00099945068359375,
+      "p95_response_time": 0.005029022693634034,
+      "p99_response_time": 0.00893574714660644,
+      "requests_per_second": 782.1963100038654
+    },
+    "llm_status": {
+      "total_requests": 1512,
+      "successful_requests": 0,
+      "failed_requests": 1512,
+      "success_rate": 0.0,
+      "avg_response_time": 0.0014479262803597426,
+      "min_response_time": 0.0,
+      "max_response_time": 0.06513428688049316,
+      "median_response_time": 0.0009996891021728516,
+      "p95_response_time": 0.005401086807250982,
+      "p99_response_time": 0.009527316093444836,
+      "requests_per_second": 803.4516445148399
+    }
+  },
+  "error_summary": {
+    "total_errors": 5000,
+    "error_rate": 100.0,
+    "errors_by_api": {
+      "evaluate_with_llm": {
+        "count": 2016,
+        "rate": 100.0
+      },
+      "chat_with_llm": {
+        "count": 1472,
+        "rate": 100.0
+      },
+      "llm_status": {
+        "count": 1512,
+        "rate": 100.0
+      }
+    }
+  },
+  "performance_analysis": {
+    "best performing api": [
+      "evaluate_with_llm",
+      {
+        "total_requests": 2016,
+        "successful_requests": 0,
+        "failed_requests": 2016,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0016351065465382167,
+        "min_response_time": 0.0,
+        "max_response_time": 0.07714104652404785,
+        "median_response_time": 0.0009996891021728516,
+        "p95_response_time": 0.0052928924560546875,
+        "p99_response_time": 0.010342824459075885,
+        "requests_per_second": 1071.26885935312
+      }
+    ],
+    "worst performing api": [
+      "chat_with_llm",
+      {
+        "total_requests": 1472,
+        "successful_requests": 0,
+        "failed_requests": 1472,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0014255646130313044,
+        "min_response_time": 0.0,
+        "max_response_time": 0.06577372550964355,
+        "median_response_time": 0.00099945068359375,
+        "p95_response_time": 0.005029022693634034,
+        "p99_response_time": 0.00893574714660644,
+        "requests_per_second": 782.1963100038654
+      }
+    ],
+    "highest success rate": [
+      "evaluate_with_llm",
+      {
+        "total_requests": 2016,
+        "successful_requests": 0,
+        "failed_requests": 2016,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0016351065465382167,
+        "min_response_time": 0.0,
+        "max_response_time": 0.07714104652404785,
+        "median_response_time": 0.0009996891021728516,
+        "p95_response_time": 0.0052928924560546875,
+        "p99_response_time": 0.010342824459075885,
+        "requests_per_second": 1071.26885935312
+      }
+    ],
+    "lowest success rate": [
+      "evaluate_with_llm",
+      {
+        "total_requests": 2016,
+        "successful_requests": 0,
+        "failed_requests": 2016,
+        "success_rate": 0.0,
+        "avg_response_time": 0.0016351065465382167,
+        "min_response_time": 0.0,
+        "max_response_time": 0.07714104652404785,
+        "median_response_time": 0.0009996891021728516,
+        "p95_response_time": 0.0052928924560546875,
+        "p99_response_time": 0.010342824459075885,
+        "requests_per_second": 1071.26885935312
+      }
+    ]
+  }
+}
