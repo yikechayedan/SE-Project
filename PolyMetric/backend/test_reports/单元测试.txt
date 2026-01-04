@@ -1,0 +1,122 @@
+==================================================
+PolyMetric Backend SQLite Test Runner
+==================================================
+使用SQLite数据库运行测试（无需PostgreSQL服务器）
+
+请选择测试类型:
+1. 快速测试（推荐）
+2. 单元测试
+3. API测试
+4. 集成测试
+5. 端到端测试
+6. 性能测试
+7. 应用测试
+8. 所有测试
+9. 覆盖率测试
+10. 运行特定测试
+0. 退出
+
+请输入选择 (0-10): 2
+
+================================================================================
+运行: 单元测试
+命令: python manage.py test tests.test_utils tests.base tests.conftest
+================================================================================
+Found 4 test(s).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Operations to perform:
+  Synchronize unmigrated apps: corsheaders, django_filters, messages, rest_framework, rest_framework_simplejwt, staticfiles
+  Apply all migrations: admin, auth, authtoken, comments, contenttypes, datasets, models, rankings, sessions, system, tasks, token_blacklist, users
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying users.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying authtoken.0001_initial... OK
+  Applying authtoken.0002_auto_20160226_1747... OK
+  Applying authtoken.0003_tokenproxy... OK
+  Applying authtoken.0004_alter_tokenproxy_options... OK
+  Applying comments.0001_initial... OK
+  Applying datasets.0001_initial... OK
+  Applying datasets.0002_initial... OK
+  Applying datasets.0003_dataset_evaluation_type... OK
+  Applying datasets.0004_dataset_has_images_dataset_image_count... OK
+  Applying datasets.0005_remove_dataset_has_images_remove_dataset_image_count... OK
+  Applying datasets.0006_dataset_capability_dimension_dataset_capability_tag_and_more... OK
+  Applying datasets.0007_dataset_status_alter_dataset_capability_dimension_and_more... OK
+  Applying datasets.0008_dataset_file_hash... OK
+  Applying models.0001_initial... OK
+  Applying models.0002_initial... OK
+  Applying rankings.0001_initial... OK
+  Applying rankings.0002_modeldimensionscore... OK
+  Applying sessions.0001_initial... OK
+  Applying system.0001_initial... OK
+  Applying system.0002_alter_systemevent_event_type... OK
+  Applying tasks.0001_initial... OK
+  Applying tasks.0002_initial... OK
+  Applying tasks.0003_alter_evaluationtask_mymodel... OK
+  Applying tasks.0004_evaluationtask_judge_model_evaluationtask_judge_type... OK
+  Applying tasks.0005_evaluationtask_authorized_viewers_and_more... OK
+  Applying tasks.0006_alter_evaluationitem_options_and_more... OK
+  Applying token_blacklist.0001_initial... OK
+  Applying token_blacklist.0002_outstandingtoken_jti_hex... OK
+  Applying token_blacklist.0003_auto_20171017_2007... OK
+  Applying token_blacklist.0004_auto_20171017_2013... OK
+  Applying token_blacklist.0005_remove_outstandingtoken_jti... OK
+  Applying token_blacklist.0006_auto_20171017_2113... OK
+  Applying token_blacklist.0007_auto_20171017_2214... OK
+  Applying token_blacklist.0008_migrate_to_bigautofield... OK
+  Applying token_blacklist.0010_fix_migrate_to_bigautofield... OK
+  Applying token_blacklist.0011_linearizes_history... OK
+  Applying token_blacklist.0012_alter_outstandingtoken_user... OK
+  Applying token_blacklist.0013_alter_blacklistedtoken_options_and_more... OK
+  Applying users.0002_userstar... OK
+  Applying users.0003_alter_user_email_alter_user_phone... OK
+System check identified no issues (0 silenced).
+test_authentication_required (tests.base.SecurityTestCase.test_authentication_required)
+测试认证要求 ... Forbidden: /api/users/me/
+Forbidden: /api/users/me/
+Forbidden: /api/users/me/
+Forbidden: /api/users/me/
+ok
+test_authorization_check (tests.base.SecurityTestCase.test_authorization_check)
+测试权限检查 ... ok
+test_sql_injection_protection (tests.base.SecurityTestCase.test_sql_injection_protection)
+测试SQL注入防护 ... Not Found: /api/users/
+Not Found: /api/users/
+ok
+test_xss_protection (tests.base.SecurityTestCase.test_xss_protection)
+测试XSS防护 ... Not Found: /api/users/
+Not Found: /api/users/
+Not Found: /api/users/
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.489s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+执行时间: 00:00:02
+返回码: 0
+[SUCCESS] 单元测试 成功完成
+
+==================================================
+请按任意键继续...
