@@ -1,0 +1,12 @@
+Creating test database for alias 'default'...
+.....s........Bad Request: /api/datasets/
+Bad Request: /api/datasets/
+<previous line repeated 8 additional times>
+..
+----------------------------------------------------------------------
+Ran 16 tests in 259.712s
+
+OK (skipped=1)
+Destroying test database for alias 'default'...
+Found 16 test(s).
+System check identified no issues (0 silenced).
