@@ -4,7 +4,11 @@ from .settings import *
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'test_db.sqlite3',
+        'NAME': ':memory:',  # 使用内存数据库提高性能
+        'OPTIONS': {
+            'timeout': 60,  # 增加超时时间
+            'check_same_thread': False,  # 允许多线程访问
+        }
     }
 }
 
@@ -56,6 +60,9 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 
 # 禁用调试模式以提高测试性能
 DEBUG = False
+
+# 测试数据库配置
+TEST_NAME = ':memory:'
 
 # 设置日志级别
 LOGGING = {
